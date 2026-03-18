@@ -1,99 +1,98 @@
 # MoneyCapy
 
-MoneyCapy é um aplicativo de gerenciamento de finanças pessoais disponível para **desktop (Windows)** e **mobile (Android/iOS)**. Ele permite controlar gastos, receitas, cartões, contas bancárias e muito mais, com suporte a múltiplos perfis de usuário.
+MoneyCapy is a personal finance management desktop application for **Windows**. It helps you track expenses, income, credit cards, and bank accounts — all in one place, with support for multiple user profiles.
 
 ---
 
-## O que o app faz
+## What it does
 
-Centraliza toda a vida financeira em um só lugar: registra e categoriza gastos, acompanha receitas recorrentes ou avulsas, monitora faturas de cartões de crédito e saldos de contas bancárias, e gera análises e gráficos por período.
+Centralizes your entire financial life: records and categorizes expenses, tracks recurring or one-time income, monitors credit card invoices and bank account balances, and generates charts and analytics by period.
 
 ---
 
-## Funcionalidades
+## Features
 
-### Gastos
-- Tipos: **avulso**, **parcelado**, **recorrente (assinatura)** e **empréstimo**
-- Marcar como pago por mês
-- Antecipar pagamentos ou pausar temporariamente
-- Vincular a categoria, tag, loja, conta bancária ou cartão
-- Override de valor mensal
+### Expenses
+- Types: **one-time**, **installment**, **recurring (subscription)**, and **loan**
+- Mark as paid per month
+- Anticipate payments or pause temporarily
+- Link to category, tag, store, bank account, or credit card
+- Monthly value override
 
-### Receitas
-- Receitas recorrentes e avulsas
-- Marcar como recebida por mês, com data
-- Vincular a categorias, tags e lojas
-- Override de valor por mês e pausa temporária
+### Income
+- Recurring and one-time income
+- Mark as received per month, with date
+- Link to categories, tags, and stores
+- Monthly value override and temporary pause
 
-### Contas Bancárias
-- Registro de contas corrente e poupança
-- Registro de saldo mensal
-- Visualização de gastos vinculados (parcelados, empréstimos, recorrentes)
+### Bank Accounts
+- Checking and savings accounts
+- Monthly balance recording
+- Breakdown of linked expenses (installments, loans, subscriptions)
 
-### Cartões de Crédito
-- Dados criptografados (número, validade, titular)
-- Controle de limite disponível/utilizado
-- Ciclo de cobrança e vencimento configuráveis
-- Pagar fatura completa de um mês com um clique
+### Credit Cards
+- Encrypted card details (number, expiry, holder)
+- Available/used limit tracking
+- Configurable billing and due date cycles
+- Pay full invoice for a month in one click
 
-### Múltiplos Perfis
-- Separe as finanças por pessoa dentro do mesmo app
-- Troca rápida de perfil
+### Multiple Profiles
+- Separate finances per person within the same app
+- Quick profile switching
 
-### Categorias, Tags e Lojas
-- Organize gastos e receitas com cor e ícone personalizados
-- Filtragem cruzada por tipo, período e classificação
+### Categories, Tags & Stores
+- Organize expenses and income with custom colors and icons
+- Cross-filtering by type, period, and classification
 
 ### Dashboard
-- Visão geral do mês: total de gastos, receitas e saldo
-- Widgets configuráveis com drag-and-drop
-- Próximos vencimentos, top gastos, resumo de cartões e contas
+- Monthly overview: total expenses, income, and balance
+- Configurable drag-and-drop widgets
+- Upcoming due dates, top expenses, card and account summaries
 
-### Insights (Análises)
-- Gráficos temporais: diário, semanal, mensal, anual
-- Comparativo entre períodos
-- Distribuição por categorias, tags e tipo de receita
+### Insights (Analytics)
+- Time-series charts: daily, weekly, monthly, yearly
+- Period comparisons
+- Distribution by categories, tags, and income type
 
-### Configurações
-- Tema claro/escuro
-- Idioma (Português BR e English)
-- Formato de data e moeda
-- Cores personalizadas por seção
-- Dia útil configurável (feriados, finais de semana)
-- Proteção por senha
-- Inicialização automática e minimizar para bandeja
-- Backup/restauração e exportação CSV
+### Settings
+- Light/dark theme
+- Language (Portuguese BR and English)
+- Date and currency format
+- Custom colors per section
+- Configurable business day (holidays, weekdays)
+- Password protection
+- Auto-start and minimize to tray
+- Backup/restore and CSV export
 
 ---
 
-## Tecnologias
+## Tech Stack
 
-| Camada | Tecnologia |
+| Layer | Technology |
 |---|---|
 | Desktop UI | React 18 + TypeScript + Tailwind CSS |
 | Desktop App | Electron 33 |
-| Mobile | React Native (Expo 54) + TypeScript |
-| Banco de dados | SQLite (sql.js no desktop, expo-sqlite no mobile) |
-| Gráficos | Recharts |
-| Ícones | Lucide React |
-| Build/Installer | electron-builder (NSIS) |
+| Database | SQLite (sql.js) |
+| Charts | Recharts |
+| Icons | Lucide React |
+| Build / Installer | electron-builder (NSIS) |
 
 ---
 
-## Como rodar localmente
+## Running Locally
 
 ```bash
-# Instalar dependências
+# Install dependencies
 npm install
 
-# Modo desenvolvimento
+# Development mode
 npm run dev
 
-# Build de produção
+# Production build
 npm run build
 
-# Gerar instalador .exe
+# Generate .exe installer
 npm run package
 ```
 
-O instalador será gerado em `dist/moneycapy-1.0.0-setup.exe`.
+The installer will be generated at `dist/moneycapy-1.0.0-setup.exe`.

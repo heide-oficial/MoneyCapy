@@ -1,22 +1,21 @@
-# MoneyCapy — Documentação Técnica
+# MoneyCapy — Technical Documentation
 
-## Índice
-1. [Visão Geral da Arquitetura](#1-visão-geral-da-arquitetura)
-2. [Estrutura de Pastas](#2-estrutura-de-pastas)
-3. [Processo Principal (Electron)](#3-processo-principal-electron)
-4. [Banco de Dados](#4-banco-de-dados)
-5. [Camada IPC](#5-camada-ipc)
-6. [Interface Desktop (Renderer)](#6-interface-desktop-renderer)
-7. [Aplicativo Mobile](#7-aplicativo-mobile)
-8. [Pasta Shared](#8-pasta-shared)
-9. [Bibliotecas e Dependências](#9-bibliotecas-e-dependências)
-10. [Configuração de Build](#10-configuração-de-build)
+## Table of Contents
+1. [Architecture Overview](#1-architecture-overview)
+2. [Folder Structure](#2-folder-structure)
+3. [Electron Main Process](#3-electron-main-process)
+4. [Database](#4-database)
+5. [IPC Layer](#5-ipc-layer)
+6. [Desktop UI (Renderer)](#6-desktop-ui-renderer)
+7. [Shared Folder](#7-shared-folder)
+8. [Libraries & Dependencies](#8-libraries--dependencies)
+9. [Build Configuration](#9-build-configuration)
 
 ---
 
-## 1. Visão Geral da Arquitetura
+## 1. Architecture Overview
 
-O MoneyCapy é um aplicativo Electron com uma SPA React no renderer e um processo main responsável pelo banco de dados e lógica de negócio. A comunicação entre os dois processos usa o protocolo IPC do Electron. O app mobile em React Native compartilha o mesmo esquema de banco de dados e lógica de negócio, mas acessa o SQLite diretamente via `expo-sqlite`.
+MoneyCapy is an Electron application with a React SPA in the renderer process and a main process responsible for the database and business logic. Communication between the two processes uses Electron's IPC protocol.
 
 ```
 ┌─────────────────────────────────┐
@@ -30,156 +29,139 @@ O MoneyCapy é um aplicativo Electron com uma SPA React no renderer e um process
 │         React Renderer          │  src/renderer/
 │  Pages → Contexts → Components  │
 └─────────────────────────────────┘
-
-┌─────────────────────────────────┐
-│      React Native (Expo)        │  mobile/
-│  Screens → Services → SQLite    │
-└─────────────────────────────────┘
 ```
 
 ---
 
-## 2. Estrutura de Pastas
+## 2. Folder Structure
 
 ```
 MoneyCapy/
 ├── src/
-│   ├── main/                    # Processo principal Electron
-│   │   ├── index.ts             # Entry point: janela, tray, IPC, DB
+│   ├── main/                    # Electron main process
+│   │   ├── index.ts             # Entry point: window, tray, IPC, DB
 │   │   ├── database/
-│   │   │   ├── connection.ts    # Wrapper do sql.js
-│   │   │   ├── migrations/      # 40 arquivos de migração SQL
-│   │   │   │   └── runner.ts    # Executa migrações pendentes
-│   │   │   └── repositories/   # 16 repositórios (acesso ao DB)
-│   │   ├── ipc/                 # 15 arquivos de handlers IPC
-│   │   │   └── register.ts     # Registra todos os handlers
-│   │   ├── services/            # Lógica de negócio e integrações
-│   │   └── utils/               # Utilitários (paths, month-utils)
+│   │   │   ├── connection.ts    # sql.js wrapper
+│   │   │   ├── migrations/      # 40 migration files
+│   │   │   │   └── runner.ts    # Runs pending migrations
+│   │   │   └── repositories/   # 16 repositories (DB access)
+│   │   ├── ipc/                 # 15 IPC handler files
+│   │   │   └── register.ts     # Registers all handlers
+│   │   ├── services/            # Business logic and integrations
+│   │   └── utils/               # Utilities (paths, month-utils)
 │   ├── preload/
-│   │   └── index.ts             # Expõe window.api para o renderer
+│   │   └── index.ts             # Exposes window.api to renderer
 │   └── renderer/
 │       └── src/
-│           ├── App.tsx          # Root com todos os providers
-│           ├── pages/           # 11 páginas principais
-│           ├── components/      # UI e layout
+│           ├── App.tsx          # Root with all providers
+│           ├── pages/           # 11 main pages
+│           ├── components/      # UI and layout components
 │           ├── contexts/        # 16 context providers
-│           ├── hooks/           # 3 hooks customizados
-│           ├── lib/             # Utilitários (currency, date, etc.)
-│           ├── locales/         # pt-BR.json e en-US.json
+│           ├── hooks/           # 3 custom hooks
+│           ├── lib/             # Utilities (currency, date, etc.)
+│           ├── locales/         # pt-BR.json and en-US.json
 │           └── types/           # TypeScript interfaces
-├── mobile/                      # App React Native
-│   ├── src/
-│   │   ├── screens/             # 11 pastas de telas
-│   │   ├── navigation/          # React Navigation setup
-│   │   ├── contexts/            # Contexts do mobile
-│   │   ├── services/            # 10 services (CRUD via SQLite)
-│   │   ├── database/            # Mesmas 40 migrações + repos
-│   │   ├── components/          # Componentes RN
-│   │   ├── theme/               # Cores, espaçamento, tipografia
-│   │   └── lib/                 # Utilitários
-│   ├── app.json                 # Config Expo
-│   └── package.json             # Dependências mobile
-├── shared/                      # Tipos e lógica compartilhada
-│   ├── ipc-channels.ts          # Constantes dos canais IPC
-│   ├── dashboard-types.ts       # Tipos do dashboard
-│   ├── insights-types.ts        # Tipos dos insights
-│   └── day-utils.ts             # Cálculo de dia útil
-├── resources/                   # Ícones e config do instalador
-├── electron-builder.yml         # Config do build/instalador
-├── electron.vite.config.ts      # Config do Vite
-├── tailwind.config.ts           # Config do Tailwind
-└── package.json                 # Dependências desktop
+├── shared/                      # Shared types and logic
+│   ├── ipc-channels.ts          # IPC channel constants
+│   ├── dashboard-types.ts       # Dashboard data types
+│   ├── insights-types.ts        # Insights calculation types
+│   └── day-utils.ts             # Business day resolution logic
+├── resources/                   # Icons and installer config
+├── electron-builder.yml         # Build configuration
+├── electron.vite.config.ts      # Vite config
+├── tailwind.config.ts           # Tailwind config
+└── package.json                 # Dependencies
 ```
 
 ---
 
-## 3. Processo Principal (Electron)
+## 3. Electron Main Process
 
 ### `src/main/index.ts`
-Entry point do app Electron. Responsável por:
-- Criar a `BrowserWindow` com titlebar overlay (janela sem borda nativa)
-- Gerenciar o ícone da bandeja do sistema (system tray)
-- Garantir instância única do app (`app.requestSingleInstanceLock`)
-- Inicializar o banco de dados SQLite e executar migrações
-- Registrar todos os handlers IPC (`registerAllHandlers`)
-- Iniciar o agendador de atualização de câmbio (`startAutoUpdateRates`)
-- Configurar `ipcMain` para auto-start no login e minimizar para tray
+Application entry point. Responsible for:
+- Creating the `BrowserWindow` with titlebar overlay (frameless native window)
+- Managing the system tray icon (minimize to tray)
+- Enforcing single instance lock (`app.requestSingleInstanceLock`)
+- Initializing the SQLite database and running migrations
+- Registering all IPC handlers (`registerAllHandlers`)
+- Starting the currency exchange rate auto-update scheduler (`startAutoUpdateRates`)
+- Configuring `ipcMain` for auto-start on login and minimize to tray
 
 ### `src/main/database/connection.ts`
-Wrapper sobre o `sql.js` que imita a API do `better-sqlite3`:
-- `db.prepare(sql)` → retorna um statement com `.get()`, `.all()`, `.run()`
-- `db.transaction(fn)` → executa função dentro de transação
-- Carrega/salva o banco em disco em cada operação de escrita (sql.js é in-memory)
-- O banco fica em `%APPDATA%/moneycapy/database.db` (produção) ou `data/database.db` (dev)
+Wrapper over `sql.js` that mimics the `better-sqlite3` API:
+- `db.prepare(sql)` → returns a statement with `.get()`, `.all()`, `.run()`
+- `db.transaction(fn)` → executes a function inside a transaction
+- Loads/saves the database to disk on each write operation (sql.js is in-memory)
+- Database path: `%APPDATA%/moneycapy/database.db` (production) or `data/database.db` (dev)
 
 ### `src/main/database/migrations/runner.ts`
-Executa migrações progressivas:
-- Mantém tabela `migrations` com `(id, name, applied_at)`
-- Compara lista de arquivos `001_*.ts` … `040_*.ts` com registros aplicados
-- Aplica somente as pendentes, em ordem numérica, dentro de uma transação
+Executes progressive migrations:
+- Maintains a `migrations` table with `(id, name, applied_at)`
+- Compares the list of `001_*.ts` … `040_*.ts` files against applied records
+- Applies only pending ones, in numeric order, inside a transaction
 
-### Repositórios (`src/main/database/repositories/`)
-Cada repositório encapsula o acesso SQL de uma entidade:
+### Repositories (`src/main/database/repositories/`)
+Each repository encapsulates the SQL access for one entity:
 
-| Arquivo | Entidade | Métodos principais |
+| File | Entity | Key Methods |
 |---|---|---|
-| `section-items.repo.ts` | Gastos | `listByMonth`, `create`, `update`, `delete`, `togglePaid`, `setMonthValue`, `interrupt`, `reactivate`, `anticipate` |
-| `person-income.repo.ts` | Receitas | `listByMonth`, `create`, `update`, `delete`, `toggleReceived`, `setMonthValue`, `interrupt`, `reactivate` |
-| `cards.repo.ts` | Cartões | `list`, `create`, `update`, `delete`, `listEnriched`, `payInvoice` |
-| `bank-accounts.repo.ts` | Contas bancárias | `list`, `create`, `update`, `delete`, `listEnriched`, `setMonthlyBalance` |
-| `categories.repo.ts` | Categorias | `list`, `create`, `update`, `delete` |
+| `section-items.repo.ts` | Expenses | `listByMonth`, `create`, `update`, `delete`, `togglePaid`, `setMonthValue`, `interrupt`, `reactivate`, `anticipate` |
+| `person-income.repo.ts` | Income | `listByMonth`, `create`, `update`, `delete`, `toggleReceived`, `setMonthValue`, `interrupt`, `reactivate` |
+| `cards.repo.ts` | Cards | `list`, `create`, `update`, `delete`, `listEnriched`, `payInvoice` |
+| `bank-accounts.repo.ts` | Bank Accounts | `list`, `create`, `update`, `delete`, `listEnriched`, `setMonthlyBalance` |
+| `categories.repo.ts` | Categories | `list`, `create`, `update`, `delete` |
 | `tags.repo.ts` | Tags | `list`, `create`, `update`, `delete` |
-| `stores.repo.ts` | Lojas | `list`, `create`, `update`, `delete` |
-| `people.repo.ts` | Pessoas | `list`, `create`, `update`, `delete` |
-| `settings.repo.ts` | Configurações | `get`, `set`, `getAll` |
-| `currencies.repo.ts` | Moedas | `list`, `create`, `update`, `delete`, `setBase`, `updateSnapshots` |
-| `item-card-splits.repo.ts` | Splits de cartão | `listByItem`, `create`, `delete` |
-| `item-monthly-status.repo.ts` | Status mensal de gastos | `get`, `set`, `remove` |
-| `item-anticipations.repo.ts` | Antecipações | `list`, `create`, `delete` |
-| `item-interruptions.repo.ts` | Interrupções de gastos | `list`, `create`, `delete` |
-| `income-monthly-status.repo.ts` | Status mensal de receitas | `get`, `set`, `remove` |
-| `income-interruptions.repo.ts` | Interrupções de receitas | `list`, `create`, `delete` |
+| `stores.repo.ts` | Stores | `list`, `create`, `update`, `delete` |
+| `people.repo.ts` | People | `list`, `create`, `update`, `delete` |
+| `settings.repo.ts` | Settings | `get`, `set`, `getAll` |
+| `currencies.repo.ts` | Currencies | `list`, `create`, `update`, `delete`, `setBase`, `updateSnapshots` |
+| `item-card-splits.repo.ts` | Card Splits | `listByItem`, `create`, `delete` |
+| `item-monthly-status.repo.ts` | Monthly Expense Status | `get`, `set`, `remove` |
+| `item-anticipations.repo.ts` | Anticipations | `list`, `create`, `delete` |
+| `item-interruptions.repo.ts` | Expense Interruptions | `list`, `create`, `delete` |
+| `income-monthly-status.repo.ts` | Monthly Income Status | `get`, `set`, `remove` |
+| `income-interruptions.repo.ts` | Income Interruptions | `list`, `create`, `delete` |
 
-### Serviços (`src/main/services/`)
+### Services (`src/main/services/`)
 
-| Arquivo | Função |
+| File | Purpose |
 |---|---|
-| `backup.service.ts` | Exporta/importa o banco completo; exporta CSV filtrado por período |
-| `encryption.service.ts` | Criptografia AES-256-GCM para dados sensíveis de cartões |
-| `frankfurter.service.ts` | Consulta a API pública [Frankfurter](https://www.frankfurter.app/) para cotações de câmbio |
-| `holiday.service.ts` | Determina feriados para o cálculo de dias úteis |
-| `auto-update-rates.ts` | Agendador que atualiza cotações automaticamente em background |
+| `backup.service.ts` | Exports/imports the full database; exports filtered CSV by period |
+| `encryption.service.ts` | AES-256-GCM encryption for sensitive card data |
+| `frankfurter.service.ts` | Queries the public [Frankfurter API](https://www.frankfurter.app/) for exchange rates |
+| `holiday.service.ts` | Determines holidays for business day calculation |
+| `auto-update-rates.ts` | Scheduler that automatically updates exchange rates in the background |
 
 ### `src/main/utils/paths.ts`
-Define os caminhos do banco e backups:
-- Produção: `%APPDATA%/moneycapy/`
+Defines database and backup paths:
+- Production: `%APPDATA%/moneycapy/`
 - Dev: `./data/`
 
 ### `src/main/utils/month-utils.ts`
-Utilitários de mês: operações de adição/subtração de meses no formato `YYYY-MM`, e resolução do tipo de cartão para período de cobrança.
+Month utilities: add/subtract months in `YYYY-MM` format, and resolve card type for billing period.
 
 ---
 
-## 4. Banco de Dados
+## 4. Database
 
-O banco usa SQLite gerenciado via `sql.js`. O esquema evolui através de 40 migrações numeradas.
+The database uses SQLite managed via `sql.js`. The schema evolves through 40 numbered migrations.
 
-### Tabelas principais
+### Core Tables
 
 #### `people`
-Perfis de usuário. Toda entidade de dados tem `person_id` referenciando esta tabela.
+User profiles. Every data entity has a `person_id` referencing this table.
 ```sql
 id, name, created_at
 ```
 
-#### `section_items` (gastos)
-Tabela central de gastos. Tipos suportados:
-- `common` — avulso
-- `installment` — parcelado
-- `subscription` — recorrente/assinatura
-- `emprestimo` — empréstimo
+#### `section_items` (expenses)
+Central expenses table. Supported types:
+- `common` — one-time
+- `installment` — installment-based
+- `subscription` — recurring/subscription
+- `emprestimo` — loan
 
-Campos relevantes:
+Key fields:
 ```sql
 id, person_id, description, value, type,
 start_month, end_month, installment_count, installment_index,
@@ -189,9 +171,9 @@ is_active, notes, interest_rate,
 currency_id, exchange_rate_snapshot
 ```
 
-`due_day_type` pode ser: `static`, `business_day`, `last_day`, `last_business_day`
+`due_day_type` values: `static`, `business_day`, `last_day`, `last_business_day`
 
-#### `person_income` (receitas)
+#### `person_income` (income)
 ```sql
 id, person_id, description, value,
 is_recurring, start_month, end_month,
@@ -200,8 +182,8 @@ category_id, store_id, notes,
 currency_id, exchange_rate_snapshot
 ```
 
-#### `cards` (cartões)
-Dados sensíveis são criptografados com AES-256-GCM:
+#### `cards` (credit cards)
+Sensitive data is encrypted with AES-256-GCM:
 ```sql
 id, person_id, name, bank_account_id,
 card_number_encrypted, card_expiry_encrypted, card_holder_encrypted,
@@ -209,7 +191,7 @@ credit_limit, billing_close_day, due_day,
 card_type (credit | debit | both)
 ```
 
-#### `bank_accounts` (contas bancárias)
+#### `bank_accounts`
 ```sql
 id, person_id, name, nome_banco, account_type (corrente | poupanca),
 juridicidade (cpf | cnpj), balance, icon, color
@@ -236,428 +218,336 @@ id, code, symbol, name, exchange_rate, is_base
 ```
 
 #### `settings`
-Tabela chave-valor para configurações do app:
+Key-value table for app configuration:
 ```sql
 key, value
 ```
-Chaves usadas: `theme`, `language`, `date_format_order`, `date_format_separator`, `accent_color`, `password_hash`, `auto_start`, `minimize_to_tray`, etc.
+Keys used: `theme`, `language`, `date_format_order`, `date_format_separator`, `accent_color`, `password_hash`, `auto_start`, `minimize_to_tray`, etc.
 
-### Tabelas de estado mensal
+### Monthly State Tables
 
-| Tabela | Função |
+| Table | Purpose |
 |---|---|
-| `item_monthly_status` | Override de `is_paid` ou `is_active` por mês para um gasto |
-| `item_monthly_values` | Override de valor de um gasto em mês específico |
-| `item_interruptions` | Períodos de pausa de gastos (start_month, end_month) |
-| `item_anticipations` | Registro de pagamento antecipado de uma parcela |
-| `item_card_splits` | Divisão de gasto parcelado entre cartões |
-| `income_monthly_status` | Override de `is_received` / valor por mês de uma receita |
-| `income_monthly_values` | Override de valor de receita em mês específico |
-| `income_interruptions` | Períodos de pausa de receitas |
-| `income_tags` | Relação N:N entre receitas e tags |
-| `item_tags` | Relação N:N entre gastos e tags |
-| `bank_account_monthly_balance` | Saldo registrado manualmente por mês |
+| `item_monthly_status` | Override `is_paid` or `is_active` per month for an expense |
+| `item_monthly_values` | Override the value of an expense in a specific month |
+| `item_interruptions` | Expense pause periods (start_month, end_month) |
+| `item_anticipations` | Early payment records for installments |
+| `item_card_splits` | Split an installment expense across multiple cards |
+| `income_monthly_status` | Override `is_received` / value per month for income |
+| `income_monthly_values` | Override income value in a specific month |
+| `income_interruptions` | Income pause periods |
+| `income_tags` | N:N relationship between income and tags |
+| `item_tags` | N:N relationship between expenses and tags |
+| `bank_account_monthly_balance` | Manually recorded balance per month |
 
 ---
 
-## 5. Camada IPC
+## 5. IPC Layer
 
-A comunicação renderer ↔ main usa `ipcRenderer.invoke` / `ipcMain.handle`. O arquivo `src/preload/index.ts` expõe o objeto `window.api` com todos os métodos.
+Renderer ↔ main communication uses `ipcRenderer.invoke` / `ipcMain.handle`. The file `src/preload/index.ts` exposes the `window.api` object with all methods.
 
-Os canais são definidos como constantes em `shared/ipc-channels.ts`.
+Channels are defined as constants in `shared/ipc-channels.ts`.
 
-### Handlers por domínio
+### Handlers by Domain
 
-#### `section-items.ipc.ts` — Gastos
-| Canal | Descrição |
+#### `section-items.ipc.ts` — Expenses
+| Channel | Description |
 |---|---|
-| `ITEMS_LIST` | Lista gastos de uma pessoa por mês, com dados enriquecidos |
-| `ITEMS_CREATE` | Cria gasto (qualquer tipo) |
-| `ITEMS_UPDATE` | Atualiza gasto |
-| `ITEMS_DELETE` | Remove gasto e registros filhos |
-| `ITEMS_TOGGLE_ACTIVE` | Ativa/desativa gasto |
-| `ITEMS_TOGGLE_PAID` | Alterna status de pago no mês |
-| `ITEMS_SET_PAID` | Define pago com data e hora |
-| `ITEMS_INTERRUPT` | Pausa gasto por N meses |
-| `ITEMS_REACTIVATE` | Retoma gasto pausado |
-| `ITEMS_ANTICIPATE` | Registra pagamento antecipado |
-| `ITEMS_UNDO_ANTICIPATION` | Desfaz antecipação |
-| `ITEMS_SET_MONTH_VALUE` | Override de valor no mês |
-| `ITEMS_REMOVE_MONTH_VALUE` | Remove override de valor |
-| `ITEMS_SET_MONTHLY_ACTIVE` | Ativa/desativa no mês específico |
-| `ITEMS_SEARCH` | Busca full-text com filtros |
+| `ITEMS_LIST` | List expenses for a person by month, with enriched data |
+| `ITEMS_CREATE` | Create expense (any type) |
+| `ITEMS_UPDATE` | Update expense |
+| `ITEMS_DELETE` | Delete expense and child records |
+| `ITEMS_TOGGLE_ACTIVE` | Enable/disable expense |
+| `ITEMS_TOGGLE_PAID` | Toggle paid status for the month |
+| `ITEMS_SET_PAID` | Set paid with date and time |
+| `ITEMS_INTERRUPT` | Pause expense for N months |
+| `ITEMS_REACTIVATE` | Resume paused expense |
+| `ITEMS_ANTICIPATE` | Record early payment |
+| `ITEMS_UNDO_ANTICIPATION` | Undo early payment |
+| `ITEMS_SET_MONTH_VALUE` | Override value for the month |
+| `ITEMS_REMOVE_MONTH_VALUE` | Remove value override |
+| `ITEMS_SET_MONTHLY_ACTIVE` | Enable/disable for a specific month |
+| `ITEMS_SEARCH` | Full-text search with filters |
 
-#### `person-income.ipc.ts` — Receitas
-| Canal | Descrição |
+#### `person-income.ipc.ts` — Income
+| Channel | Description |
 |---|---|
-| `PERSON_INCOME_LIST_BY_MONTH` | Lista receitas do mês |
-| `PERSON_INCOME_CREATE` | Cria receita |
-| `PERSON_INCOME_UPDATE` | Atualiza receita |
-| `PERSON_INCOME_DELETE` | Remove receita |
-| `PERSON_INCOME_TOGGLE_RECEIVED` | Alterna status de recebida |
-| `PERSON_INCOME_SET_RECEIVED` | Marca como recebida com data |
-| `PERSON_INCOME_SET_MONTH_VALUE` | Override de valor no mês |
+| `PERSON_INCOME_LIST_BY_MONTH` | List income for the month |
+| `PERSON_INCOME_CREATE` | Create income |
+| `PERSON_INCOME_UPDATE` | Update income |
+| `PERSON_INCOME_DELETE` | Delete income |
+| `PERSON_INCOME_TOGGLE_RECEIVED` | Toggle received status |
+| `PERSON_INCOME_SET_RECEIVED` | Mark as received with date |
+| `PERSON_INCOME_SET_MONTH_VALUE` | Override value for the month |
 | `PERSON_INCOME_REMOVE_MONTH_VALUE` | Remove override |
-| `PERSON_INCOME_SEARCH` | Busca com filtros |
-| `INCOME_INTERRUPT` | Pausa receita |
-| `INCOME_REACTIVATE` | Retoma receita |
+| `PERSON_INCOME_SEARCH` | Search with filters |
+| `INCOME_INTERRUPT` | Pause income |
+| `INCOME_REACTIVATE` | Resume income |
 
-#### `cards.ipc.ts` — Cartões
-| Canal | Descrição |
+#### `cards.ipc.ts` — Credit Cards
+| Channel | Description |
 |---|---|
-| `CARDS_LIST` | Lista cartões com limite usado calculado |
-| `CARDS_GET_DECRYPTED` | Descriptografa dados do cartão |
-| `CARDS_CREATE` | Cria cartão (dados sensíveis criptografados) |
-| `CARDS_UPDATE` | Atualiza cartão |
-| `CARDS_DELETE` | Remove cartão |
-| `CARDS_LIST_ENRICHED` | Lista com totais por tipo de gasto e mês |
-| `CARDS_PAY_INVOICE` | Marca todos os gastos do mês como pagos |
+| `CARDS_LIST` | List cards with calculated used limit |
+| `CARDS_GET_DECRYPTED` | Decrypt card details |
+| `CARDS_CREATE` | Create card (sensitive data encrypted) |
+| `CARDS_UPDATE` | Update card |
+| `CARDS_DELETE` | Delete card |
+| `CARDS_LIST_ENRICHED` | List with totals per expense type per month |
+| `CARDS_PAY_INVOICE` | Mark all expenses for the month as paid |
 
-#### `bank-accounts.ipc.ts` — Contas Bancárias
-| Canal | Descrição |
+#### `bank-accounts.ipc.ts` — Bank Accounts
+| Channel | Description |
 |---|---|
-| `BANK_ACCOUNTS_LIST` | Lista contas |
-| `BANK_ACCOUNTS_CREATE` | Cria conta |
-| `BANK_ACCOUNTS_UPDATE` | Atualiza conta |
-| `BANK_ACCOUNTS_DELETE` | Remove conta |
-| `BANK_ACCOUNTS_LIST_ENRICHED` | Lista com totais de gastos vinculados por mês |
-| `BANK_ACCOUNTS_SET_MONTHLY_BALANCE` | Registra saldo mensal |
-| `BANK_ACCOUNTS_REMOVE_MONTHLY_BALANCE` | Remove registro de saldo |
+| `BANK_ACCOUNTS_LIST` | List accounts |
+| `BANK_ACCOUNTS_CREATE` | Create account |
+| `BANK_ACCOUNTS_UPDATE` | Update account |
+| `BANK_ACCOUNTS_DELETE` | Delete account |
+| `BANK_ACCOUNTS_LIST_ENRICHED` | List with linked expense totals per month |
+| `BANK_ACCOUNTS_SET_MONTHLY_BALANCE` | Record monthly balance |
+| `BANK_ACCOUNTS_REMOVE_MONTHLY_BALANCE` | Remove balance record |
 
 #### `categories.ipc.ts` / `tags.ipc.ts` / `stores.ipc.ts` / `people.ipc.ts`
-CRUD padrão: `LIST`, `CREATE`, `UPDATE`, `DELETE` para cada entidade.
+Standard CRUD: `LIST`, `CREATE`, `UPDATE`, `DELETE` for each entity.
 
-#### `settings.ipc.ts` — Configurações
-| Canal | Descrição |
+#### `settings.ipc.ts` — Settings
+| Channel | Description |
 |---|---|
-| `SETTINGS_GET` | Lê valor de uma configuração |
-| `SETTINGS_SET` | Salva configuração |
-| `SETTINGS_VERIFY_PASSWORD` | Verifica senha (bcrypt) |
-| `SETTINGS_SET_PASSWORD` | Define nova senha |
-| `SETTINGS_CHANGE_PASSWORD` | Altera senha existente |
-| `SETTINGS_HAS_PASSWORD` | Verifica se senha está definida |
-| `SETTINGS_RESET_PERSON` | Apaga todos os dados de um perfil |
-| `SETTINGS_RESET_ALL_DATA` | Apaga todos os dados de todos os perfis |
-| `SETTINGS_RESET_APP` | Reset total (factory reset) |
+| `SETTINGS_GET` | Read a setting value |
+| `SETTINGS_SET` | Save a setting |
+| `SETTINGS_VERIFY_PASSWORD` | Verify password (bcrypt) |
+| `SETTINGS_SET_PASSWORD` | Set new password |
+| `SETTINGS_CHANGE_PASSWORD` | Change existing password |
+| `SETTINGS_HAS_PASSWORD` | Check if password is set |
+| `SETTINGS_RESET_PERSON` | Delete all data for a profile |
+| `SETTINGS_RESET_ALL_DATA` | Wipe all data for all profiles |
+| `SETTINGS_RESET_APP` | Full factory reset |
 
-#### `currencies.ipc.ts` — Moedas
-| Canal | Descrição |
+#### `currencies.ipc.ts` — Currencies
+| Channel | Description |
 |---|---|
-| `CURRENCIES_LIST` | Lista moedas cadastradas |
-| `CURRENCIES_GET_BASE` | Retorna moeda base |
-| `CURRENCIES_CREATE/UPDATE/DELETE` | CRUD de moedas |
-| `CURRENCIES_SET_BASE` | Define moeda base |
-| `CURRENCIES_FETCH_RATES` | Busca cotações na API Frankfurter |
-| `CURRENCIES_FETCH_AVAILABLE` | Lista moedas disponíveis na API |
-| `CURRENCIES_UPDATE_SNAPSHOTS` | Atualiza snapshots de câmbio nos registros |
-| `CURRENCIES_RESTART_AUTO_UPDATE` | Reinicia agendador de atualização |
+| `CURRENCIES_LIST` | List registered currencies |
+| `CURRENCIES_GET_BASE` | Get base currency |
+| `CURRENCIES_CREATE/UPDATE/DELETE` | Currency CRUD |
+| `CURRENCIES_SET_BASE` | Set base currency |
+| `CURRENCIES_FETCH_RATES` | Fetch rates from Frankfurter API |
+| `CURRENCIES_FETCH_AVAILABLE` | List available currencies from API |
+| `CURRENCIES_UPDATE_SNAPSHOTS` | Update exchange rate snapshots on records |
+| `CURRENCIES_RESTART_AUTO_UPDATE` | Restart update scheduler |
 
 #### `dashboard.ipc.ts` — Dashboard
-| Canal | Descrição |
+| Channel | Description |
 |---|---|
-| `DASHBOARD_SUMMARY` | Resumo do mês: total gastos, receitas, saldo |
-| `DASHBOARD_WIDGETS` | Dados para todos os widgets configurados |
+| `DASHBOARD_SUMMARY` | Monthly summary: total expenses, income, balance |
+| `DASHBOARD_WIDGETS` | Data for all configured widgets |
 
-#### `insights.ipc.ts` — Análises
-| Canal | Descrição |
+#### `insights.ipc.ts` — Analytics
+| Channel | Description |
 |---|---|
-| `INSIGHTS_TEMPORAL` | Série temporal (diário/semanal/mensal/anual) |
-| `INSIGHTS_COMPARATIVE` | Comparativo entre dois períodos |
-| `INSIGHTS_PERIOD_DETAIL` | Lista de itens de um período específico |
+| `INSIGHTS_TEMPORAL` | Time series (daily/weekly/monthly/yearly) |
+| `INSIGHTS_COMPARATIVE` | Comparison between two periods |
+| `INSIGHTS_PERIOD_DETAIL` | Item list for a specific period |
 
 #### `backup.ipc.ts` — Backup
-| Canal | Descrição |
+| Channel | Description |
 |---|---|
-| `BACKUP_EXPORT` | Exporta banco completo como arquivo |
-| `BACKUP_IMPORT` | Importa banco de arquivo |
-| `BACKUP_EXPORT_CSV` | Exporta gastos/receitas em CSV |
-| `BACKUP_EXPORT_FILTERED` | Exporta período filtrado |
-| `APP_OPEN_DATA_FOLDER` | Abre pasta de dados no explorador |
+| `BACKUP_EXPORT` | Export full database as file |
+| `BACKUP_IMPORT` | Import database from file |
+| `BACKUP_EXPORT_CSV` | Export expenses/income as CSV |
+| `BACKUP_EXPORT_FILTERED` | Export filtered period |
+| `APP_OPEN_DATA_FOLDER` | Open data folder in file explorer |
 
 ---
 
-## 6. Interface Desktop (Renderer)
+## 6. Desktop UI (Renderer)
 
 ### `src/renderer/src/App.tsx`
-Raiz da aplicação. Empilha todos os context providers e renderiza as rotas com `react-router-dom` (hash routing).
+Application root. Stacks all context providers and renders routes via `react-router-dom` (hash routing).
 
-### Roteamento
+### Routing
 ```
 /           → Dashboard
-/items      → Gastos
-/accounts   → Contas Bancárias
-/cards      → Cartões
-/income     → Receitas
-/people     → Pessoas
-/categories → Categorias
+/items      → Expenses
+/accounts   → Bank Accounts
+/cards      → Credit Cards
+/income     → Income
+/people     → People
+/categories → Categories
 /tags       → Tags
-/stores     → Lojas
-/insights   → Análises
-/settings   → Configurações
+/stores     → Stores
+/insights   → Analytics
+/settings   → Settings
 ```
 
-### Páginas (`src/renderer/src/pages/`)
+### Pages (`src/renderer/src/pages/`)
 
 #### `dashboard/DashboardPage.tsx`
-Grid de widgets com drag-and-drop (`@dnd-kit`). Widgets disponíveis: resumo do mês, cartões, contas bancárias, próximos vencimentos, top gastos, pendentes, distribuição, comparativos.
+Widget grid with drag-and-drop (`@dnd-kit`). Available widgets: monthly summary, cards, bank accounts, upcoming due dates, top expenses, pending items, distribution, comparatives.
 
 #### `items/ItemsPage.tsx`
-Lista de gastos com busca, filtros (categoria, tag, conta, cartão, loja, status ativo/pago, forma de pagamento) e ordenação. Tab selector para tipo de gasto. Ações: criar, editar, pagar, antecipar, pausar, excluir.
+Expense list with search, filters (category, tag, account, card, store, active/paid status, payment method) and sorting. Tab selector for expense type. Actions: create, edit, pay, anticipate, pause, delete.
 
 #### `items/ItemsForm.tsx`
-Formulário completo de gasto. Abas: detalhes, classificação, cartão. Suporte a splits de cartão (dividir parcelas entre múltiplos cartões), taxa de juros, mês de início/fim, notas.
+Full expense form. Tabs: details, classification, card. Supports card splits (split installments across multiple cards), interest rate, start/end month, notes.
 
 #### `income/IncomePage.tsx`
-Lista de receitas com filtros por tipo (recorrente/avulso), categorias e tags. Marcação de recebida, override de valor mensal, pausa e retomada.
+Income list with filters by type (recurring/one-time), categories, and tags. Mark as received, monthly value override, pause and resume.
 
 #### `accounts/AccountsPage.tsx`
-Lista de contas bancárias com totais de gastos por tipo no mês. Registro de saldo mensal. CRUD de contas.
+Bank account list with expense totals per type for the month. Monthly balance recording. Account CRUD.
 
 #### `cards/CardsPage.tsx`
-Lista de cartões com limite disponível/usado, total de gastos por tipo. Pagamento de fatura. Visualização de dados criptografados.
+Card list with available/used limit, expense totals per type. Invoice payment. View encrypted card data.
 
 #### `categories/CategoriesPage.tsx`
-CRUD de categorias com ícone e cor. Filtro por tipo de gasto (gastos vs receitas) e subtipo. Visualização de itens vinculados.
+Category CRUD with icon and color. Filter by expense type (expenses vs income) and subtype. View linked items.
 
 #### `tags/TagsPage.tsx`
-CRUD de tags com cor. Mesma estrutura de filtros que categorias.
+Tag CRUD with color. Same filter structure as categories.
 
 #### `stores/StoresPage.tsx`
-CRUD de lojas/entidades com cor. Mesma estrutura de filtros.
+Store CRUD with color. Same filter structure.
 
 #### `people/PeoplePage.tsx`
-Gerenciamento de perfis. Criação, edição e exclusão de pessoas. Trocar perfil ativo.
+Profile management. Create, edit, and delete people. Switch active profile.
 
 #### `insights/InsightsPage.tsx`
-Análises com gráficos Recharts. Série temporal configurável (escala e período), comparativo entre períodos, distribuição por categorias/tags/tipo de receita, lista detalhada de itens de um período.
+Analytics with Recharts charts. Configurable time series (scale and period), period comparison, distribution by categories/tags/income type, detailed item list for a period.
 
 #### `settings/SettingsPage.tsx`
-Todas as configurações do app: tema, idioma, formato de data, moeda, cores por seção, dia útil, proteção por senha, auto-start, minimizar para tray, backup e reset de dados.
+All app settings: theme, language, date format, currency, colors per section, business day, password protection, auto-start, minimize to tray, backup, and data reset.
 
 ### Contexts (`src/renderer/src/contexts/`)
 
-| Context | Estado gerenciado |
+| Context | Managed State |
 |---|---|
-| `ActivePersonContext` | Pessoa ativa, lista de pessoas, versão de itens |
-| `ThemeContext` | Tema light/dark, função toggleTheme |
-| `LanguageContext` | Idioma, função `t(key, params)` para i18n |
-| `CurrencySettingsContext` | Moedas, moeda base, config de formatação |
-| `ColorSettingsContext` | Cores personalizadas por seção |
-| `DateFormatContext` | Ordem (DMY/MDY/YMD) e separador de data |
-| `DefaultMonthContext` | Offset do mês padrão |
-| `StartCountingMonthContext` | Mês de início para analytics |
-| `BusinessDayContext` | Config de dia útil (feriados, dias da semana) |
-| `SessionContext` | Estado de sessão (senha, bloqueio) |
-| `ToastPositionContext` | Posição das notificações toast |
-| `AccentColorContext` | Cor de destaque do app |
-| `ColorModeContext` | Modo de cor dos gráficos |
-| `DimPaidContext` | Reduzir opacidade de itens pagos |
-| `FilterDisplayModeContext` | Modo de exibição dos filtros (compact/primary-more/unified) |
-| `TileFieldsContext` | Campos visíveis nos tiles de itens |
+| `ActivePersonContext` | Active person, people list, items version counter |
+| `ThemeContext` | Light/dark theme, toggleTheme function |
+| `LanguageContext` | Language, `t(key, params)` function for i18n |
+| `CurrencySettingsContext` | Currencies, base currency, formatting config |
+| `ColorSettingsContext` | Custom colors per section |
+| `DateFormatContext` | Order (DMY/MDY/YMD) and date separator |
+| `DefaultMonthContext` | Default month offset |
+| `StartCountingMonthContext` | Start month for analytics |
+| `BusinessDayContext` | Business day config (holidays, weekdays) |
+| `SessionContext` | Session state (password, lock) |
+| `ToastPositionContext` | Toast notification position |
+| `AccentColorContext` | App accent color |
+| `ColorModeContext` | Chart color mode |
+| `DimPaidContext` | Reduce opacity of paid items |
+| `FilterDisplayModeContext` | Filter display mode (compact / primary-more / unified) |
+| `TileFieldsContext` | Visible fields in item tiles |
 
 ### Hooks (`src/renderer/src/hooks/`)
 
-| Hook | Função |
+| Hook | Purpose |
 |---|---|
-| `useSortItems.ts` | Ordena lista de itens por vários critérios (nome, valor, vencimento, tipo) |
-| `useSortOrder.ts` | Persiste preferência de ordem em `localStorage` |
-| `useUndoableDelete.ts` | Delete com undo: exibe toast com janela de 5 segundos para desfazer |
+| `useSortItems.ts` | Sort item list by various criteria (name, value, due date, type) |
+| `useSortOrder.ts` | Persist sort preference in `localStorage` |
+| `useUndoableDelete.ts` | Delete with undo: shows toast with 5-second window to undo |
 
-### Utilitários (`src/renderer/src/lib/`)
+### Utilities (`src/renderer/src/lib/`)
 
-| Arquivo | Função |
+| File | Purpose |
 |---|---|
-| `currency.ts` | `formatCurrency(value)` usando config global `setCurrencyConfig` |
-| `date.ts` | `getCurrentMonth()`, `useFormatDate()` (formata com base no DateFormatContext) |
-| `card-utils.ts` | Lógica de billing/due date para cartões |
-| `colorUtils.ts` | Manipulação de cores (HSL, hex) |
-| `insights-utils.ts` | Agregações e cálculos para os gráficos de insights |
-| `constants.ts` | Cores preset, rotas (`ROUTES`), outras constantes |
-| `sortOrder.ts` | Lógica de ordenação persistida |
+| `currency.ts` | `formatCurrency(value)` using global config set by `setCurrencyConfig` |
+| `date.ts` | `getCurrentMonth()`, `useFormatDate()` (formats based on DateFormatContext) |
+| `card-utils.ts` | Billing/due date logic for cards |
+| `colorUtils.ts` | Color manipulation (HSL, hex) |
+| `insights-utils.ts` | Aggregations and calculations for analytics charts |
+| `constants.ts` | Preset colors, routes (`ROUTES`), other constants |
+| `sortOrder.ts` | Persisted sort order logic |
 
-### Componentes UI notáveis (`src/renderer/src/components/ui/`)
+### Notable UI Components (`src/renderer/src/components/ui/`)
 
-| Componente | Função |
+| Component | Purpose |
 |---|---|
-| `FilterGroup.tsx` | Grupo de filtros com 3 modos: `compact` (todos inline, labels ocultados via `.filter-compact [data-filter-label] { display: none }`), `primary-more` (N inline + "Mais filtros" em popover), `unified` (botão único abre popover) |
-| `FilterDropdown.tsx` | Dropdown com multi-seleção para filtros de categoria/tag/conta/etc. |
-| `SimpleDropdown.tsx` | Dropdown de seleção única |
-| `ColumnsPickerDropdown.tsx` | Seletor de número de colunas de grid |
-| `TileFieldsPickerButton.tsx` | Botão olho para configurar campos visíveis nos tiles |
-| `GlobalSearchModal.tsx` | Modal de busca global (Ctrl+K) |
-| `KebabMenu.tsx` | Menu de contexto (⋮) |
-| `MonthNavigator.tsx` | Navegador de mês com setas |
-| `CurrencyInput.tsx` | Input com formatação de moeda em tempo real |
-| `CurrencyTooltip.tsx` | Tooltip mostrando valor em outras moedas |
-| `ColorPicker.tsx` / `IconPicker.tsx` | Seletores de cor e ícone |
-| `ConfirmDialog.tsx` | Dialog de confirmação reutilizável |
+| `FilterGroup.tsx` | Filter group with 3 modes: `compact` (all inline, labels hidden via `.filter-compact [data-filter-label] { display: none }`), `primary-more` (N inline + "More filters" popover), `unified` (single button opens popover) |
+| `FilterDropdown.tsx` | Multi-select dropdown for category/tag/account filters |
+| `SimpleDropdown.tsx` | Single-select dropdown |
+| `ColumnsPickerDropdown.tsx` | Grid column count selector |
+| `TileFieldsPickerButton.tsx` | Eye icon button to configure visible fields in tiles |
+| `GlobalSearchModal.tsx` | Global search modal (Ctrl+K) |
+| `KebabMenu.tsx` | Context menu (⋮) |
+| `MonthNavigator.tsx` | Month navigator with arrows |
+| `CurrencyInput.tsx` | Input with real-time currency formatting |
+| `CurrencyTooltip.tsx` | Tooltip showing value in other currencies |
+| `ColorPicker.tsx` / `IconPicker.tsx` | Color and icon selectors |
+| `ConfirmDialog.tsx` | Reusable confirmation dialog |
 
 ### i18n (`src/renderer/src/locales/`)
-Arquivos JSON com chaves em notação de pontos. Interpolação com `{{variavel}}`.
+JSON files with dot-notation keys. Interpolation with `{{variable}}`.
 
-Namespaces: `items`, `itemsForm`, `itemTypes`, `income`, `accounts`, `cards`, `cardTypes`, `categories`, `tags`, `stores`, `people`, `insights`, `settings`, `sidebar`, `common`, `filters`, `sort`, `mobile.*`
+Namespaces: `items`, `itemsForm`, `itemTypes`, `income`, `accounts`, `cards`, `cardTypes`, `categories`, `tags`, `stores`, `people`, `insights`, `settings`, `sidebar`, `common`, `filters`, `sort`
 
-Uso:
+Usage:
 ```ts
 const { t } = useTranslation()
-t('items.newItem')                  // "Novo gasto"
-t('items.itemCount', { count: 3 }) // "3 gastos"
+t('items.newItem')                  // "New expense"
+t('items.itemCount', { count: 3 }) // "3 expenses"
 ```
 
 ---
 
-## 7. Aplicativo Mobile
+## 7. Shared Folder
 
-### Framework e Ferramentas
-- **React Native** via **Expo SDK 54**
-- **TypeScript**
-- **Metro bundler** (padrão Expo)
-- Banco de dados: **expo-sqlite** (SQLite nativo)
-- Criptografia: **expo-crypto** (AES-256-GCM)
-- Sistema de arquivos: **expo-file-system**
-
-### Navegação (`mobile/src/navigation/`)
-Usa **React Navigation**:
-```
-RootNavigator
-└── DrawerNavigator (Drawer + 11 stacks)
-    ├── DrawerContent.tsx    # Painel do drawer com switcher de pessoa
-    ├── HomeStack            → DashboardScreen
-    ├── ItemsStack           → ItemsScreen, ItemFormScreen
-    ├── IncomeStack          → IncomeScreen, IncomeFormScreen
-    ├── AccountsStack        → AccountsScreen, AccountFormScreen
-    ├── CardsStack           → CardsScreen, CardFormScreen
-    ├── CategoriesStack      → CategoriesScreen
-    ├── TagsStack            → TagsScreen
-    ├── StoresStack          → StoresScreen
-    ├── PeopleStack          → PeopleScreen
-    ├── InsightsStack        → InsightsScreen
-    └── SettingsStack        → SettingsScreen
-```
-
-### Telas (`mobile/src/screens/`)
-Cada tela tem estrutura `ScreenContainer` com título e botão hamburger/voltar. Espelham as páginas do desktop com componentes React Native.
-
-### Services (`mobile/src/services/`)
-Equivalentes aos repositórios do desktop. Cada service recebe uma instância `WrappedDatabase` e executa queries SQL diretamente.
-
-| Service | Entidade |
-|---|---|
-| `items.service.ts` | Gastos |
-| `income.service.ts` | Receitas |
-| `cards.service.ts` | Cartões |
-| `bank-accounts.service.ts` | Contas bancárias |
-| `categories.service.ts` | Categorias |
-| `tags.service.ts` | Tags |
-| `stores.service.ts` | Lojas |
-| `people.service.ts` | Pessoas |
-| `currencies.service.ts` | Moedas |
-| `settings.service.ts` | Configurações |
-
-### Banco de dados mobile (`mobile/src/database/`)
-Mesmas 40 migrações do desktop. A conexão usa `expo-sqlite` com wrapper `WrappedDatabase` que imita a API do desktop.
-
-### Tema (`mobile/src/theme/`)
-```ts
-useThemeColors()   // Retorna objeto de cores baseado no tema
-spacing            // Espaçamentos: xs, sm, md, lg, xl, '2xl', '3xl'
-borderRadius       // Raios: sm, md, lg, xl, full
-typography         // Tamanhos e pesos de fonte
-```
-
-### Contexts mobile (`mobile/src/contexts/`)
-| Context | Função |
-|---|---|
-| `DatabaseContext` | Conexão SQLite e status de inicialização |
-| `ActivePersonContext` | Pessoa ativa, lista, troca de perfil |
-| `LanguageContext` | i18n com função `t()` |
-| `ThemeContext` | Tema light/dark |
-| `AccentColorContext` | Cor de destaque |
-| `SettingsContext` | Configurações gerais do app |
-| `DrawerContext` | Estado de abertura do drawer |
-
----
-
-## 8. Pasta Shared
-
-Código compartilhado entre desktop e mobile.
+Code shared between processes.
 
 ### `shared/ipc-channels.ts`
-Objeto `IPC_CHANNELS` com todas as constantes de canais IPC. Evita strings mágicas.
+`IPC_CHANNELS` object with all channel constants. Avoids magic strings.
 ```ts
 IPC_CHANNELS.ITEMS_LIST          // 'items:list'
 IPC_CHANNELS.CARDS_PAY_INVOICE   // 'cards:pay-invoice'
 ```
 
 ### `shared/dashboard-types.ts`
-Interfaces TypeScript para os dados retornados pelo dashboard:
-- `DashboardMonthSummary` — totais do mês
-- `DashboardCardEnriched` — cartão com totais por tipo
-- `DashboardListItem` / `DashboardIncomeItem` — items para listas de próximos/pendentes
-- Tipos de distribuição (por categoria, tag, tipo de receita)
+TypeScript interfaces for dashboard data:
+- `DashboardMonthSummary` — monthly totals
+- `DashboardCardEnriched` — card with totals per type
+- `DashboardListItem` / `DashboardIncomeItem` — items for upcoming/pending lists
+- Distribution entry types (by category, tag, income type)
 
 ### `shared/insights-types.ts`
-Interfaces para dados de análise:
-- `TimePoint` — ponto na série temporal (label, value, date)
-- `InsightsTemporalResult` — resultado de série temporal com agrupamentos
-- `InsightsComparativeResult` — resultado de comparativo entre períodos
-- Tipos de agrupamento: `daily`, `weekly`, `monthly`, `yearly`
+Interfaces for analytics data:
+- `TimePoint` — point in a time series (label, value, date)
+- `InsightsTemporalResult` — time series result with groupings
+- `InsightsComparativeResult` — period comparison result
+- Grouping types: `daily`, `weekly`, `monthly`, `yearly`
 
 ### `shared/day-utils.ts`
-Lógica de resolução de dia útil:
+Business day resolution logic:
 - `DayType`: `static` | `business_day` | `last_day` | `last_business_day`
-- `resolveDay(spec, month, config)` — retorna o dia efetivo considerando feriados e finais de semana
-- Usado para calcular datas de vencimento de gastos e receitas
+- `resolveDay(spec, month, config)` — returns the effective day accounting for holidays and weekends
+- Used to calculate due dates for expenses and income
 
 ---
 
-## 9. Bibliotecas e Dependências
+## 8. Libraries & Dependencies
 
-### Desktop
-
-| Biblioteca | Versão | Uso |
+| Library | Version | Purpose |
 |---|---|---|
-| `electron` | ^33.2.1 | Framework desktop (janela, tray, IPC, sistema) |
-| `electron-vite` | ^2.3.0 | Build tool: compila main, preload e renderer com Vite |
-| `electron-builder` | ^25.1.8 | Empacotamento e geração do instalador NSIS (.exe) |
-| `react` + `react-dom` | ^18.3.1 | Interface de usuário |
-| `react-router-dom` | ^7.1.0 | Roteamento client-side (hash routing) |
-| `sql.js` | ^1.11.0 | SQLite compilado para WebAssembly; acesso ao banco no processo main |
-| `@dnd-kit/core` + `sortable` | ^6.3.1 / ^10.0.0 | Drag-and-drop dos widgets do dashboard |
-| `recharts` | ^2.15.0 | Gráficos SVG (barras, linhas, pizza, área) |
-| `sonner` | ^1.7.0 | Notificações toast |
-| `lucide-react` | ^0.468.0 | Biblioteca de ícones SVG |
-| `tailwindcss` | ^3.4.17 | Estilização utilitária CSS |
-| `typescript` | ^5.7.2 | Tipagem estática |
-| `vite` | ^5.4.0 | Bundler para o renderer |
+| `electron` | ^33.2.1 | Desktop framework (window, tray, IPC, system) |
+| `electron-vite` | ^2.3.0 | Build tool: compiles main, preload, and renderer with Vite |
+| `electron-builder` | ^25.1.8 | Packaging and NSIS installer generation (.exe) |
+| `react` + `react-dom` | ^18.3.1 | User interface |
+| `react-router-dom` | ^7.1.0 | Client-side routing (hash routing) |
+| `sql.js` | ^1.11.0 | SQLite compiled to WebAssembly; database access in main process |
+| `@dnd-kit/core` + `sortable` | ^6.3.1 / ^10.0.0 | Dashboard widget drag-and-drop |
+| `recharts` | ^2.15.0 | SVG charts (bar, line, pie, area) |
+| `sonner` | ^1.7.0 | Toast notifications |
+| `lucide-react` | ^0.468.0 | SVG icon library |
+| `tailwindcss` | ^3.4.17 | Utility-first CSS styling |
+| `typescript` | ^5.7.2 | Static typing |
+| `vite` | ^5.4.0 | Renderer bundler |
 
-### Mobile
+### External API
 
-| Biblioteca | Versão | Uso |
-|---|---|---|
-| `expo` | ~54.0.0 | Framework mobile (build, APIs nativas) |
-| `react-native` | 0.77.1 | UI nativa |
-| `expo-sqlite` | ~15.1.4 | SQLite nativo no mobile |
-| `expo-file-system` | ~18.1.10 | Acesso ao sistema de arquivos |
-| `expo-crypto` | ~14.1.3 | Criptografia AES-256-GCM |
-| `@react-navigation/native` | ^7.0.0 | Navegação base |
-| `@react-navigation/drawer` | ^7.9.4 | Menu drawer lateral |
-| `@react-navigation/native-stack` | ^7.0.0 | Stack de navegação nativo |
-| `@react-navigation/bottom-tabs` | ^7.0.0 | Tabs inferiores |
-| `react-native-gesture-handler` | ~2.24.0 | Gestos (swipe, drag) |
-| `react-native-reanimated` | ~3.16.7 | Animações de alta performance |
-| `react-native-toast-message` | ^2.2.0 | Notificações toast |
-| `lucide-react-native` | ^0.475.0 | Ícones SVG para RN |
-
-### API Externa
-
-| API | Uso |
+| API | Purpose |
 |---|---|
-| [Frankfurter API](https://www.frankfurter.app/) | Cotações de câmbio em tempo real. Endpoint: `https://api.frankfurter.app/`. Gratuita, sem autenticação. |
+| [Frankfurter API](https://www.frankfurter.app/) | Real-time exchange rates. Endpoint: `https://api.frankfurter.app/`. Free, no authentication required. |
 
 ---
 
-## 10. Configuração de Build
+## 9. Build Configuration
 
 ### `electron-builder.yml`
 ```yaml
@@ -669,37 +559,37 @@ directories:
 
 win:
   icon: resources/icon.ico
-  target: nsis       # Instalador NSIS para Windows
+  target: nsis       # NSIS installer for Windows
 
 nsis:
-  oneClick: false                      # Instalador assistido
+  oneClick: false                      # Assisted installer
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: always
-  include: resources/installer.nsh     # Script NSIS customizado
+  include: resources/installer.nsh     # Custom NSIS script
 ```
 
 ### `electron.vite.config.ts`
-Configura três builds separados com Vite:
-- **main**: Process principal Electron (Node.js, ESM)
-- **preload**: Script de preload (CommonJS, acesso limitado)
-- **renderer**: SPA React (browser, bundled)
+Configures three separate Vite builds:
+- **main**: Electron main process (Node.js, ESM)
+- **preload**: Preload script (CommonJS, restricted access)
+- **renderer**: React SPA (browser, bundled)
 
-### Scripts npm (`package.json`)
+### npm Scripts (`package.json`)
 ```bash
-npm run dev        # Inicia em modo dev com hot reload
-npm run build      # Build de produção (sem instalador)
-npm run package    # Build + gera instalador .exe
-npm run package:dir # Build + extrai sem instalador (para debug)
+npm run dev        # Start in dev mode with hot reload
+npm run build      # Production build (no installer)
+npm run package    # Build + generate .exe installer
+npm run package:dir # Build + extract without installer (for debugging)
 ```
 
-### Saída do build
+### Build Output
 ```
 out/
-├── main/index.js         # Processo main compilado
-├── preload/index.js      # Preload compilado
-└── renderer/             # SPA React compilada
+├── main/index.js         # Compiled main process
+├── preload/index.js      # Compiled preload
+└── renderer/             # Compiled React SPA
 
 dist/
-├── win-unpacked/         # App extraído
-└── moneycapy-1.0.0-setup.exe  # Instalador final
+├── win-unpacked/         # Extracted app
+└── moneycapy-1.0.0-setup.exe  # Final installer
 ```
