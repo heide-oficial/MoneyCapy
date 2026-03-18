@@ -1,0 +1,28 @@
+appId: com.moneycapy.app
+productName: MoneyCapy
+directories:
+  buildResources: resources
+  output: dist
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!shared/*'
+  - '!electron.vite.config.*'
+  - '!{.eslintrc,.gitignore,tailwind.config.*,postcss.config.*,tsconfig*.json}'
+extraResources:
+  - from: resources/icon.ico
+    to: icon.ico
+win:
+  icon: resources/icon.ico
+  target:
+    - target: nsis
+      arch:
+        - x64
+nsis:
+  artifactName: ${name}-${version}-setup.${ext}
+  shortcutName: ${productName}
+  uninstallDisplayName: ${productName}
+  createDesktopShortcut: always
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  include: resources/installer.nsh

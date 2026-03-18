@@ -1,0 +1,142 @@
+import { contextBridge, ipcRenderer } from 'electron'
+import { IPC_CHANNELS } from '../../shared/ipc-channels'
+
+const api = {
+  cards: {
+    list: (personId?: number, month?: string) => ipcRenderer.invoke(IPC_CHANNELS.CARDS_LIST, personId, month),
+    listEnriched: (personId: number, month: string) => ipcRenderer.invoke(IPC_CHANNELS.CARDS_LIST_ENRICHED, personId, month),
+    getDecrypted: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.CARDS_GET_DECRYPTED, id),
+    create: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.CARDS_CREATE, data),
+    update: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.CARDS_UPDATE, data),
+    delete: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.CARDS_DELETE, id),
+    payInvoice: (cardId: number, month: string) => ipcRenderer.invoke(IPC_CHANNELS.CARDS_PAY_INVOICE, cardId, month)
+  },
+  categories: {
+    list: () => ipcRenderer.invoke(IPC_CHANNELS.CATEGORIES_LIST),
+    create: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.CATEGORIES_CREATE, data),
+    update: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.CATEGORIES_UPDATE, data),
+    delete: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.CATEGORIES_DELETE, id)
+  },
+  people: {
+    list: () => ipcRenderer.invoke(IPC_CHANNELS.PEOPLE_LIST),
+    create: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.PEOPLE_CREATE, data),
+    update: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.PEOPLE_UPDATE, data),
+    delete: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.PEOPLE_DELETE, id)
+  },
+  personIncome: {
+    listByMonth: (personId: number, month: string) => ipcRenderer.invoke(IPC_CHANNELS.PERSON_INCOME_LIST_BY_MONTH, personId, month),
+    create: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.PERSON_INCOME_CREATE, data),
+    update: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.PERSON_INCOME_UPDATE, data),
+    delete: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.PERSON_INCOME_DELETE, id),
+    toggleReceived: (incomeId: number, month: string) => ipcRenderer.invoke(IPC_CHANNELS.PERSON_INCOME_TOGGLE_RECEIVED, incomeId, month),
+    setReceived: (incomeId: number, month: string, isReceived: boolean, receivedAt?: string) => ipcRenderer.invoke(IPC_CHANNELS.PERSON_INCOME_SET_RECEIVED, incomeId, month, isReceived, receivedAt),
+    setMonthValue: (incomeId: number, month: string, value: number) => ipcRenderer.invoke(IPC_CHANNELS.PERSON_INCOME_SET_MONTH_VALUE, incomeId, month, value),
+    removeMonthValue: (incomeId: number, month: string) => ipcRenderer.invoke(IPC_CHANNELS.PERSON_INCOME_REMOVE_MONTH_VALUE, incomeId, month),
+    search: (personId: number, query: string, filters?: { isRecurring?: boolean; categoryId?: number; tagId?: number }) =>
+      ipcRenderer.invoke(IPC_CHANNELS.PERSON_INCOME_SEARCH, personId, query, filters),
+    interrupt: (incomeId: number, month: string, pauseMonths?: number) =>
+      ipcRenderer.invoke(IPC_CHANNELS.INCOME_INTERRUPT, incomeId, month, pauseMonths),
+    reactivate: (interruptionId: number) =>
+      ipcRenderer.invoke(IPC_CHANNELS.INCOME_REACTIVATE, interruptionId)
+  },
+  items: {
+    list: (personId: number, month: string, typeFilter?: string) => ipcRenderer.invoke(IPC_CHANNELS.ITEMS_LIST, personId, month, typeFilter),
+    create: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.ITEMS_CREATE, data),
+    update: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.ITEMS_UPDATE, data),
+    delete: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.ITEMS_DELETE, id),
+    toggleActive: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.ITEMS_TOGGLE_ACTIVE, id),
+    togglePaid: (id: number, month: string) => ipcRenderer.invoke(IPC_CHANNELS.ITEMS_TOGGLE_PAID, id, month),
+    setPaid: (id: number, month: string, isPaid: boolean, paidAt?: string) => ipcRenderer.invoke(IPC_CHANNELS.ITEMS_SET_PAID, id, month, isPaid, paidAt),
+    interrupt: (itemId: number, month: string, pauseMonths?: number) => ipcRenderer.invoke(IPC_CHANNELS.ITEMS_INTERRUPT, itemId, month, pauseMonths),
+    reactivate: (interruptionId: number) => ipcRenderer.invoke(IPC_CHANNELS.ITEMS_REACTIVATE, interruptionId),
+    anticipate: (itemId: number, month: string, count: number, splitId?: number, discountedTotal?: number) =>
+      ipcRenderer.invoke(IPC_CHANNELS.ITEMS_ANTICIPATE, itemId, month, count, splitId, discountedTotal),
+    undoAnticipation: (anticipationId: number) =>
+      ipcRenderer.invoke(IPC_CHANNELS.ITEMS_UNDO_ANTICIPATION, anticipationId),
+    setMonthValue: (itemId: number, month: string, value: number) =>
+      ipcRenderer.invoke(IPC_CHANNELS.ITEMS_SET_MONTH_VALUE, itemId, month, value),
+    removeMonthValue: (itemId: number, month: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.ITEMS_REMOVE_MONTH_VALUE, itemId, month),
+    setMonthlyActive: (itemId: number, month: string, isActive: boolean | null) =>
+      ipcRenderer.invoke(IPC_CHANNELS.ITEMS_SET_MONTHLY_ACTIVE, itemId, month, isActive),
+    search: (personId: number, query: string, filters?: { type?: string; categoryId?: number; storeId?: number; cardId?: number; tagId?: number; isPaid?: boolean; isActive?: boolean; bankAccountId?: number }) =>
+      ipcRenderer.invoke(IPC_CHANNELS.ITEMS_SEARCH, personId, query, filters)
+  },
+  stores: {
+    list: () => ipcRenderer.invoke(IPC_CHANNELS.STORES_LIST),
+    create: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.STORES_CREATE, data),
+    update: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.STORES_UPDATE, data),
+    delete: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.STORES_DELETE, id)
+  },
+  tags: {
+    list: () => ipcRenderer.invoke(IPC_CHANNELS.TAGS_LIST),
+    create: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.TAGS_CREATE, data),
+    update: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.TAGS_UPDATE, data),
+    delete: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.TAGS_DELETE, id)
+  },
+  settings: {
+    get: (key: string) => ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET, key),
+    set: (key: string, value: string) => ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SET, key, value),
+    verifyPassword: (password: string) => ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_VERIFY_PASSWORD, password),
+    setPassword: (password: string) => ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SET_PASSWORD, password),
+    changePassword: (currentPassword: string, newPassword: string) => ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_CHANGE_PASSWORD, currentPassword, newPassword),
+    hasPassword: () => ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_HAS_PASSWORD),
+    resetPerson: (personId: number) => ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_RESET_PERSON, personId),
+    resetAllData: () => ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_RESET_ALL_DATA),
+    resetApp: () => ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_RESET_APP)
+  },
+  bankAccounts: {
+    list: (personId: number) => ipcRenderer.invoke(IPC_CHANNELS.BANK_ACCOUNTS_LIST, personId),
+    listEnriched: (personId: number, month: string) => ipcRenderer.invoke(IPC_CHANNELS.BANK_ACCOUNTS_LIST_ENRICHED, personId, month),
+    create: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.BANK_ACCOUNTS_CREATE, data),
+    update: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.BANK_ACCOUNTS_UPDATE, data),
+    delete: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.BANK_ACCOUNTS_DELETE, id),
+    setMonthlyBalance: (bankAccountId: number, month: string, balance: number) => ipcRenderer.invoke(IPC_CHANNELS.BANK_ACCOUNTS_SET_MONTHLY_BALANCE, bankAccountId, month, balance),
+    removeMonthlyBalance: (bankAccountId: number, month: string) => ipcRenderer.invoke(IPC_CHANNELS.BANK_ACCOUNTS_REMOVE_MONTHLY_BALANCE, bankAccountId, month)
+  },
+  dashboard: {
+    summary: (personId: number, month: string) => ipcRenderer.invoke(IPC_CHANNELS.DASHBOARD_SUMMARY, personId, month),
+    widgets: (personId: number, month: string) => ipcRenderer.invoke(IPC_CHANNELS.DASHBOARD_WIDGETS, personId, month)
+  },
+  insights: {
+    temporal: (personId: number, grouping: string, startDate: string, endDate: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.INSIGHTS_TEMPORAL, personId, grouping, startDate, endDate),
+    comparative: (personId: number, granularity: string, periodA: string, periodB: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.INSIGHTS_COMPARATIVE, personId, granularity, periodA, periodB),
+    periodDetail: (personId: number, startDate: string, endDate: string, categoryId?: number | null, tagId?: number | null, filterType?: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.INSIGHTS_PERIOD_DETAIL, personId, startDate, endDate, categoryId, tagId, filterType)
+  },
+  currencies: {
+    list: () => ipcRenderer.invoke(IPC_CHANNELS.CURRENCIES_LIST),
+    getBase: () => ipcRenderer.invoke(IPC_CHANNELS.CURRENCIES_GET_BASE),
+    create: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.CURRENCIES_CREATE, data),
+    update: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.CURRENCIES_UPDATE, data),
+    delete: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.CURRENCIES_DELETE, id),
+    setBase: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.CURRENCIES_SET_BASE, id),
+    fetchRates: (baseCode?: string, forceRefresh?: boolean) => ipcRenderer.invoke(IPC_CHANNELS.CURRENCIES_FETCH_RATES, baseCode, forceRefresh),
+    fetchAvailable: () => ipcRenderer.invoke(IPC_CHANNELS.CURRENCIES_FETCH_AVAILABLE),
+    updateSnapshots: () => ipcRenderer.invoke(IPC_CHANNELS.CURRENCIES_UPDATE_SNAPSHOTS),
+    restartAutoUpdate: () => ipcRenderer.invoke(IPC_CHANNELS.CURRENCIES_RESTART_AUTO_UPDATE),
+    onCurrenciesUpdated: (cb: () => void) => {
+      const listener = () => cb()
+      ipcRenderer.on('currencies-updated', listener)
+      return () => { ipcRenderer.removeListener('currencies-updated', listener) }
+    }
+  },
+  backup: {
+    export: () => ipcRenderer.invoke(IPC_CHANNELS.BACKUP_EXPORT),
+    import: () => ipcRenderer.invoke(IPC_CHANNELS.BACKUP_IMPORT),
+    exportCsv: () => ipcRenderer.invoke(IPC_CHANNELS.BACKUP_EXPORT_CSV),
+    exportFiltered: (startMonth: string, endMonth: string) => ipcRenderer.invoke(IPC_CHANNELS.BACKUP_EXPORT_FILTERED, startMonth, endMonth),
+    openDataFolder: () => ipcRenderer.invoke(IPC_CHANNELS.APP_OPEN_DATA_FOLDER)
+  },
+  app: {
+    setAutoStart: (enabled: boolean) => ipcRenderer.invoke(IPC_CHANNELS.APP_SET_AUTO_START, enabled),
+    setMinimizeToTray: (enabled: boolean) => ipcRenderer.invoke(IPC_CHANNELS.APP_SET_MINIMIZE_TO_TRAY, enabled),
+    relaunch: () => ipcRenderer.invoke(IPC_CHANNELS.APP_RELAUNCH)
+  }
+}
+
+export type ApiType = typeof api
+
+contextBridge.exposeInMainWorld('api', api)
