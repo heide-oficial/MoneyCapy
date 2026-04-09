@@ -48,7 +48,8 @@ function mapCard(card: any, usedLimit: number, db?: WrappedDatabase) {
     cardType: card.card_type || 'both',
     currencyId: card.currency_id || null,
     currencySymbol: card.currency_symbol || undefined,
-    currencyCode: card.currency_code || undefined
+    currencyCode: card.currency_code || undefined,
+    createdAt: card.created_at || null
   }
 }
 

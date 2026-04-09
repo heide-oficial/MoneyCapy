@@ -54,6 +54,7 @@ export interface DashboardMonthSummary {
   expensesTotal: number
   incomeTotal: number
   balance: number
+  bankAccountsTotal: number
   isBeforeStart?: boolean
 }
 

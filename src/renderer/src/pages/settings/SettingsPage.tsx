@@ -961,7 +961,7 @@ export default function SettingsPage() {
       />
 
       <p className="text-center text-xs text-muted-foreground pt-2 pb-4">
-        MoneyCapy 1.0.0 — {t('settings.createdBy')} Matheus Heidemann
+        MoneyCapy 1.0.1 — {t('settings.createdBy')} Matheus Heidemann
       </p>
     </div>
   )

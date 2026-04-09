@@ -61,6 +61,7 @@ interface Income {
   currencySymbol?: string
   currencyCode?: string
   exchangeRateSnapshot?: number
+  createdAt?: string
 }
 
 type RecurringFilter = 'all' | 'recurring' | 'non-recurring'
@@ -117,7 +118,7 @@ export default function IncomePage() {
   const tagDropRef = useRef<HTMLDivElement>(null)
 
   // Month value edit modal
-  type IncomeSortMode = 'az' | 'za' | 'value-desc' | 'value-asc' | 'newest' | 'oldest' | 'received-first' | 'unreceived-first'
+  type IncomeSortMode = 'az' | 'za' | 'value-desc' | 'value-asc' | 'newest' | 'oldest' | 'received-first' | 'unreceived-first' | 'due-day-asc' | 'due-day-desc'
   const [sortMode, setSortMode] = useState<IncomeSortMode>('az')
   const [showSortMenu, setShowSortMenu] = useState(false)
   const sortBtnRef = useRef<HTMLButtonElement>(null)
@@ -225,10 +226,12 @@ export default function IncomePage() {
       case 'za': return b.description.localeCompare(a.description)
       case 'value-desc': return b.effectiveValue - a.effectiveValue
       case 'value-asc': return a.effectiveValue - b.effectiveValue
-      case 'newest': return (b.startMonth || '').localeCompare(a.startMonth || '')
-      case 'oldest': return (a.startMonth || '').localeCompare(b.startMonth || '')
+      case 'newest': return (b.createdAt || '').localeCompare(a.createdAt || '')
+      case 'oldest': return (a.createdAt || '').localeCompare(b.createdAt || '')
       case 'received-first': return (b.isReceived ? 1 : 0) - (a.isReceived ? 1 : 0)
       case 'unreceived-first': return (a.isReceived ? 1 : 0) - (b.isReceived ? 1 : 0)
+      case 'due-day-asc': return (a.dueDay ?? 99) - (b.dueDay ?? 99)
+      case 'due-day-desc': return (b.dueDay ?? 0) - (a.dueDay ?? 0)
       default: return 0
     }
   })
@@ -478,7 +481,7 @@ export default function IncomePage() {
           <div className="relative">
             <button ref={sortBtnRef} type="button" onClick={() => setShowSortMenu(f => !f)}
               className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border border-input hover:bg-accent transition-colors">
-              {{ 'az': t('sort.azAsc'), 'za': t('sort.azDesc'), 'value-desc': t('sort.valueDesc'), 'value-asc': t('sort.valueAsc'), 'newest': t('sort.newest'), 'oldest': t('sort.oldest'), 'received-first': t('sort.paidFirst'), 'unreceived-first': t('sort.unpaidFirst') }[sortMode]}
+              {{ 'az': t('sort.azAsc'), 'za': t('sort.azDesc'), 'value-desc': t('sort.valueDesc'), 'value-asc': t('sort.valueAsc'), 'newest': t('sort.newest'), 'oldest': t('sort.oldest'), 'received-first': t('sort.paidFirst'), 'unreceived-first': t('sort.unpaidFirst'), 'due-day-asc': t('sort.dueDayAsc'), 'due-day-desc': t('sort.dueDayDesc') }[sortMode]}
               <ChevronDown size={12} className="text-muted-foreground" />
             </button>
             {showSortMenu && (
@@ -491,7 +494,9 @@ export default function IncomePage() {
                   { key: 'newest', label: t('sort.newest') },
                   { key: 'oldest', label: t('sort.oldest') },
                   { key: 'received-first', label: t('sort.paidFirst') },
-                  { key: 'unreceived-first', label: t('sort.unpaidFirst') }
+                  { key: 'unreceived-first', label: t('sort.unpaidFirst') },
+                  { key: 'due-day-asc', label: t('sort.dueDayAsc') },
+                  { key: 'due-day-desc', label: t('sort.dueDayDesc') }
                 ]}
                 current={sortMode} onChange={v => { setSortMode(v as IncomeSortMode); setShowSortMenu(false) }} onClose={() => setShowSortMenu(false)} />
             )}

@@ -20,7 +20,8 @@ function mapBankAccount(row: any) {
     nomeBanco: row.nome_banco || null,
     currencyId: row.currency_id || null,
     currencySymbol: row.currency_symbol || undefined,
-    currencyCode: row.currency_code || undefined
+    currencyCode: row.currency_code || undefined,
+    createdAt: row.created_at || null
   }
 }
 

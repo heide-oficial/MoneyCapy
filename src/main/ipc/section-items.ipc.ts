@@ -67,7 +67,8 @@ function mapItem(item: any, db?: WrappedDatabase) {
     anticipatedThisMonth: item.anticipatedThisMonth || 0,
     discountedTotalThisMonth: item.discountedTotalThisMonth ?? null,
     effectiveValue: item.effectiveValue,
-    hasOverride: item.hasOverride
+    hasOverride: item.hasOverride,
+    createdAt: item.created_at || null
   }
 }
 

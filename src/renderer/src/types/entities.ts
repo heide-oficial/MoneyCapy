@@ -53,6 +53,7 @@ export interface SectionItem {
   currencySymbol?: string
   currencyCode?: string
   exchangeRateSnapshot?: number
+  createdAt?: string
 }
 
 export interface IncomeRecord {

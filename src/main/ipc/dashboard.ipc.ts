@@ -192,8 +192,8 @@ export function registerDashboardHandlers(db: WrappedDatabase): void {
         monthComparison: { currentTotal: 0, previousTotal: 0, delta: 0, deltaPercent: 0 },
         overdueItems: [],
         paymentSummary: { totalItems: 0, paidItems: 0, paidValue: 0, pendingValue: 0 },
-        previousMonthSummary: { month: addMonths(month, -1), expensesTotal: 0, incomeTotal: 0, balance: 0 },
-        nextMonthSummary: { month: addMonths(month, 1), expensesTotal: 0, incomeTotal: 0, balance: 0 },
+        previousMonthSummary: { month: addMonths(month, -1), expensesTotal: 0, incomeTotal: 0, balance: 0, bankAccountsTotal: 0 },
+        nextMonthSummary: { month: addMonths(month, 1), expensesTotal: 0, incomeTotal: 0, balance: 0, bankAccountsTotal: 0 },
         cardDetails: [],
         categoryDistribution: [],
         tagDistribution: [],
@@ -351,12 +351,14 @@ export function registerDashboardHandlers(db: WrappedDatabase): void {
     const prevMonthExpenses = previousTotal
     const prevMonthIncome = isMonthBeforeStart(previousMonth, scm) ? 0 : incomeRepo.getTotalByPersonAndMonth(personId, previousMonth)
     const prevMonthBalance = prevMonthIncome - prevMonthExpenses
+    const prevMonthBankAccountsTotal = bankAccountsRepo.getTotalByPersonForMonth(personId, previousMonth)
 
     // --- Next month summary ---
     const nextMonth = addMonths(month, 1)
     const nextMonthExpenses = isMonthBeforeStart(nextMonth, scm) ? 0 : sectionItemsRepo.getTotalByPersonAndMonth(personId, nextMonth)
     const nextMonthIncome = isMonthBeforeStart(nextMonth, scm) ? 0 : incomeRepo.getTotalByPersonAndMonth(personId, nextMonth)
     const nextMonthBalance = nextMonthIncome - nextMonthExpenses
+    const nextMonthBankAccountsTotal = bankAccountsRepo.getTotalByPersonForMonth(personId, nextMonth)
 
     // --- Payment summary (compact widget) ---
     const paidCount = dashItems.filter(i => i.isPaid).length
@@ -476,8 +478,8 @@ export function registerDashboardHandlers(db: WrappedDatabase): void {
       monthComparison: { currentTotal, previousTotal, delta, deltaPercent },
       overdueItems,
       paymentSummary: { totalItems: dashItems.length, paidItems: paidCount, paidValue, pendingValue },
-      previousMonthSummary: { month: previousMonth, expensesTotal: prevMonthExpenses, incomeTotal: prevMonthIncome, balance: prevMonthBalance, isBeforeStart: isMonthBeforeStart(previousMonth, scm) },
-      nextMonthSummary: { month: nextMonth, expensesTotal: nextMonthExpenses, incomeTotal: nextMonthIncome, balance: nextMonthBalance, isBeforeStart: isMonthBeforeStart(nextMonth, scm) },
+      previousMonthSummary: { month: previousMonth, expensesTotal: prevMonthExpenses, incomeTotal: prevMonthIncome, balance: prevMonthBalance, bankAccountsTotal: prevMonthBankAccountsTotal, isBeforeStart: isMonthBeforeStart(previousMonth, scm) },
+      nextMonthSummary: { month: nextMonth, expensesTotal: nextMonthExpenses, incomeTotal: nextMonthIncome, balance: nextMonthBalance, bankAccountsTotal: nextMonthBankAccountsTotal, isBeforeStart: isMonthBeforeStart(nextMonth, scm) },
       cardDetails,
       categoryDistribution,
       tagDistribution,

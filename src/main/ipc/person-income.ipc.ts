@@ -31,7 +31,8 @@ function mapIncome(i: any) {
     currencyId: i.currency_id || null,
     currencySymbol: i.currency_symbol || undefined,
     currencyCode: i.currency_code || undefined,
-    exchangeRateSnapshot: i.exchange_rate_snapshot ?? 1.0
+    exchangeRateSnapshot: i.exchange_rate_snapshot ?? 1.0,
+    createdAt: i.created_at || null
   }
 }
 

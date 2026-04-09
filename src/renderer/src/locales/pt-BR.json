@@ -378,6 +378,7 @@
     "bankMoneyLabel": "Dinheiro nas contas",
     "monthUnavailable": "Mês indisponível. O mês inicial definido no app é {{month}}.",
     "balanceLabel": "Saldo",
+    "balanceWithAccountsTooltip": "Incluir saldo das contas",
     "upcomingExpensesEmpty": "Nenhum gasto próximo a vencer.",
     "unpaidItemsEmpty": "Todos os itens foram pagos!",
     "topExpensesEmpty": "Nenhum gasto neste mês.",
@@ -675,7 +676,8 @@
     "multiCardMessage": "Os seguintes itens possuem parcelas em outros cartões e também foram marcados como pagos:\n\n{{items}}",
     "viewItems": "Ver itens",
     "nameOnCard": "NOME NO CARTÃO",
-    "limitsInfo": "{{used}} limite usado · {{available}} limite restante"
+    "limitsInfo": "{{used}} limite usado · {{available}} limite restante",
+    "totalExpenses": "Total de gastos: {{total}}"
   },
   "cardTypes": {
     "credit": "crédito",
@@ -865,7 +867,9 @@
     "limitDesc": "Maior limite",
     "limitAsc": "Menor limite",
     "availDesc": "Mais limite disponível",
-    "availAsc": "Menos limite disponível"
+    "availAsc": "Menos limite disponível",
+    "dueDayAsc": "Dia de cobrança crescente",
+    "dueDayDesc": "Dia de cobrança decrescente"
   },
   "filters": {
     "filters": "Filtros",

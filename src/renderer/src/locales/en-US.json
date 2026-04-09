@@ -378,6 +378,7 @@
     "bankMoneyLabel": "Cash in accounts",
     "monthUnavailable": "Month unavailable. The start month set in the app is {{month}}.",
     "balanceLabel": "Balance",
+    "balanceWithAccountsTooltip": "Include account balances",
     "upcomingExpensesEmpty": "No upcoming expenses due.",
     "unpaidItemsEmpty": "All items have been paid!",
     "topExpensesEmpty": "No expenses this month.",
@@ -675,7 +676,8 @@
     "multiCardMessage": "The following items have installments on other cards and were also marked as paid:\n\n{{items}}",
     "viewItems": "View items",
     "nameOnCard": "CARDHOLDER NAME",
-    "limitsInfo": "{{used}} limit used · {{available}} limit remaining"
+    "limitsInfo": "{{used}} limit used · {{available}} limit remaining",
+    "totalExpenses": "Total expenses: {{total}}"
   },
   "cardTypes": {
     "credit": "credit",
@@ -865,7 +867,9 @@
     "limitDesc": "Highest limit",
     "limitAsc": "Lowest limit",
     "availDesc": "Most available limit",
-    "availAsc": "Least available limit"
+    "availAsc": "Least available limit",
+    "dueDayAsc": "Due day ascending",
+    "dueDayDesc": "Due day descending"
   },
   "filters": {
     "filters": "Filters",

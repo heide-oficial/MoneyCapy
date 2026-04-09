@@ -310,6 +310,59 @@ export interface WidgetRenderContext {
   t: (key: string, params?: Record<string, string | number>) => string
 }
 
+// ── Month Summary Widget (with bank accounts toggle) ──
+
+function MonthSummaryWidget({ icon: Icon, title, monthLabel, expensesTotal, incomeTotal, balance, bankAccountsTotal, gastosStyle, receitasStyle, saldoStyle, tr }: {
+  icon: typeof CalendarDays
+  title: string
+  monthLabel: string
+  expensesTotal: number
+  incomeTotal: number
+  balance: number
+  bankAccountsTotal: number
+  gastosStyle: (page: string, section: string) => React.CSSProperties
+  receitasStyle: (page: string, section: string) => React.CSSProperties
+  saldoStyle: (page: string, section: string, value: number) => React.CSSProperties
+  tr: (key: string, params?: Record<string, string | number>) => string
+}) {
+  const [includeAccounts, setIncludeAccounts] = useState(false)
+  const displayBalance = includeAccounts ? balance + bankAccountsTotal : balance
+  return (
+    <Card className="p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Icon size={16} className="text-primary shrink-0" />
+        <h3 className="text-sm font-semibold">{title}</h3>
+        <span className="text-[10px] text-muted-foreground ml-auto bg-muted/50 px-1.5 py-0.5 rounded-full font-medium">{monthLabel}</span>
+      </div>
+      <div className="flex items-end gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.expensesLabel')}</p>
+          <p className="text-xl font-bold tabular-nums" style={gastosStyle('dashboard', 'widgets')}>{formatCurrency(expensesTotal)}</p>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.incomeLabel')}</p>
+          <p className="text-xl font-bold tabular-nums" style={receitasStyle('dashboard', 'widgets')}>{formatCurrency(incomeTotal)}</p>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.balanceLabel')}</p>
+          <p className="text-xl font-bold tabular-nums" style={saldoStyle('dashboard', 'widgets', displayBalance)}>{formatCurrency(displayBalance)}</p>
+        </div>
+      </div>
+      <div className="mt-2 flex items-center justify-end">
+        <button
+          type="button"
+          onClick={() => setIncludeAccounts(v => !v)}
+          className={`inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-0.5 rounded-full transition-colors ${includeAccounts ? 'bg-primary/15 text-primary' : 'bg-muted/50 text-muted-foreground hover:text-foreground'}`}
+          title={tr('widgetRenderer.balanceWithAccountsTooltip')}
+        >
+          <Landmark size={10} />
+          {includeAccounts ? formatCurrency(bankAccountsTotal) : tr('widgetRenderer.balanceWithAccountsTooltip')}
+        </button>
+      </div>
+    </Card>
+  )
+}
+
 // ── Main render function ──
 
 export function renderWidgetContent(
@@ -886,29 +939,20 @@ export function renderWidgetContent(
     }
 
     case 'current-month-summary': {
-      const curBalance = summary.incomeTotal - expenseTotal
       return (
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <CalendarDays size={16} className="text-primary shrink-0" />
-            <h3 className="text-sm font-semibold">{tr('widgetRenderer.currentMonthSummaryTitle')}</h3>
-            <span className="text-[10px] text-muted-foreground ml-auto bg-muted/50 px-1.5 py-0.5 rounded-full font-medium">{getMonthLabel(month)}</span>
-          </div>
-          <div className="flex items-end gap-3">
-            <div className="flex-1 min-w-0">
-              <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.expensesLabel')}</p>
-              <p className="text-xl font-bold tabular-nums" style={gastosStyle('dashboard', 'widgets')}>{formatCurrency(expenseTotal)}</p>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.incomeLabel')}</p>
-              <p className="text-xl font-bold tabular-nums" style={receitasStyle('dashboard', 'widgets')}>{formatCurrency(summary.incomeTotal)}</p>
-            </div>
-            <div className="shrink-0 text-right">
-              <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.balanceLabel')}</p>
-              <p className="text-xl font-bold tabular-nums" style={saldoStyle('dashboard', 'widgets', curBalance)}>{formatCurrency(curBalance)}</p>
-            </div>
-          </div>
-        </Card>
+        <MonthSummaryWidget
+          icon={CalendarDays}
+          title={tr('widgetRenderer.currentMonthSummaryTitle')}
+          monthLabel={getMonthLabel(month)}
+          expensesTotal={expenseTotal}
+          incomeTotal={summary.incomeTotal}
+          balance={summary.incomeTotal - expenseTotal}
+          bankAccountsTotal={summary.bankAccountsTotal}
+          gastosStyle={gastosStyle}
+          receitasStyle={receitasStyle}
+          saldoStyle={saldoStyle}
+          tr={tr}
+        />
       )
     }
 
@@ -930,27 +974,19 @@ export function renderWidgetContent(
         )
       }
       return (
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <CalendarMinus size={16} className="text-primary shrink-0" />
-            <h3 className="text-sm font-semibold">{tr('widgetRenderer.previousMonthSummaryTitle')}</h3>
-            <span className="text-[10px] text-muted-foreground ml-auto bg-muted/50 px-1.5 py-0.5 rounded-full font-medium">{getMonthLabel(ms.month)}</span>
-          </div>
-          <div className="flex items-end gap-3">
-            <div className="flex-1 min-w-0">
-              <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.expensesLabel')}</p>
-              <p className="text-xl font-bold tabular-nums" style={gastosStyle('dashboard', 'widgets')}>{formatCurrency(ms.expensesTotal)}</p>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.incomeLabel')}</p>
-              <p className="text-xl font-bold tabular-nums" style={receitasStyle('dashboard', 'widgets')}>{formatCurrency(ms.incomeTotal)}</p>
-            </div>
-            <div className="shrink-0 text-right">
-              <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.balanceLabel')}</p>
-              <p className="text-xl font-bold tabular-nums" style={saldoStyle('dashboard', 'widgets', ms.balance)}>{formatCurrency(ms.balance)}</p>
-            </div>
-          </div>
-        </Card>
+        <MonthSummaryWidget
+          icon={CalendarMinus}
+          title={tr('widgetRenderer.previousMonthSummaryTitle')}
+          monthLabel={getMonthLabel(ms.month)}
+          expensesTotal={ms.expensesTotal}
+          incomeTotal={ms.incomeTotal}
+          balance={ms.balance}
+          bankAccountsTotal={ms.bankAccountsTotal}
+          gastosStyle={gastosStyle}
+          receitasStyle={receitasStyle}
+          saldoStyle={saldoStyle}
+          tr={tr}
+        />
       )
     }
 
@@ -972,27 +1008,19 @@ export function renderWidgetContent(
         )
       }
       return (
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <CalendarPlus size={16} className="text-primary shrink-0" />
-            <h3 className="text-sm font-semibold">{tr('widgetRenderer.nextMonthSummaryTitle')}</h3>
-            <span className="text-[10px] text-muted-foreground ml-auto bg-muted/50 px-1.5 py-0.5 rounded-full font-medium">{getMonthLabel(ms.month)}</span>
-          </div>
-          <div className="flex items-end gap-3">
-            <div className="flex-1 min-w-0">
-              <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.expensesLabel')}</p>
-              <p className="text-xl font-bold tabular-nums" style={gastosStyle('dashboard', 'widgets')}>{formatCurrency(ms.expensesTotal)}</p>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.incomeLabel')}</p>
-              <p className="text-xl font-bold tabular-nums" style={receitasStyle('dashboard', 'widgets')}>{formatCurrency(ms.incomeTotal)}</p>
-            </div>
-            <div className="shrink-0 text-right">
-              <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.balanceLabel')}</p>
-              <p className="text-xl font-bold tabular-nums" style={saldoStyle('dashboard', 'widgets', ms.balance)}>{formatCurrency(ms.balance)}</p>
-            </div>
-          </div>
-        </Card>
+        <MonthSummaryWidget
+          icon={CalendarPlus}
+          title={tr('widgetRenderer.nextMonthSummaryTitle')}
+          monthLabel={getMonthLabel(ms.month)}
+          expensesTotal={ms.expensesTotal}
+          incomeTotal={ms.incomeTotal}
+          balance={ms.balance}
+          bankAccountsTotal={ms.bankAccountsTotal}
+          gastosStyle={gastosStyle}
+          receitasStyle={receitasStyle}
+          saldoStyle={saldoStyle}
+          tr={tr}
+        />
       )
     }
 

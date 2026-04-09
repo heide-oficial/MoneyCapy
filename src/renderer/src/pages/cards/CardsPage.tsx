@@ -25,7 +25,7 @@ import { getCurrentMonth } from '../../lib/date'
 import { useColumnsPicker } from '../../components/ui/ColumnsPickerDropdown'
 import { SimpleDropdown } from '../../components/ui/SimpleDropdown'
 import { FilterGroup } from '../../components/ui/FilterGroup'
-import { CreditCard, Plus, Pencil, Trash2, Landmark, ChevronDown, CheckCircle2, ExternalLink, CircleDot, Layers, Repeat, HandCoins } from 'lucide-react'
+import { CreditCard, Plus, Pencil, Trash2, Landmark, ChevronDown, CheckCircle2, ExternalLink, CircleDot, Layers, Repeat, HandCoins, Receipt } from 'lucide-react'
 import { toast } from 'sonner'
 import { useUndoableDelete } from '../../hooks/useUndoableDelete'
 import { useTranslation } from '../../contexts/LanguageContext'
@@ -57,6 +57,7 @@ interface CardEnriched {
   currencyId?: number | null
   currencySymbol?: string
   currencyCode?: string
+  createdAt?: string
 }
 
 interface BankAccountBasic {
@@ -70,11 +71,15 @@ type CardSortMode = 'manual' | 'az' | 'za' | 'limit-desc' | 'limit-asc' | 'avail
   | 'common-desc' | 'common-asc'
   | 'installment-desc' | 'installment-asc'
   | 'subscription-desc' | 'subscription-asc'
+  | 'newest' | 'oldest'
+  | 'due-day-asc' | 'due-day-desc'
 
 const CARD_SORT_LABELS_FN = (t: (k: string) => string): Record<CardSortMode, string> => ({
   'manual': t('sort.manual'),
   'az': t('sort.azAsc'),
   'za': t('sort.azDesc'),
+  'newest': t('sort.newest'),
+  'oldest': t('sort.oldest'),
   'limit-desc': t('sort.limitDesc'),
   'limit-asc': t('sort.limitAsc'),
   'avail-desc': t('sort.availDesc'),
@@ -86,7 +91,9 @@ const CARD_SORT_LABELS_FN = (t: (k: string) => string): Record<CardSortMode, str
   'installment-desc': t('sort.installmentDesc'),
   'installment-asc': t('sort.installmentAsc'),
   'subscription-desc': t('sort.subscriptionDesc'),
-  'subscription-asc': t('sort.subscriptionAsc')
+  'subscription-asc': t('sort.subscriptionAsc'),
+  'due-day-asc': t('sort.dueDayAsc'),
+  'due-day-desc': t('sort.dueDayDesc')
 })
 
 export default function CardsPage() {
@@ -209,6 +216,10 @@ export default function CardsPage() {
       case 'installment-asc': return a.installmentTotal - b.installmentTotal
       case 'subscription-desc': return b.subscriptionTotal - a.subscriptionTotal
       case 'subscription-asc': return a.subscriptionTotal - b.subscriptionTotal
+      case 'newest': return (b.createdAt || '').localeCompare(a.createdAt || '')
+      case 'oldest': return (a.createdAt || '').localeCompare(b.createdAt || '')
+      case 'due-day-asc': return (a.dueDay ?? 99) - (b.dueDay ?? 99)
+      case 'due-day-desc': return (b.dueDay ?? 0) - (a.dueDay ?? 0)
       default: return 0
     }
   })
@@ -351,45 +362,52 @@ export default function CardsPage() {
           </div>
         </div>
 
-        <div className="mt-3 pt-3 border-t border-border/50 flex items-center gap-2.5 flex-wrap">
-          <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-            <CircleDot size={10} className="shrink-0 opacity-60" />
-            {t('accounts.commonCount', { count: card.commonCount, total: formatCurrency(card.commonTotal) })}
-          </span>
-          <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-            <Layers size={10} className="shrink-0 opacity-60" />
-            {t('accounts.installmentCount', { count: card.installmentCount, total: formatCurrency(card.installmentTotal) })}
-          </span>
-          <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-            <Repeat size={10} className="shrink-0 opacity-60" />
-            {t('accounts.subscriptionCount', { count: card.subscriptionCount, total: formatCurrency(card.subscriptionTotal) })}
-          </span>
-          <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-            <HandCoins size={10} className="shrink-0 opacity-60" />
-            {t('accounts.loanCount', { count: card.emprestimoCount, total: formatCurrency(card.emprestimoTotal) })}
-          </span>
-        </div>
-
-        <div className="mt-3 pt-3 border-t border-border/50 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => navigate(`/items?cardId=${card.id}`)}
-            className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
-          >
-            <ExternalLink size={14} />
-            {t('cards.viewItems')}
-          </button>
-          {card.cardType !== 'debit' && (
+        <div className="mt-3 pt-3 border-t border-border/50 flex items-center">
+          <div className="relative group/expenses inline-flex items-center gap-1.5 text-xs text-muted-foreground cursor-default">
+            <Receipt size={12} className="shrink-0 opacity-60" />
+            <span className="font-medium">
+              {t('cards.totalExpenses', { total: fmtCard(card.commonTotal + card.installmentTotal + card.subscriptionTotal + card.emprestimoTotal) })}
+            </span>
+            <div className="absolute bottom-full left-0 mb-1.5 hidden group-hover/expenses:flex flex-col gap-1 bg-zinc-900 dark:bg-zinc-800 text-zinc-100 border border-zinc-700 rounded-lg shadow-lg p-2.5 z-50 min-w-max">
+              <span className="inline-flex items-center gap-1.5 text-[11px] text-zinc-300">
+                <CircleDot size={10} className="shrink-0 opacity-60" />
+                {t('accounts.commonCount', { count: card.commonCount, total: formatCurrency(card.commonTotal) })}
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-[11px] text-zinc-300">
+                <Layers size={10} className="shrink-0 opacity-60" />
+                {t('accounts.installmentCount', { count: card.installmentCount, total: formatCurrency(card.installmentTotal) })}
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-[11px] text-zinc-300">
+                <Repeat size={10} className="shrink-0 opacity-60" />
+                {t('accounts.subscriptionCount', { count: card.subscriptionCount, total: formatCurrency(card.subscriptionTotal) })}
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-[11px] text-zinc-300">
+                <HandCoins size={10} className="shrink-0 opacity-60" />
+                {t('accounts.loanCount', { count: card.emprestimoCount, total: formatCurrency(card.emprestimoTotal) })}
+              </span>
+            </div>
+          </div>
+          <div className="ml-auto flex items-center gap-3">
             <button
               type="button"
-              onClick={() => setPayInvoiceCardId(card.id)}
-              disabled={card.invoiceAllPaid}
-              className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${card.invoiceAllPaid ? 'text-muted-foreground/50 cursor-not-allowed' : 'text-primary hover:text-primary/80'}`}
+              onClick={() => navigate(`/items?cardId=${card.id}`)}
+              className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
             >
-              <CheckCircle2 size={14} />
-              {t('cards.payInvoice')}
+              <ExternalLink size={14} />
+              {t('cards.viewItems')}
             </button>
-          )}
+            {card.cardType !== 'debit' && (
+              <button
+                type="button"
+                onClick={() => setPayInvoiceCardId(card.id)}
+                disabled={card.invoiceAllPaid}
+                className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${card.invoiceAllPaid ? 'text-muted-foreground/50 cursor-not-allowed' : 'text-primary hover:text-primary/80'}`}
+              >
+                <CheckCircle2 size={14} />
+                {t('cards.payInvoice')}
+              </button>
+            )}
+          </div>
         </div>
       </Card>
     )

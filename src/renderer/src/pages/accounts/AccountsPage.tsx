@@ -53,6 +53,7 @@ interface BankAccountEnriched {
   currencyId?: number | null
   currencySymbol?: string
   currencyCode?: string
+  createdAt?: string
 }
 
 type AccountSortMode = 'manual' | 'az' | 'za' | 'balance-desc' | 'balance-asc'
@@ -62,11 +63,14 @@ type AccountSortMode = 'manual' | 'az' | 'za' | 'balance-desc' | 'balance-asc'
   | 'installment-desc' | 'installment-asc'
   | 'subscription-desc' | 'subscription-asc'
   | 'emprestimo-desc' | 'emprestimo-asc'
+  | 'newest' | 'oldest'
 
 const ACCOUNT_SORT_LABELS_FN = (t: (k: string) => string): Record<AccountSortMode, string> => ({
   'manual': t('sort.manual'),
   'az': t('sort.azAsc'),
   'za': t('sort.azDesc'),
+  'newest': t('sort.newest'),
+  'oldest': t('sort.oldest'),
   'balance-desc': t('sort.balanceDesc'),
   'balance-asc': t('sort.balanceAsc'),
   'cards-desc': t('sort.cardsDesc'),
@@ -176,6 +180,8 @@ export default function AccountsPage() {
       case 'subscription-asc': return a.subscriptionTotal - b.subscriptionTotal
       case 'emprestimo-desc': return b.emprestimoTotal - a.emprestimoTotal
       case 'emprestimo-asc': return a.emprestimoTotal - b.emprestimoTotal
+      case 'newest': return (b.createdAt || '').localeCompare(a.createdAt || '')
+      case 'oldest': return (a.createdAt || '').localeCompare(b.createdAt || '')
       default: return 0
     }
   })
