@@ -1058,10 +1058,11 @@ export default function ItemsPage() {
         setAllTags={setAllTags}
         handleSave={handleSave}
         handleAnticipate={handleAnticipate}
-        handleUndoAnticipation={handleUndoAnticipation}
-        handleReactivate={handleReactivate}
-        setInterruptItem={setInterruptItem}
-        showParcelasTab={showParcelasTab}
+          handleUndoAnticipation={handleUndoAnticipation}
+          handleReactivate={handleReactivate}
+          setInterruptItem={setInterruptItem}
+          onValuesChanged={() => { bumpItems(); loadData() }}
+          showParcelasTab={showParcelasTab}
         initialTab={formInitialTab}
         anticipateCounts={anticipateCounts}
         setAnticipateCounts={setAnticipateCounts}

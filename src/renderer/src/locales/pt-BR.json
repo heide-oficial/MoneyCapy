@@ -508,8 +508,9 @@
     "emprestimo": "Empréstimo"
   },
   "itemsForm": {
-    "tabDetails": "Detalhes",
-    "tabInstallments": "Parcelas",
+      "tabDetails": "Detalhes",
+      "tabValues": "Valores",
+      "tabInstallments": "Parcelas",
     "tabInterruptions": "Interrupções",
     "tabClassification": "Classificação",
     "description": "Descrição *",
@@ -980,21 +981,34 @@
     "nextMonth": "Próximo mês",
     "goToCurrentMonth": "Ir para mês atual"
   },
-  "tileFields": {
-    "title": "Campos visiveis nos tiles",
-    "type": "Tipo",
-    "billingDay": "Dia de cobrança",
-    "dueDay": "Dia de vencimento",
+    "tileFields": {
+      "title": "Campos visiveis nos tiles",
+      "type": "Tipo",
+      "billingDay": "Dia de cobrança",
+      "dueDay": "Dia de vencimento",
     "card": "Cartão",
     "store": "Loja/Entidade",
     "category": "Categoria",
     "interestRate": "Taxa de juros",
     "installments": "Parcelas",
     "receivingDay": "Dia de recebimento",
-    "expenses": "Gastos",
-    "income": "Receitas"
-  },
-  "colorPicker": {
+      "expenses": "Gastos",
+      "income": "Receitas"
+    },
+    "valueOverrides": {
+      "currentMonthValue": "Valor em {{month}}",
+      "inheritsNearest": "Meses seguintes usam o valor alterado mais próximo até uma nova alteração.",
+      "configuredChanges": "Alterações configuradas",
+      "noChanges": "Nenhuma alteração mensal registrada.",
+      "modifyExpenseSpecificMonth": "Modificar gasto em mês específico",
+      "modifyIncomeSpecificMonth": "Modificar receita em mês específico",
+      "onlyRecurringExpenses": "A aba Valores está disponível apenas para gastos recorrentes.",
+      "month": "Mês",
+      "value": "Valor",
+      "saved": "Valor mensal salvo",
+      "removed": "Alteração mensal removida"
+    },
+    "colorPicker": {
     "title": "Seletor de cor",
     "eyeDropper": "Conta-gotas",
     "current": "Atual",

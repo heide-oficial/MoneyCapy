@@ -508,8 +508,9 @@
     "emprestimo": "Loan"
   },
   "itemsForm": {
-    "tabDetails": "Details",
-    "tabInstallments": "Installments",
+      "tabDetails": "Details",
+      "tabValues": "Values",
+      "tabInstallments": "Installments",
     "tabInterruptions": "Interruptions",
     "tabClassification": "Classification",
     "description": "Description *",
@@ -980,10 +981,10 @@
     "nextMonth": "Next month",
     "goToCurrentMonth": "Go to current month"
   },
-  "tileFields": {
-    "title": "Visible fields on tiles",
-    "type": "Type",
-    "billingDay": "Billing day",
+    "tileFields": {
+      "title": "Visible fields on tiles",
+      "type": "Type",
+      "billingDay": "Billing day",
     "dueDay": "Due day",
     "card": "Card",
     "store": "Store/Entity",
@@ -991,10 +992,23 @@
     "interestRate": "Interest rate",
     "installments": "Installments",
     "receivingDay": "Receiving day",
-    "expenses": "Expenses",
-    "income": "Income"
-  },
-  "colorPicker": {
+      "expenses": "Expenses",
+      "income": "Income"
+    },
+    "valueOverrides": {
+      "currentMonthValue": "Value in {{month}}",
+      "inheritsNearest": "Following months use the nearest changed value until another change exists.",
+      "configuredChanges": "Configured changes",
+      "noChanges": "No monthly changes registered.",
+      "modifyExpenseSpecificMonth": "Modify expense in a specific month",
+      "modifyIncomeSpecificMonth": "Modify income in a specific month",
+      "onlyRecurringExpenses": "The Values tab is available only for recurring expenses.",
+      "month": "Month",
+      "value": "Value",
+      "saved": "Monthly value saved",
+      "removed": "Monthly change removed"
+    },
+    "colorPicker": {
     "title": "Color picker",
     "eyeDropper": "Eyedropper",
     "current": "Current",

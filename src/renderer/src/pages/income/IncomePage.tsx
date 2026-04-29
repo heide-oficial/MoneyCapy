@@ -66,6 +66,11 @@ interface Income {
 
 type RecurringFilter = 'all' | 'recurring' | 'non-recurring'
 
+interface MonthlyValueOverride {
+  month: string
+  value: number
+}
+
 export default function IncomePage() {
   const { t } = useTranslation()
   const location = useLocation()
@@ -124,12 +129,16 @@ export default function IncomePage() {
   const sortBtnRef = useRef<HTMLButtonElement>(null)
   const sortDropRef = useRef<HTMLDivElement>(null)
 
-  const [incomeTab, setIncomeTab] = useState<'detalhes' | 'interrupcoes' | 'classificacao'>('detalhes')
+  const [incomeTab, setIncomeTab] = useState<'detalhes' | 'valores' | 'interrupcoes' | 'classificacao'>('detalhes')
   const [modalScrollFade, setModalScrollFade] = useState({ top: false, bottom: false })
   const modalScrollRef = useRef<HTMLDivElement>(null)
   const [showValueEdit, setShowValueEdit] = useState(false)
   const [valueEditTarget, setValueEditTarget] = useState<Income | null>(null)
   const [monthValue, setMonthValue] = useState(0)
+  const [valueOverrides, setValueOverrides] = useState<MonthlyValueOverride[]>([])
+  const [showValueOverrideModal, setShowValueOverrideModal] = useState(false)
+  const [valueOverrideMonth, setValueOverrideMonth] = useState('')
+  const [valueOverrideValue, setValueOverrideValue] = useState(0)
 
   // Tag creation modal
   const [showTagCreate, setShowTagCreate] = useState(false)
@@ -279,6 +288,46 @@ export default function IncomePage() {
     setValueEditTarget(inc)
     setMonthValue(inc.effectiveValue)
     setShowValueEdit(true)
+  }
+
+  const loadValueOverrides = async () => {
+    if (!editing || !form.isRecurring) {
+      setValueOverrides([])
+      return
+    }
+    const rows = await window.api.personIncome.listMonthValues(editing.id)
+    setValueOverrides(rows)
+  }
+
+  useEffect(() => {
+    if (showForm && editing && form.isRecurring) {
+      loadValueOverrides()
+    } else if (!showForm) {
+      setValueOverrides([])
+    }
+  }, [showForm, editing?.id, form.isRecurring])
+
+  const openValueOverrideModal = (entry?: MonthlyValueOverride) => {
+    setValueOverrideMonth(entry?.month || month)
+    setValueOverrideValue(entry?.value ?? editing?.effectiveValue ?? form.value)
+    setShowValueOverrideModal(true)
+  }
+
+  const handleSaveValueOverride = async () => {
+    if (!editing || !valueOverrideMonth) return
+    await window.api.personIncome.setMonthValue(editing.id, valueOverrideMonth, valueOverrideValue)
+    toast.success(t('valueOverrides.saved'))
+    setShowValueOverrideModal(false)
+    await loadValueOverrides()
+    load()
+  }
+
+  const handleRemoveValueOverride = async (targetMonth: string) => {
+    if (!editing) return
+    await window.api.personIncome.removeMonthValue(editing.id, targetMonth)
+    toast.success(t('valueOverrides.removed'))
+    await loadValueOverrides()
+    load()
   }
 
   const handleSave = async () => {
@@ -700,6 +749,7 @@ export default function IncomePage() {
           <div className="flex gap-4 -mx-6 px-6 pb-3 mb-4 border-b border-border shrink-0">
             {([
               { key: 'detalhes' as const, label: t('itemsForm.tabDetails') },
+              ...(editing && form.isRecurring ? [{ key: 'valores' as const, label: t('itemsForm.tabValues') }] : []),
               ...(editing ? [{ key: 'interrupcoes' as const, label: t('itemsForm.tabInterruptions') }] : []),
               { key: 'classificacao' as const, label: t('itemsForm.tabClassification') }
             ]).map(tab => (
@@ -817,6 +867,44 @@ export default function IncomePage() {
                           onChange={v => setForm({ ...form, receivedAt: v })} />
                       )}
                     </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {incomeTab === 'valores' && editing && (
+              <div className="space-y-4">
+                <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{t('valueOverrides.currentMonthValue', { month: fmtMonth(month) })}</p>
+                      <p className="text-xs text-muted-foreground">{t('valueOverrides.inheritsNearest')}</p>
+                    </div>
+                    <span className="text-sm font-bold tabular-nums">{formatCurrency(editing.effectiveValue * (editing.exchangeRateSnapshot || 1.0))}</span>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => openValueOverrideModal()}>
+                    <Plus size={14} /> {t('valueOverrides.modifyIncomeSpecificMonth')}
+                  </Button>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('valueOverrides.configuredChanges')}</h4>
+                  <div className="rounded-lg border border-border bg-card p-3 space-y-2">
+                    {valueOverrides.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">{t('valueOverrides.noChanges')}</p>
+                    ) : (
+                      valueOverrides.map(entry => (
+                        <div key={entry.month} className="flex items-center justify-between gap-3 rounded-md bg-muted/30 px-3 py-2">
+                          <button type="button" onClick={() => openValueOverrideModal(entry)} className="text-left">
+                            <p className="text-sm font-medium text-foreground">{fmtMonth(entry.month)}</p>
+                            <p className="text-xs text-muted-foreground">{formatCurrency(entry.value * (editing.exchangeRateSnapshot || 1.0))}</p>
+                          </button>
+                          <Button size="sm" variant="ghost" onClick={() => handleRemoveValueOverride(entry.month)}>
+                            <X size={14} />
+                          </Button>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               </div>
@@ -951,6 +1039,18 @@ export default function IncomePage() {
               <Button variant="outline" onClick={() => setShowValueEdit(false)}>{t('common.cancel')}</Button>
               <Button onClick={handleSaveMonthValue}>{t('common.save')}</Button>
             </div>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal open={showValueOverrideModal} onClose={() => setShowValueOverrideModal(false)} title={t('valueOverrides.modifyIncomeSpecificMonth')} maxWidth="max-w-sm">
+        <div className="space-y-4">
+          <DatePicker className="w-full justify-start" mode="month" label={t('valueOverrides.month')} value={valueOverrideMonth}
+            onChange={setValueOverrideMonth} />
+          <CurrencyInput label={t('valueOverrides.value')} value={valueOverrideValue} onChange={setValueOverrideValue} autoFocus />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setShowValueOverrideModal(false)}>{t('common.cancel')}</Button>
+            <Button onClick={handleSaveValueOverride}>{t('common.save')}</Button>
           </div>
         </div>
       </Modal>

@@ -13,6 +13,7 @@ import type { TagData, CardSplit, SectionItem } from '../../types/entities'
 import { DayPicker } from '../../components/ui/DayPicker'
 import { ColorPicker } from '../../components/ui/ColorPicker'
 import { useTranslation } from '../../contexts/LanguageContext'
+import { toast } from 'sonner'
 
 export interface FormSplit {
   cardId: string
@@ -21,7 +22,12 @@ export interface FormSplit {
   paymentMethod?: string
 }
 
-export type ModalTab = 'detalhes' | 'parcelas' | 'interrupcoes' | 'classificacao'
+export type ModalTab = 'detalhes' | 'valores' | 'parcelas' | 'interrupcoes' | 'classificacao'
+
+interface MonthlyValueOverride {
+  month: string
+  value: number
+}
 
 export function getTypeOptions(t: (key: string) => string) {
   return [
@@ -87,6 +93,7 @@ export interface ItemsFormProps {
   handleUndoAnticipation: (anticipationId: number) => Promise<void>
   handleReactivate: (interruptionId: number) => void
   setInterruptItem: (item: SectionItem | null) => void
+  onValuesChanged?: () => void
   showParcelasTab: boolean
   initialTab?: ModalTab
   anticipateCounts: Record<string, string>
@@ -100,6 +107,7 @@ export function ItemsForm({
   allTags, setAllTags,
   handleSave, handleAnticipate, handleUndoAnticipation,
   handleReactivate, setInterruptItem,
+  onValuesChanged,
   showParcelasTab, initialTab,
   anticipateCounts, setAnticipateCounts
 }: ItemsFormProps) {
@@ -111,6 +119,10 @@ export function ItemsForm({
   const [modalScrollFade, setModalScrollFade] = useState({ top: false, bottom: false })
   const modalScrollRef = useRef<HTMLDivElement>(null)
   const [discountStates, setDiscountStates] = useState<Record<string, { mode: 'total' | 'perParcel' | 'percent'; total: number }>>({})
+  const [valueOverrides, setValueOverrides] = useState<MonthlyValueOverride[]>([])
+  const [showValueOverrideModal, setShowValueOverrideModal] = useState(false)
+  const [valueOverrideMonth, setValueOverrideMonth] = useState('')
+  const [valueOverrideValue, setValueOverrideValue] = useState(0)
 
   // Inline creation modals
   const INLINE_COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316', '#14b8a6', '#6366f1']
@@ -134,6 +146,46 @@ export function ItemsForm({
       setDiscountStates({})
     }
   }, [open])
+
+  const loadValueOverrides = async () => {
+    if (!editing || form.type !== 'subscription') {
+      setValueOverrides([])
+      return
+    }
+    const rows = await window.api.items.listMonthValues(editing.id)
+    setValueOverrides(rows)
+  }
+
+  useEffect(() => {
+    if (open && editing && form.type === 'subscription') {
+      loadValueOverrides()
+    } else if (!open) {
+      setValueOverrides([])
+    }
+  }, [open, editing?.id, form.type])
+
+  const openValueOverrideModal = (entry?: MonthlyValueOverride) => {
+    setValueOverrideMonth(entry?.month || month)
+    setValueOverrideValue(entry?.value ?? editing?.effectiveValue ?? form.value)
+    setShowValueOverrideModal(true)
+  }
+
+  const handleSaveValueOverride = async () => {
+    if (!editing || !valueOverrideMonth) return
+    await window.api.items.setMonthValue(editing.id, valueOverrideMonth, valueOverrideValue)
+    toast.success(t('valueOverrides.saved'))
+    setShowValueOverrideModal(false)
+    await loadValueOverrides()
+    onValuesChanged?.()
+  }
+
+  const handleRemoveValueOverride = async (targetMonth: string) => {
+    if (!editing) return
+    await window.api.items.removeMonthValue(editing.id, targetMonth)
+    toast.success(t('valueOverrides.removed'))
+    await loadValueOverrides()
+    onValuesChanged?.()
+  }
 
   const handleModalScroll = () => {
     const el = modalScrollRef.current
@@ -891,6 +943,54 @@ export function ItemsForm({
   }
 
   /* ─── Tab: Classificação ─── */
+  const renderTabValores = () => {
+    if (!editing || form.type !== 'subscription') {
+      return (
+        <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
+          {t('valueOverrides.onlyRecurringExpenses')}
+        </div>
+      )
+    }
+
+    return (
+      <div className="space-y-4">
+        <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-foreground">{t('valueOverrides.currentMonthValue', { month: fmtMonth(month) })}</p>
+              <p className="text-xs text-muted-foreground">{t('valueOverrides.inheritsNearest')}</p>
+            </div>
+            <span className="text-sm font-bold tabular-nums">{fmtVal(editing.effectiveValue ?? form.value)}</span>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => openValueOverrideModal()}>
+            <Plus size={14} /> {t('valueOverrides.modifyExpenseSpecificMonth')}
+          </Button>
+        </div>
+
+        <div className="space-y-2">
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('valueOverrides.configuredChanges')}</h4>
+          <div className="rounded-lg border border-border bg-card p-3 space-y-2">
+            {valueOverrides.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t('valueOverrides.noChanges')}</p>
+            ) : (
+              valueOverrides.map(entry => (
+                <div key={entry.month} className="flex items-center justify-between gap-3 rounded-md bg-muted/30 px-3 py-2">
+                  <button type="button" onClick={() => openValueOverrideModal(entry)} className="text-left">
+                    <p className="text-sm font-medium text-foreground">{fmtMonth(entry.month)}</p>
+                    <p className="text-xs text-muted-foreground">{fmtVal(entry.value)}</p>
+                  </button>
+                  <Button size="sm" variant="ghost" onClick={() => handleRemoveValueOverride(entry.month)}>
+                    <X size={14} />
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const renderTabClassificacao = () => (
     <div className="space-y-5">
       {/* Seção: Categoria */}
@@ -969,6 +1069,7 @@ export function ItemsForm({
         <div className="flex gap-4 -mx-6 px-6 pb-3 mb-4 border-b border-border shrink-0">
           {([
             { key: 'detalhes' as ModalTab, label: t('itemsForm.tabDetails') },
+            ...(editing && form.type === 'subscription' ? [{ key: 'valores' as ModalTab, label: t('itemsForm.tabValues') }] : []),
             ...(showParcelasTab ? [{ key: 'parcelas' as ModalTab, label: t('itemsForm.tabInstallments') }] : []),
             ...(editing ? [{ key: 'interrupcoes' as ModalTab, label: t('itemsForm.tabInterruptions') }] : []),
             { key: 'classificacao' as ModalTab, label: t('itemsForm.tabClassification') }
@@ -994,6 +1095,7 @@ export function ItemsForm({
           <div className={`sticky top-0 -mb-6 h-6 z-10 pointer-events-none bg-gradient-to-b from-background to-transparent transition-opacity ${modalScrollFade.top ? 'opacity-100' : 'opacity-0'}`} />
 
           {modalTab === 'detalhes' && renderTabDetalhes()}
+          {modalTab === 'valores' && renderTabValores()}
           {modalTab === 'parcelas' && showParcelasTab && renderTabParcelas()}
           {modalTab === 'interrupcoes' && renderTabInterrupcoes()}
           {modalTab === 'classificacao' && renderTabClassificacao()}
@@ -1005,6 +1107,17 @@ export function ItemsForm({
         <div className="flex items-center justify-end gap-2 pt-3 border-t border-border shrink-0">
           <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
           <Button onClick={handleSave}>{editing ? t('common.save') : t('common.create')} <Check size={14} /></Button>
+        </div>
+      </div>
+    </Modal>
+
+    <Modal open={showValueOverrideModal} onClose={() => setShowValueOverrideModal(false)} title={t('valueOverrides.modifyExpenseSpecificMonth')} maxWidth="max-w-sm">
+      <div className="space-y-4">
+        <DatePicker className="w-full justify-start" mode="month" label={t('valueOverrides.month')} value={valueOverrideMonth} onChange={setValueOverrideMonth} />
+        <CurrencyInput label={t('valueOverrides.value')} value={valueOverrideValue} onChange={setValueOverrideValue} autoFocus symbol={currencySymbol} />
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={() => setShowValueOverrideModal(false)}>{t('common.cancel')}</Button>
+          <Button onClick={handleSaveValueOverride}>{t('common.save')}</Button>
         </div>
       </div>
     </Modal>
