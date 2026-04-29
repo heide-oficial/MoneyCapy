@@ -41,6 +41,7 @@ import { PRESET_COLORS } from '../../lib/constants'
 /* ─── Types ─── */
 interface CardData { id: number; name: string; bankAccountId: number | null }
 interface BankAccountData { id: number; name: string }
+interface Subcategory { id: number; name: string; color: string }
 import type { TagData, SectionItem, IncomeRecord } from '../../types/entities'
 
 type ViewMode = 'all' | 'gastos' | 'receitas'
@@ -66,6 +67,7 @@ export default function TagsPage() {
   const [cards, setCards] = useState<CardData[]>([])
   const [bankAccounts, setBankAccounts] = useState<BankAccountData[]>([])
   const [stores, setStores] = useState<{ id: number; name: string }[]>([])
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([])
 
   // View mode
   const [viewMode, setViewMode] = useState<ViewMode>('all')
@@ -109,6 +111,10 @@ export default function TagsPage() {
   const [showStoreFilter, setShowStoreFilter] = useState(false)
   const storeFilterRef = useRef<HTMLButtonElement>(null)
   const storeDropRef = useRef<HTMLDivElement>(null)
+  const [filterSubcategoryKeys, setFilterSubcategoryKeys] = useState<string[]>([])
+  const [showSubcatFilter, setShowSubcatFilter] = useState(false)
+  const subcatFilterRef = useRef<HTMLButtonElement>(null)
+  const subcatDropRef = useRef<HTMLDivElement>(null)
   const [filterItemType, setFilterItemType] = useState('all')
   const [showItemTypeMenu, setShowItemTypeMenu] = useState(false)
   const itemTypeBtnRef = useRef<HTMLButtonElement>(null)
@@ -134,18 +140,20 @@ export default function TagsPage() {
     const tgs = await window.api.tags.list()
     setTags(tgs)
     if (!activePerson) return
-    const [its, incs, cds, accs, strs] = await Promise.all([
+    const [its, incs, cds, accs, strs, subcats] = await Promise.all([
       window.api.items.list(activePerson.id, month),
       window.api.personIncome.listByMonth(activePerson.id, month),
       window.api.cards.list(activePerson.id, month),
       window.api.bankAccounts.list(activePerson.id),
-      window.api.stores.list()
+      window.api.stores.list(),
+      window.api.subcategories.list()
     ])
     setItems(its)
     setIncomes(incs)
     setCards(cds)
     setBankAccounts(accs)
     setStores(strs)
+    setSubcategories(subcats)
   }
 
   useEffect(() => { loadData() }, [activePerson, month])
@@ -275,6 +283,12 @@ export default function TagsPage() {
       const match = (none && !item.storeId) || (ids.length > 0 && item.storeId && ids.includes(String(item.storeId)))
       if (!match) return false
     }
+    if (filterSubcategoryKeys.length > 0) {
+      const none = filterSubcategoryKeys.includes('none')
+      const ids = filterSubcategoryKeys.filter(x => x !== 'none')
+      const match = (none && !item.subcategoryId) || (ids.length > 0 && item.subcategoryId && ids.includes(String(item.subcategoryId)))
+      if (!match) return false
+    }
     return true
   })
 
@@ -288,6 +302,12 @@ export default function TagsPage() {
       const none = filterStoreKeys.includes('none')
       const ids = filterStoreKeys.filter(x => x !== 'none')
       const match = (none && !i.storeId) || (ids.length > 0 && i.storeId && ids.includes(String(i.storeId)))
+      if (!match) return false
+    }
+    if (filterSubcategoryKeys.length > 0) {
+      const none = filterSubcategoryKeys.includes('none')
+      const ids = filterSubcategoryKeys.filter(x => x !== 'none')
+      const match = (none && !i.subcategoryId) || (ids.length > 0 && i.subcategoryId && ids.includes(String(i.subcategoryId)))
       if (!match) return false
     }
     return true
@@ -340,8 +360,12 @@ export default function TagsPage() {
   const cardFilterItems = [{ id: 'none', name: t('filters.noCard'), color: '#6b7280' }, ...cards.map(c => ({ id: String(c.id), name: c.name, color: '#8b5cf6' }))]
   const bankFilterItems = [{ id: 'none', name: t('filters.noAccount'), color: '#6b7280' }, ...bankAccounts.map(a => ({ id: String(a.id), name: a.name, color: '#3b82f6' }))]
   const storeFilterItems = [{ id: 'none', name: t('filters.noStore'), color: '#6b7280' }, ...stores.map(s => ({ id: String(s.id), name: s.name, color: '#6366f1' }))]
+  const subcatFilterItems = [
+    { id: 'none', name: t('itemsForm.noSubcategoryPlaceholder'), color: '#6b7280' },
+    ...subcategories.map(s => ({ id: String(s.id), name: s.name, color: s.color || '#6b7280' }))
+  ]
 
-  const hasActiveFilters = filterActive !== 'all' || filterPaid !== 'all' || filterPayMethod !== 'all' || filterItemType !== 'all' || filterTagKeys.length > 0 || filterCardKeys.length > 0 || filterBankKeys.length > 0 || filterStoreKeys.length > 0 || hideEmpty
+  const hasActiveFilters = filterActive !== 'all' || filterPaid !== 'all' || filterPayMethod !== 'all' || filterItemType !== 'all' || filterTagKeys.length > 0 || filterSubcategoryKeys.length > 0 || filterCardKeys.length > 0 || filterBankKeys.length > 0 || filterStoreKeys.length > 0 || hideEmpty
 
   // Tile helpers
   const computeInstallmentValue = (item: SectionItem) => {
@@ -790,12 +814,12 @@ export default function TagsPage() {
 
           <FilterGroup
             activeCount={
-              (filterTagKeys.length > 0 ? 1 : 0) + (filterBankKeys.length > 0 ? 1 : 0) +
+              (filterTagKeys.length > 0 ? 1 : 0) + (filterSubcategoryKeys.length > 0 ? 1 : 0) + (filterBankKeys.length > 0 ? 1 : 0) +
               (filterCardKeys.length > 0 ? 1 : 0) + (filterStoreKeys.length > 0 ? 1 : 0) +
               (hideEmpty ? 1 : 0) + (filterActive !== 'all' ? 1 : 0) +
               (filterPaid !== 'all' ? 1 : 0) + (filterPayMethod !== 'all' ? 1 : 0)
             }
-            onClear={() => { setFilterActive('all'); setFilterPaid('all'); setFilterPayMethod('all'); setFilterItemType('all'); setFilterTagKeys([]); setFilterCardKeys([]); setFilterBankKeys([]); setFilterStoreKeys([]); setHideEmpty(false) }}
+            onClear={() => { setFilterActive('all'); setFilterPaid('all'); setFilterPayMethod('all'); setFilterItemType('all'); setFilterTagKeys([]); setFilterSubcategoryKeys([]); setFilterCardKeys([]); setFilterBankKeys([]); setFilterStoreKeys([]); setHideEmpty(false) }}
             primaryCount={3}
           >
             <div className="relative">
@@ -821,6 +845,34 @@ export default function TagsPage() {
                   items={tagFilterItems}
                   selected={filterTagKeys}
                   onToggle={id => setFilterTagKeys(f => f.includes(id) ? f.filter(x => x !== id) : [...f, id])}
+                />
+              )}
+            </div>
+
+            <div className="relative">
+              <button ref={subcatFilterRef} type="button" title={t('itemsForm.subcategory')}
+                onClick={() => { setShowSubcatFilter(f => !f); setShowTagFilter(false); setShowCardFilter(false); setShowBankFilter(false); setShowStoreFilter(false) }}
+                className={`inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border transition-colors ${
+                  filterSubcategoryKeys.length > 0
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-transparent text-foreground border-input hover:bg-accent'
+                }`}>
+                <Tags size={11} />
+                <span data-filter-label>{t('itemsForm.subcategory')}</span>
+                {filterSubcategoryKeys.length > 0 && (
+                  <span className="bg-primary-foreground text-primary text-[10px] rounded-full h-4 min-w-[16px] flex items-center justify-center font-bold">{filterSubcategoryKeys.length}</span>
+                )}
+                <ChevronDown size={12} className="text-muted-foreground" />
+              </button>
+              {showSubcatFilter && (
+                <FilterDropdown
+                  anchorRef={subcatFilterRef}
+                  dropRef={subcatDropRef}
+                  onClose={() => setShowSubcatFilter(false)}
+                  items={subcatFilterItems}
+                  selected={filterSubcategoryKeys}
+                  onToggle={id => setFilterSubcategoryKeys(f => f.includes(id) ? f.filter(x => x !== id) : [...f, id])}
+                  emptyText={t('subcategories.noSubcategories')}
                 />
               )}
             </div>

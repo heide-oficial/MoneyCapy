@@ -39,6 +39,7 @@ import type { TagData, SectionItem, IncomeRecord } from '../../types/entities'
 
 interface StoreData { id: number; name: string; color: string }
 interface Category { id: number; name: string; icon: string; color: string }
+interface Subcategory { id: number; name: string; color: string }
 interface CardData { id: number; name: string; bankAccountId: number | null }
 interface BankAccountData { id: number; name: string }
 
@@ -67,6 +68,7 @@ export default function StoresPage() {
   const [cards, setCards] = useState<CardData[]>([])
   const [bankAccounts, setBankAccounts] = useState<BankAccountData[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([])
 
   // View mode
   const [viewMode, setViewMode] = useState<ViewMode>('all')
@@ -94,6 +96,10 @@ export default function StoresPage() {
   const [showCatFilter, setShowCatFilter] = useState(false)
   const catFilterRef = useRef<HTMLButtonElement>(null)
   const catDropRef = useRef<HTMLDivElement>(null)
+  const [filterSubcategoryKeys, setFilterSubcategoryKeys] = useState<string[]>([])
+  const [showSubcatFilter, setShowSubcatFilter] = useState(false)
+  const subcatFilterRef = useRef<HTMLButtonElement>(null)
+  const subcatDropRef = useRef<HTMLDivElement>(null)
   const [filterCardKeys, setFilterCardKeys] = useState<string[]>([])
   const [showCardFilter, setShowCardFilter] = useState(false)
   const cardFilterRef = useRef<HTMLButtonElement>(null)
@@ -127,18 +133,20 @@ export default function StoresPage() {
     const strs = await window.api.stores.list()
     setStores(strs)
     if (!activePerson) return
-    const [its, incs, cds, accs, cats] = await Promise.all([
+    const [its, incs, cds, accs, cats, subcats] = await Promise.all([
       window.api.items.list(activePerson.id, month),
       window.api.personIncome.listByMonth(activePerson.id, month),
       window.api.cards.list(activePerson.id, month),
       window.api.bankAccounts.list(activePerson.id),
-      window.api.categories.list()
+      window.api.categories.list(),
+      window.api.subcategories.list()
     ])
     setItems(its)
     setIncomes(incs)
     setCards(cds)
     setBankAccounts(accs)
     setCategories(cats)
+    setSubcategories(subcats)
   }
 
   useEffect(() => { loadData() }, [activePerson, month])
@@ -272,6 +280,12 @@ export default function StoresPage() {
       const match = (none && !item.categoryId) || (ids.length > 0 && item.categoryId && ids.includes(String(item.categoryId)))
       if (!match) return false
     }
+    if (filterSubcategoryKeys.length > 0) {
+      const none = filterSubcategoryKeys.includes('none')
+      const ids = filterSubcategoryKeys.filter(x => x !== 'none')
+      const match = (none && !item.subcategoryId) || (ids.length > 0 && item.subcategoryId && ids.includes(String(item.subcategoryId)))
+      if (!match) return false
+    }
     return true
   })
 
@@ -285,6 +299,12 @@ export default function StoresPage() {
       const none = filterCategoryKeys.includes('none')
       const ids = filterCategoryKeys.filter(x => x !== 'none')
       const match = (none && !i.categoryId) || (ids.length > 0 && i.categoryId && ids.includes(String(i.categoryId)))
+      if (!match) return false
+    }
+    if (filterSubcategoryKeys.length > 0) {
+      const none = filterSubcategoryKeys.includes('none')
+      const ids = filterSubcategoryKeys.filter(x => x !== 'none')
+      const match = (none && !i.subcategoryId) || (ids.length > 0 && i.subcategoryId && ids.includes(String(i.subcategoryId)))
       if (!match) return false
     }
     return true
@@ -328,10 +348,14 @@ export default function StoresPage() {
     { id: 'none', name: t('filters.noCategory'), color: '#6b7280' },
     ...categories.map(c => ({ id: String(c.id), name: c.name, color: c.color }))
   ]
+  const subcatFilterItems = [
+    { id: 'none', name: t('itemsForm.noSubcategoryPlaceholder'), color: '#6b7280' },
+    ...subcategories.map(s => ({ id: String(s.id), name: s.name, color: s.color || '#6b7280' }))
+  ]
   const cardFilterItems = [{ id: 'none', name: t('filters.noCard'), color: '#6b7280' }, ...cards.map(c => ({ id: String(c.id), name: c.name, color: '#8b5cf6' }))]
   const bankFilterItems = [{ id: 'none', name: t('filters.noAccount'), color: '#6b7280' }, ...bankAccounts.map(a => ({ id: String(a.id), name: a.name, color: '#3b82f6' }))]
 
-  const hasActiveFilters = filterActive !== 'all' || filterPaid !== 'all' || filterPayMethod !== 'all' || filterItemType !== 'all' || filterCategoryKeys.length > 0 || filterCardKeys.length > 0 || filterBankKeys.length > 0 || hideEmpty
+  const hasActiveFilters = filterActive !== 'all' || filterPaid !== 'all' || filterPayMethod !== 'all' || filterItemType !== 'all' || filterCategoryKeys.length > 0 || filterSubcategoryKeys.length > 0 || filterCardKeys.length > 0 || filterBankKeys.length > 0 || hideEmpty
 
   // Tile helpers
   const computeInstallmentValue = (item: SectionItem) => {
@@ -757,12 +781,12 @@ export default function StoresPage() {
 
           <FilterGroup
             activeCount={
-              (filterCategoryKeys.length > 0 ? 1 : 0) + (filterBankKeys.length > 0 ? 1 : 0) +
+              (filterCategoryKeys.length > 0 ? 1 : 0) + (filterSubcategoryKeys.length > 0 ? 1 : 0) + (filterBankKeys.length > 0 ? 1 : 0) +
               (filterCardKeys.length > 0 ? 1 : 0) + (hideEmpty ? 1 : 0) +
               (filterActive !== 'all' ? 1 : 0) + (filterPaid !== 'all' ? 1 : 0) +
               (filterPayMethod !== 'all' ? 1 : 0)
             }
-            onClear={() => { setFilterActive('all'); setFilterPaid('all'); setFilterPayMethod('all'); setFilterItemType('all'); setFilterCategoryKeys([]); setFilterCardKeys([]); setFilterBankKeys([]); setHideEmpty(false) }}
+            onClear={() => { setFilterActive('all'); setFilterPaid('all'); setFilterPayMethod('all'); setFilterItemType('all'); setFilterCategoryKeys([]); setFilterSubcategoryKeys([]); setFilterCardKeys([]); setFilterBankKeys([]); setHideEmpty(false) }}
             primaryCount={3}
           >
             <div className="relative">
@@ -788,6 +812,34 @@ export default function StoresPage() {
                   items={catFilterItems}
                   selected={filterCategoryKeys}
                   onToggle={id => setFilterCategoryKeys(f => f.includes(id) ? f.filter(x => x !== id) : [...f, id])}
+                />
+              )}
+            </div>
+
+            <div className="relative">
+              <button ref={subcatFilterRef} type="button" title={t('itemsForm.subcategory')}
+                onClick={() => { setShowSubcatFilter(f => !f); setShowCatFilter(false); setShowCardFilter(false); setShowBankFilter(false) }}
+                className={`inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border transition-colors ${
+                  filterSubcategoryKeys.length > 0
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-transparent text-foreground border-input hover:bg-accent'
+                }`}>
+                <Tags size={11} />
+                <span data-filter-label>{t('itemsForm.subcategory')}</span>
+                {filterSubcategoryKeys.length > 0 && (
+                  <span className="bg-primary-foreground text-primary text-[10px] rounded-full h-4 min-w-[16px] flex items-center justify-center font-bold">{filterSubcategoryKeys.length}</span>
+                )}
+                <ChevronDown size={12} className="text-muted-foreground" />
+              </button>
+              {showSubcatFilter && (
+                <FilterDropdown
+                  anchorRef={subcatFilterRef}
+                  dropRef={subcatDropRef}
+                  onClose={() => setShowSubcatFilter(false)}
+                  items={subcatFilterItems}
+                  selected={filterSubcategoryKeys}
+                  onToggle={id => setFilterSubcategoryKeys(f => f.includes(id) ? f.filter(x => x !== id) : [...f, id])}
+                  emptyText={t('subcategories.noSubcategories')}
                 />
               )}
             </div>

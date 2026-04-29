@@ -159,11 +159,11 @@ function PopoverPanel({ anchorRef, popoverRef, children }: { anchorRef: React.Re
   return (
     <div
       ref={popoverRef}
-      className="fixed z-[9999] bg-card border border-border rounded-lg shadow-lg p-3 flex flex-col gap-2"
-      style={{ top: pos.top, left: pos.left, minWidth: 220, maxWidth: 360, visibility: pos.ready ? 'visible' : 'hidden' }}
+      className="fixed z-[9999] bg-card border border-border rounded-lg shadow-lg p-3 grid grid-cols-1 sm:grid-cols-2 gap-2 [&_[data-filter-label]]:whitespace-nowrap"
+      style={{ top: pos.top, left: pos.left, minWidth: 260, maxWidth: 520, visibility: pos.ready ? 'visible' : 'hidden' }}
     >
       {React.Children.map(children, child => (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0 [&>button]:w-full [&>button]:justify-start">
           {child}
         </div>
       ))}
