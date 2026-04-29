@@ -634,7 +634,7 @@ export function ItemsForm({
               {form.type === 'subscription' && (
                 <>
                   <DatePicker className="w-full justify-start" mode="month" label={t('itemsForm.startMonth')} value={form.startMonth} onChange={v => setForm({ ...form, startMonth: v })} />
-                  <DatePicker className="w-full justify-start" mode="month" label={t('itemsForm.endMonth')} value={form.endMonth} onChange={v => setForm({ ...form, endMonth: v })} clearable clearLabel={t('common.clear')} />
+                  <DatePicker className="w-full justify-start" mode="month" label={t('itemsForm.endMonth')} value={form.endMonth} onChange={v => setForm({ ...form, endMonth: v })} placeholder={t('common.notDefined')} clearable clearLabel={t('common.clear')} />
                 </>
               )}
             </div>
