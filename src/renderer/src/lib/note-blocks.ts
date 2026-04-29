@@ -52,9 +52,11 @@ export function serializeNoteBlocks(blocks: NoteBlock[]): string {
   })
 }
 
-export function formatNoteBlockDate(createdAt: string, fallback: string): string {
+export function formatNoteBlockDate(createdAt: string, fallback: string, formatDate?: (value: string) => string): string {
   if (!createdAt) return fallback
   const date = new Date(createdAt)
   if (Number.isNaN(date.getTime())) return fallback
-  return date.toLocaleString()
+  const datePart = formatDate ? formatDate(createdAt.slice(0, 10)) : createdAt.slice(0, 10)
+  const timePart = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+  return `${datePart} ${timePart}`
 }

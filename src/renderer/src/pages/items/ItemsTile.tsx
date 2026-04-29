@@ -221,8 +221,8 @@ export function ItemsTile({
         {paidCheckbox(18)}
         <p className="text-base font-bold truncate flex-1 min-w-0">
           {item.description}
-          {gastosFields.category && item.categoryName && (
-            <span className="text-[11px] font-normal text-muted-foreground ml-1.5">· {item.categoryName}</span>
+          {item.categoryName && (
+            <span className="text-[11px] font-normal text-muted-foreground ml-1.5"> - {item.categoryName}{item.subcategoryName ? `/${item.subcategoryName}` : ''}</span>
           )}
         </p>
         {totalAnticipatedThisMonth > 0 && (

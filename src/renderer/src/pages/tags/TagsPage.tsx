@@ -436,7 +436,7 @@ export default function TagsPage() {
       }
     }
     if (gastosFields.store && item.storeName) metaItems.push({ icon: Store, text: item.storeName })
-    if (gastosFields.category && item.categoryName) metaItems.push({ icon: Tag, text: item.categoryName })
+    if (gastosFields.category && item.categoryName) metaItems.push({ icon: Tag, text: `${item.categoryName}${item.subcategoryName ? `/${item.subcategoryName}` : ''}` })
     if (gastosFields.interestRate && item.interestRate && item.interestRate > 0) metaItems.push({ icon: Landmark, text: t('items.interestRate', { rate: item.interestRate }) })
     return metaItems
   }
@@ -542,8 +542,8 @@ export default function TagsPage() {
           {paidCheckbox(item)}
           <p className="text-base font-bold truncate flex-1 min-w-0">
             {item.description}
-            {gastosFields.category && item.categoryName && (
-              <span className="text-[11px] font-normal text-muted-foreground ml-1.5">· {item.categoryName}</span>
+            {item.categoryName && (
+              <span className="text-[11px] font-normal text-muted-foreground ml-1.5"> - {item.categoryName}{item.subcategoryName ? `/${item.subcategoryName}` : ''}</span>
             )}
           </p>
           {item.tags && item.tags.length > 0 && (
@@ -619,7 +619,7 @@ export default function TagsPage() {
   const renderIncomeTile = (inc: IncomeRecord) => {
     const metaItems: { icon: any; text: string }[] = []
     if (receitasFields.type) metaItems.push({ icon: inc.isRecurring ? Repeat : CircleDot, text: inc.isRecurring ? t('income.recurring') : t('income.nonRecurring') })
-    if (inc.categoryName) metaItems.push({ icon: Tag, text: inc.categoryName })
+    if (inc.categoryName) metaItems.push({ icon: Tag, text: `${inc.categoryName}${inc.subcategoryName ? `/${inc.subcategoryName}` : ''}` })
 
     return (
       <Card
@@ -644,7 +644,12 @@ export default function TagsPage() {
               : <Circle size={18} className="text-muted-foreground/40 hover:text-primary transition-colors" />}
           </button>
           <Wallet size={14} className="text-primary/60 shrink-0" />
-          <p className="text-base font-bold truncate flex-1 min-w-0">{inc.description}</p>
+          <p className="text-base font-bold truncate flex-1 min-w-0">
+            {inc.description}
+            {inc.categoryName && (
+              <span className="text-[11px] font-normal text-muted-foreground ml-1.5"> - {inc.categoryName}{inc.subcategoryName ? `/${inc.subcategoryName}` : ''}</span>
+            )}
+          </p>
           {inc.tags && inc.tags.length > 0 && (
             <div className="flex items-center gap-1 overflow-hidden">
               {inc.tags.map(tag => (

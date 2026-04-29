@@ -123,7 +123,7 @@ export function ItemsForm({
   showParcelasTab, initialTab,
   anticipateCounts, setAnticipateCounts
 }: ItemsFormProps) {
-  const { fmtMonth } = useFormatDate()
+  const { fmtMonth, fmtDate } = useFormatDate()
   const { currencies, baseCurrency } = useCurrencySettings()
   const { t } = useTranslation()
   const typeOptions = getTypeOptions(t)
@@ -453,7 +453,7 @@ export function ItemsForm({
         <div className="space-y-2">
           <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('itemsForm.information')}</h4>
           <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-            <Input label={t('itemsForm.description')} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder={t('itemsForm.descriptionPlaceholder')} autoFocus />
+            <Input label={t('itemsForm.expenseName')} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder={t('itemsForm.descriptionPlaceholder')} autoFocus />
             {currencies.length > 1 && (
               <div>
                 <Select
@@ -662,6 +662,9 @@ export function ItemsForm({
               {form.isPaid && (
                 <DatePicker className="w-full justify-start" mode="date" label={t('itemsForm.paymentDate')} value={form.paidAt}
                   onChange={v => setForm({ ...form, paidAt: v })} />
+              )}
+              {!form.isPaid && (
+                <Input label={t('itemsForm.paymentDate')} value={t('itemsForm.notPaidYet')} disabled />
               )}
             </div>
           </div>
@@ -1030,11 +1033,12 @@ export function ItemsForm({
     <div className="space-y-5">
       {/* Seção: Categoria */}
       <div className="space-y-2">
-        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('itemsForm.category')}</h4>
+        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('itemsForm.tabClassification')}</h4>
         <div className="rounded-lg border border-border bg-card p-4 space-y-4">
           <div className="flex gap-1.5">
             <div className="flex-1">
               <Select
+                label={t('itemsForm.category')}
                 value={String(form.categoryId)}
                 onChange={e => setForm({ ...form, categoryId: e.target.value, subcategoryId: '' })}
                 options={expenseCategories.map(c => ({ value: c.id, label: c.name }))}
@@ -1132,8 +1136,8 @@ export function ItemsForm({
             {blocks.map(block => (
               <div key={block.id} className="rounded-lg border border-border bg-card p-4 space-y-2">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    {formatNoteBlockDate(block.createdAt, t('notes.previousBlock'))}
+                  <span className="text-sm font-medium text-foreground">
+                    {formatNoteBlockDate(block.createdAt, t('notes.previousBlock'), fmtDate)}
                   </span>
                   <button type="button" onClick={() => updateBlocks(blocks.filter(b => b.id !== block.id))}
                     className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
