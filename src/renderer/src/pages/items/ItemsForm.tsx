@@ -69,7 +69,7 @@ export const defaultForm = {
 export type ItemForm = typeof defaultForm
 
 interface Category { id: number; name: string; icon: string; color: string; scope?: 'expense' | 'income' | 'both' }
-interface Subcategory { id: number; name: string; color: string; categoryIds?: number[] }
+interface Subcategory { id: number; name: string; color: string; scope?: 'expense' | 'income' | 'both'; categoryIds?: number[] }
 interface StoreData2 { id: number; name: string }
 interface CardData { id: number; name: string; personId: number | null; bankAccountId: number | null; billingCloseDay?: number; cardType?: 'credit' | 'debit' | 'both' }
 interface BankAccountData { id: number; name: string; nomeBanco: string | null }
@@ -94,6 +94,7 @@ export interface ItemsFormProps {
   categories: Category[]
   setCategories: React.Dispatch<React.SetStateAction<Category[]>>
   subcategories: Subcategory[]
+  setSubcategories: React.Dispatch<React.SetStateAction<Subcategory[]>>
   cards: CardData[]
   bankAccounts: BankAccountData[]
   stores: StoreData2[]
@@ -115,7 +116,7 @@ export interface ItemsFormProps {
 export function ItemsForm({
   open, onClose, editing, month, typeFilter,
   form, setForm,
-  categories, setCategories, subcategories, cards, bankAccounts, stores, setStores,
+  categories, setCategories, subcategories, setSubcategories, cards, bankAccounts, stores, setStores,
   allTags, setAllTags,
   handleSave, handleAnticipate, handleUndoAnticipation,
   handleReactivate, setInterruptItem,
@@ -127,8 +128,10 @@ export function ItemsForm({
   const { currencies, baseCurrency } = useCurrencySettings()
   const { t } = useTranslation()
   const typeOptions = getTypeOptions(t)
-  const expenseCategories = categories.filter(c => c.scope !== 'income')
-  const availableSubcategories = subcategories.filter(s => !form.categoryId || (s.categoryIds || []).includes(Number(form.categoryId)))
+  const expenseCategories = categories
+  const availableSubcategories = form.categoryId
+    ? subcategories.filter(s => s.scope !== 'income' && (s.categoryIds || []).includes(Number(form.categoryId)))
+    : []
   const [modalTab, setModalTab] = useState<ModalTab>('detalhes')
   const [modalScrollFade, setModalScrollFade] = useState({ top: false, bottom: false })
   const modalScrollRef = useRef<HTMLDivElement>(null)
@@ -148,6 +151,10 @@ export function ItemsForm({
   const [catCreateName, setCatCreateName] = useState('')
   const [catCreateColor, setCatCreateColor] = useState(INLINE_COLORS[0])
   const [showCatColorPicker, setShowCatColorPicker] = useState(false)
+  const [showSubcatCreate, setShowSubcatCreate] = useState(false)
+  const [subcatCreateName, setSubcatCreateName] = useState('')
+  const [subcatCreateColor, setSubcatCreateColor] = useState(INLINE_COLORS[0])
+  const [showSubcatColorPicker, setShowSubcatColorPicker] = useState(false)
   const [showTagCreate, setShowTagCreate] = useState(false)
   const [tagCreateName, setTagCreateName] = useState('')
   const [tagCreateColor, setTagCreateColor] = useState(INLINE_COLORS[0])
@@ -1046,18 +1053,26 @@ export function ItemsForm({
               />
             </div>
             <button type="button" onClick={() => { setCatCreateName(''); setCatCreateColor(INLINE_COLORS[0]); setShowCatCreate(true) }}
-              className="h-9 w-9 flex items-center justify-center rounded-md border border-input hover:bg-accent transition-colors shrink-0" title={t('itemsForm.createCategory')}>
+              className="mt-6 h-9 w-9 flex items-center justify-center rounded-md border border-input hover:bg-accent transition-colors shrink-0" title={t('itemsForm.createCategory')}>
               <Plus size={14} />
             </button>
           </div>
-          <div className="space-y-1.5">
-            <Select
-              label={t('itemsForm.subcategory')}
-              value={String(form.subcategoryId)}
-              onChange={e => setForm({ ...form, subcategoryId: e.target.value })}
-              options={availableSubcategories.map(s => ({ value: s.id, label: s.name }))}
-              placeholder={form.categoryId ? t('itemsForm.noSubcategoryPlaceholder') : t('itemsForm.selectCategoryFirst')}
-            />
+          <div className="flex gap-1.5">
+            <div className="flex-1">
+              <Select
+                label={t('itemsForm.subcategory')}
+                value={String(form.subcategoryId)}
+                onChange={e => setForm({ ...form, subcategoryId: e.target.value })}
+                options={availableSubcategories.map(s => ({ value: s.id, label: s.name }))}
+                placeholder={form.categoryId ? t('itemsForm.noSubcategoryPlaceholder') : t('itemsForm.selectCategoryFirst')}
+                disabled={!form.categoryId}
+              />
+            </div>
+            <button type="button" onClick={() => { setSubcatCreateName(''); setSubcatCreateColor(INLINE_COLORS[0]); setShowSubcatCreate(true) }}
+              disabled={!form.categoryId}
+              className="mt-6 h-9 w-9 flex items-center justify-center rounded-md border border-input hover:bg-accent transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed" title={t('subcategories.createSubcategory')}>
+              <Plus size={14} />
+            </button>
           </div>
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground">{t('itemsForm.storeEntity')}</label>
@@ -1280,7 +1295,7 @@ export function ItemsForm({
           <Button variant="outline" onClick={() => setShowCatCreate(false)}>{t('common.cancel')}</Button>
           <Button onClick={async () => {
             if (!catCreateName.trim()) return
-            const created = await window.api.categories.create({ name: catCreateName.trim(), icon: 'Circle', color: catCreateColor, scope: 'expense' })
+            const created = await window.api.categories.create({ name: catCreateName.trim(), icon: 'Circle', color: catCreateColor })
             const updated = await window.api.categories.list()
             setCategories(updated)
             setForm(f => ({ ...f, categoryId: created.id }))
@@ -1291,6 +1306,41 @@ export function ItemsForm({
     </Modal>
     <ColorPicker open={showCatColorPicker} onClose={() => setShowCatColorPicker(false)} value={catCreateColor}
       onConfirm={c => { setCatCreateColor(c); setShowCatColorPicker(false) }} />
+
+    {/* Subcategory creation modal */}
+    <Modal open={showSubcatCreate} onClose={() => setShowSubcatCreate(false)} title={t('subcategories.createSubcategory')} maxWidth="max-w-sm">
+      <div className="space-y-4">
+        <Input label={t('common.name')} value={subcatCreateName} onChange={e => setSubcatCreateName(e.target.value)} placeholder={t('subcategories.placeholder')} autoFocus />
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-foreground">{t('common.color')}</label>
+          <div className="flex flex-wrap gap-2">
+            {INLINE_COLORS.map(c => (
+              <button key={c} type="button" onClick={() => setSubcatCreateColor(c)}
+                className={`h-7 w-7 rounded-full transition-all ${subcatCreateColor === c ? 'ring-2 ring-offset-2 ring-offset-card ring-primary scale-110' : 'hover:scale-105'}`}
+                style={{ backgroundColor: c }} />
+            ))}
+            <button type="button" onClick={() => setShowSubcatColorPicker(true)}
+              className={`h-7 w-7 rounded-full border-2 border-dashed border-border hover:border-primary flex items-center justify-center transition-all hover:scale-105 ${!INLINE_COLORS.includes(subcatCreateColor) ? 'ring-2 ring-offset-2 ring-offset-card ring-primary scale-110' : ''}`}
+              style={!INLINE_COLORS.includes(subcatCreateColor) ? { backgroundColor: subcatCreateColor } : undefined} title={t('common.customColor')}>
+              {INLINE_COLORS.includes(subcatCreateColor) && <Palette size={12} className="text-muted-foreground" />}
+            </button>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={() => setShowSubcatCreate(false)}>{t('common.cancel')}</Button>
+          <Button onClick={async () => {
+            if (!subcatCreateName.trim() || !form.categoryId) return
+            const created = await window.api.subcategories.create({ name: subcatCreateName.trim(), color: subcatCreateColor, scope: 'expense', categoryIds: [Number(form.categoryId)] })
+            const updated = await window.api.subcategories.list()
+            setSubcategories(updated)
+            setForm(f => ({ ...f, subcategoryId: created.id }))
+            setShowSubcatCreate(false)
+          }}>{t('common.create')}</Button>
+        </div>
+      </div>
+    </Modal>
+    <ColorPicker open={showSubcatColorPicker} onClose={() => setShowSubcatColorPicker(false)} value={subcatCreateColor}
+      onConfirm={c => { setSubcatCreateColor(c); setShowSubcatColorPicker(false) }} />
 
     {/* Tag creation modal */}
     <Modal open={showTagCreate} onClose={() => setShowTagCreate(false)} title={t('itemsForm.newTagModal')} maxWidth="max-w-sm">

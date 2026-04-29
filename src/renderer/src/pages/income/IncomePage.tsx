@@ -24,7 +24,7 @@ import { FilterGroup } from '../../components/ui/FilterGroup'
 import {
   HandCoins, Plus, Pencil, Trash2, Repeat, Users,
   CheckCircle, Circle, CircleDot, DollarSign,
-  ChevronDown, CalendarClock, Filter, Palette, X, Undo2, Tags, Bookmark, Download, Coins
+  ChevronDown, CalendarClock, Filter, Palette, X, Undo2, Tags, Bookmark, Download
 } from 'lucide-react'
 import { DayPicker } from '../../components/ui/DayPicker'
 import { formatDayLabelResolved } from '../../../../../shared/day-utils'
@@ -46,7 +46,7 @@ import type { TagData, ItemInterruption } from '../../types/entities'
 import { PRESET_COLORS } from '../../lib/constants'
 
 interface Category { id: number; name: string; icon: string; color: string; scope?: 'expense' | 'income' | 'both' }
-interface Subcategory { id: number; name: string; color: string; categoryIds?: number[] }
+interface Subcategory { id: number; name: string; color: string; scope?: 'expense' | 'income' | 'both'; categoryIds?: number[] }
 
 interface Income {
   id: number; personId: number; description: string
@@ -112,9 +112,11 @@ export default function IncomePage() {
 
   // Categories, tags & stores
   const [categories, setCategories] = useState<Category[]>([])
-  const incomeCategories = categories.filter(c => c.scope !== 'expense')
+  const incomeCategories = categories
   const [subcategories, setSubcategories] = useState<Subcategory[]>([])
-  const availableSubcategories = subcategories.filter(s => !form.categoryId || (s.categoryIds || []).includes(Number(form.categoryId)))
+  const availableSubcategories = form.categoryId
+    ? subcategories.filter(s => s.scope !== 'expense' && (s.categoryIds || []).includes(Number(form.categoryId)))
+    : []
   const [allTags, setAllTags] = useState<TagData[]>([])
   const [stores, setStores] = useState<{ id: number; name: string; color: string }[]>([])
 
@@ -155,6 +157,10 @@ export default function IncomePage() {
   const [tagCreateName, setTagCreateName] = useState('')
   const [tagCreateColor, setTagCreateColor] = useState(PRESET_COLORS[0])
   const [showTagColorPicker, setShowTagColorPicker] = useState(false)
+  const [showSubcatCreate, setShowSubcatCreate] = useState(false)
+  const [subcatCreateName, setSubcatCreateName] = useState('')
+  const [subcatCreateColor, setSubcatCreateColor] = useState(PRESET_COLORS[0])
+  const [showSubcatColorPicker, setShowSubcatColorPicker] = useState(false)
 
   // Interrupt state
   const [interruptItem, setInterruptItem] = useState<Income | null>(null)
@@ -250,13 +256,6 @@ export default function IncomePage() {
     displayCurrency && displayCurrency.exchangeRate > 0
       ? formatCurrencyWith(value / displayCurrency.exchangeRate, displayCurrency.symbol)
       : formatCurrency(value)
-  const cycleDisplayCurrency = () => {
-    if (currencies.length === 0) return
-    const currentId = displayCurrency?.id
-    const currentIndex = currencies.findIndex(c => c.id === currentId)
-    const next = currencies[(currentIndex + 1) % currencies.length]
-    setDisplayCurrencyId(next.id)
-  }
   const receivedCount = filteredIncomes.filter(i => i.isReceived).length
 
   const sortedIncomes = [...filteredIncomes].sort((a, b) => {
@@ -547,7 +546,20 @@ export default function IncomePage() {
     <SectionLayout
       icon={HandCoins}
       title={t('income.title')}
-      monthNav={<MonthNavigator month={month} onChange={setMonth} />}
+      monthNav={
+        <div className="flex items-center gap-2">
+          {currencies.length > 1 && (
+            <Select
+              small
+              className="w-[92px]"
+              value={displayCurrency?.id || ''}
+              onChange={e => setDisplayCurrencyId(Number(e.target.value))}
+              options={currencies.map(c => ({ value: c.id, label: c.code }))}
+            />
+          )}
+          <MonthNavigator month={month} onChange={setMonth} />
+        </div>
+      }
       actionButton={<Button size="sm" onClick={openCreate}><Plus size={16} /> {t('income.newIncome')}</Button>}
       controls={
         <>
@@ -628,7 +640,7 @@ export default function IncomePage() {
                   anchorRef={subcatFilterRef}
                   dropRef={subcatDropRef}
                   onClose={() => setShowSubcatFilter(false)}
-                  items={[{ id: -1, name: t('itemsForm.noSubcategoryPlaceholder'), color: '#6b7280' }, ...subcategories.map(s => ({ id: s.id, name: s.name, color: s.color }))]}
+                  items={[{ id: -1, name: t('itemsForm.noSubcategoryPlaceholder'), color: '#6b7280' }, ...subcategories.filter(s => s.scope !== 'expense').map(s => ({ id: s.id, name: s.name, color: s.color }))]}
                   selected={filterSubcategories}
                   onToggle={id => setFilterSubcategories(f => f.includes(id) ? f.filter(x => x !== id) : [...f, id])}
                   emptyText={t('subcategories.noSubcategories')}
@@ -702,21 +714,7 @@ export default function IncomePage() {
       stats={[
         {
           label: t('items.total'),
-          value: (
-            <span className="inline-flex items-center gap-2">
-              {formatDisplayTotal(total)}
-              {currencies.length > 1 && (
-                <button
-                  type="button"
-                  onClick={cycleDisplayCurrency}
-                  className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                  title={t('currencyManagement.changeDisplayCurrency')}
-                >
-                  <Coins size={13} />
-                </button>
-              )}
-            </span>
-          ),
+          value: formatDisplayTotal(total),
           style: receitasStyle('income', 'hero')
         },
         { label: t('income.title'), value: `${filteredIncomes.length} total · ${receivedCount} ${t('items.received').toLowerCase()}` }
@@ -1100,13 +1098,23 @@ export default function IncomePage() {
                       options={incomeCategories.map(c => ({ value: c.id, label: c.name }))}
                       placeholder={t('itemsForm.noCategoryPlaceholder')}
                     />
-                    <Select
-                      label={t('itemsForm.subcategory')}
-                      value={String(form.subcategoryId)}
-                      onChange={e => setForm({ ...form, subcategoryId: e.target.value })}
-                      options={availableSubcategories.map(s => ({ value: s.id, label: s.name }))}
-                      placeholder={form.categoryId ? t('itemsForm.noSubcategoryPlaceholder') : t('itemsForm.selectCategoryFirst')}
-                    />
+                    <div className="flex gap-1.5">
+                      <div className="flex-1">
+                        <Select
+                          label={t('itemsForm.subcategory')}
+                          value={String(form.subcategoryId)}
+                          onChange={e => setForm({ ...form, subcategoryId: e.target.value })}
+                          options={availableSubcategories.map(s => ({ value: s.id, label: s.name }))}
+                          placeholder={form.categoryId ? t('itemsForm.noSubcategoryPlaceholder') : t('itemsForm.selectCategoryFirst')}
+                          disabled={!form.categoryId}
+                        />
+                      </div>
+                      <button type="button" onClick={() => { setSubcatCreateName(''); setSubcatCreateColor(PRESET_COLORS[0]); setShowSubcatCreate(true) }}
+                        disabled={!form.categoryId}
+                        className="mt-6 h-9 w-9 flex items-center justify-center rounded-md border border-input hover:bg-accent transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed" title={t('subcategories.createSubcategory')}>
+                        <Plus size={14} />
+                      </button>
+                    </div>
                     <Select
                       label={t('itemsForm.storeEntity')}
                       value={String(form.storeId)}
@@ -1238,6 +1246,41 @@ export default function IncomePage() {
       </Modal>
       <ColorPicker open={showTagColorPicker} onClose={() => setShowTagColorPicker(false)} value={tagCreateColor}
         onConfirm={c => { setTagCreateColor(c); setShowTagColorPicker(false) }} />
+
+      {/* Subcategory creation modal */}
+      <Modal open={showSubcatCreate} onClose={() => setShowSubcatCreate(false)} title={t('subcategories.createSubcategory')} maxWidth="max-w-sm">
+        <div className="space-y-4">
+          <Input label={t('common.name')} value={subcatCreateName} onChange={e => setSubcatCreateName(e.target.value)} placeholder={t('subcategories.placeholder')} autoFocus />
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-foreground">{t('common.color')}</label>
+            <div className="flex flex-wrap gap-2">
+              {PRESET_COLORS.map(c => (
+                <button key={c} type="button" onClick={() => setSubcatCreateColor(c)}
+                  className={`h-7 w-7 rounded-full transition-all ${subcatCreateColor === c ? 'ring-2 ring-offset-2 ring-offset-card ring-primary scale-110' : 'hover:scale-105'}`}
+                  style={{ backgroundColor: c }} />
+              ))}
+              <button type="button" onClick={() => setShowSubcatColorPicker(true)}
+                className={`h-7 w-7 rounded-full border-2 border-dashed border-border hover:border-primary flex items-center justify-center transition-all hover:scale-105 ${!PRESET_COLORS.includes(subcatCreateColor) ? 'ring-2 ring-offset-2 ring-offset-card ring-primary scale-110' : ''}`}
+                style={!PRESET_COLORS.includes(subcatCreateColor) ? { backgroundColor: subcatCreateColor } : undefined} title={t('common.customColor')}>
+                {PRESET_COLORS.includes(subcatCreateColor) && <Palette size={12} className="text-muted-foreground" />}
+              </button>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setShowSubcatCreate(false)}>{t('common.cancel')}</Button>
+            <Button onClick={async () => {
+              if (!subcatCreateName.trim() || !form.categoryId) return
+              const created = await window.api.subcategories.create({ name: subcatCreateName.trim(), color: subcatCreateColor, scope: 'income', categoryIds: [Number(form.categoryId)] })
+              const updated = await window.api.subcategories.list()
+              setSubcategories(updated)
+              setForm(f => ({ ...f, subcategoryId: created.id }))
+              setShowSubcatCreate(false)
+            }}>{t('common.create')}</Button>
+          </div>
+        </div>
+      </Modal>
+      <ColorPicker open={showSubcatColorPicker} onClose={() => setShowSubcatColorPicker(false)} value={subcatCreateColor}
+        onConfirm={c => { setSubcatCreateColor(c); setShowSubcatColorPicker(false) }} />
 
       {/* Interrupt modal */}
       <Modal open={!!interruptItem} onClose={() => setInterruptItem(null)} title={t('income.interruptIncome')} maxWidth="max-w-sm">

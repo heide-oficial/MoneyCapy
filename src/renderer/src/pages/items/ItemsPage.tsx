@@ -8,13 +8,14 @@ import { CurrencyInput } from '../../components/ui/CurrencyInput'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { SearchInput } from '../../components/ui/SearchInput'
 import { MonthNavigator } from '../../components/ui/MonthNavigator'
+import { Select } from '../../components/ui/Select'
 import { SectionLayout } from '../../components/layout/SectionLayout'
 import { formatCurrency, formatCurrencyWith } from '../../lib/currency'
 import { useFormatDate } from '../../lib/date'
 import { usePageMonth } from '../../contexts/DefaultMonthContext'
 import {
   Plus, ChevronDown, Check, Filter, Receipt, Download,
-  Tags, Bookmark, Wallet, CreditCard, Store, ToggleLeft, CheckCircle as CheckCircleIcon, Coins
+  Tags, Bookmark, Wallet, CreditCard, Store, ToggleLeft, CheckCircle as CheckCircleIcon
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useActivePerson } from '../../contexts/ActivePersonContext'
@@ -100,7 +101,7 @@ function TabDropdown({ anchorRef, dropRef, current, onChange, onClose, tabs }: {
 }
 
 interface Category { id: number; name: string; icon: string; color: string; scope?: 'expense' | 'income' | 'both' }
-interface Subcategory { id: number; name: string; color: string; categoryIds?: number[] }
+interface Subcategory { id: number; name: string; color: string; scope?: 'expense' | 'income' | 'both'; categoryIds?: number[] }
 interface StoreData2 { id: number; name: string }
 interface CardData { id: number; name: string; personId: number | null; bankAccountId: number | null; billingCloseDay?: number; cardType?: 'credit' | 'debit' | 'both' }
 interface BankAccountData { id: number; name: string; nomeBanco: string | null }
@@ -130,7 +131,7 @@ export default function ItemsPage() {
 
   const [items, setItems] = useState<SectionItem[]>([])
   const [categories, setCategories] = useState<Category[]>([])
-  const expenseCategories = categories.filter(c => c.scope !== 'income')
+  const expenseCategories = categories
   const [subcategories, setSubcategories] = useState<Subcategory[]>([])
   const [cards, setCards] = useState<CardData[]>([])
   const [bankAccounts, setBankAccounts] = useState<BankAccountData[]>([])
@@ -379,13 +380,6 @@ export default function ItemsPage() {
     displayCurrency && displayCurrency.exchangeRate > 0
       ? formatCurrencyWith(value / displayCurrency.exchangeRate, displayCurrency.symbol)
       : formatCurrency(value)
-  const cycleDisplayCurrency = () => {
-    if (currencies.length === 0) return
-    const currentId = displayCurrency?.id
-    const currentIndex = currencies.findIndex(c => c.id === currentId)
-    const next = currencies[(currentIndex + 1) % currencies.length]
-    setDisplayCurrencyId(next.id)
-  }
 
   const csvColumns: CsvColumn<SectionItem>[] = [
     { id: 'description', label: t('csvExport.columns.description'), value: i => i.description },
@@ -742,7 +736,20 @@ export default function ItemsPage() {
     <SectionLayout
       icon={Receipt}
       title={t('items.title')}
-      monthNav={<MonthNavigator month={month} onChange={setMonth} />}
+      monthNav={
+        <div className="flex items-center gap-2">
+          {currencies.length > 1 && (
+            <Select
+              small
+              className="w-[92px]"
+              value={displayCurrency?.id || ''}
+              onChange={e => setDisplayCurrencyId(Number(e.target.value))}
+              options={currencies.map(c => ({ value: c.id, label: c.code }))}
+            />
+          )}
+          <MonthNavigator month={month} onChange={setMonth} />
+        </div>
+      }
       actionButton={<Button size="sm" onClick={openCreate}><Plus size={16} /> {t('items.newItem')}</Button>}
       controls={
         <>
@@ -831,7 +838,7 @@ export default function ItemsPage() {
                   anchorRef={subcatFilterRef}
                   dropRef={subcatDropRef}
                   onClose={() => setShowSubcatFilter(false)}
-                  items={[{ id: -1, name: t('itemsForm.noSubcategoryPlaceholder'), color: '#6b7280' }, ...subcategories.map(s => ({ id: s.id, name: s.name, color: s.color }))]}
+                  items={[{ id: -1, name: t('itemsForm.noSubcategoryPlaceholder'), color: '#6b7280' }, ...subcategories.filter(s => s.scope !== 'income').map(s => ({ id: s.id, name: s.name, color: s.color }))]}
                   selected={filterSubcategories}
                   onToggle={id => setFilterSubcategories(f => f.includes(id) ? f.filter(x => x !== id) : [...f, id])}
                   emptyText={t('subcategories.noSubcategories')}
@@ -1056,21 +1063,7 @@ export default function ItemsPage() {
       stats={[
         {
           label: hasActiveFilters ? t('items.totalActiveFiltered') : t('items.totalActive'),
-          value: (
-            <span className="inline-flex items-center gap-2">
-              {formatDisplayTotal(total)}
-              {currencies.length > 1 && (
-                <button
-                  type="button"
-                  onClick={cycleDisplayCurrency}
-                  className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                  title={t('currencyManagement.changeDisplayCurrency')}
-                >
-                  <Coins size={13} />
-                </button>
-              )}
-            </span>
-          ),
+          value: formatDisplayTotal(total),
           style: gastosStyle('items', 'hero')
         },
         { label: t('items.title'), value: `${t(filteredAndSortedItems.length === 1 ? 'items.itemCount' : 'items.itemCountPlural', { count: filteredAndSortedItems.length })} · ${t('items.unpaidCount', { count: filteredAndSortedItems.filter(i => !i.isPaid).length })}` }
@@ -1129,6 +1122,7 @@ export default function ItemsPage() {
         categories={categories}
         setCategories={setCategories}
         subcategories={subcategories}
+        setSubcategories={setSubcategories}
         cards={cards}
         bankAccounts={bankAccounts}
         stores={stores}
