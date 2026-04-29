@@ -513,6 +513,7 @@
       "tabInstallments": "Installments",
     "tabInterruptions": "Interruptions",
     "tabClassification": "Classification",
+    "tabNotes": "Notes",
     "description": "Description *",
     "descriptionPlaceholder": "e.g.: Rent, Netflix...",
     "storeEntity": "Store/Entity",
@@ -763,6 +764,11 @@
     "noTags": "No tags registered.",
     "addTag": "Add tag",
     "placeholder": "e.g.: Essential"
+  },
+  "notes": {
+    "addBlock": "Add note",
+    "noBlocks": "No notes registered.",
+    "previousBlock": "Previous note"
   },
   "stores": {
     "title": "Stores/Entities",

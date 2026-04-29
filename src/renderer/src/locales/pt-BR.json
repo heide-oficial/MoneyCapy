@@ -513,6 +513,7 @@
       "tabInstallments": "Parcelas",
     "tabInterruptions": "Interrupções",
     "tabClassification": "Classificação",
+    "tabNotes": "Observações",
     "description": "Descrição *",
     "descriptionPlaceholder": "Ex: Aluguel, Netflix...",
     "storeEntity": "Loja/Entidade",
@@ -763,6 +764,11 @@
     "noTags": "Nenhuma tag cadastrada.",
     "addTag": "Adicionar tag",
     "placeholder": "Ex: Essencial"
+  },
+  "notes": {
+    "addBlock": "Adicionar observação",
+    "noBlocks": "Nenhuma observação registrada.",
+    "previousBlock": "Observação anterior"
   },
   "stores": {
     "title": "Lojas/Entidades",

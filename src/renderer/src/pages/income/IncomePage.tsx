@@ -39,6 +39,7 @@ import { toast } from 'sonner'
 import { useUndoableDelete } from '../../hooks/useUndoableDelete'
 import { ColorPicker } from '../../components/ui/ColorPicker'
 import { useTranslation } from '../../contexts/LanguageContext'
+import { createNoteBlock, formatNoteBlockDate, parseNoteBlocks, serializeNoteBlocks } from '../../lib/note-blocks'
 
 import type { TagData, ItemInterruption } from '../../types/entities'
 
@@ -130,7 +131,7 @@ export default function IncomePage() {
   const sortBtnRef = useRef<HTMLButtonElement>(null)
   const sortDropRef = useRef<HTMLDivElement>(null)
 
-  const [incomeTab, setIncomeTab] = useState<'detalhes' | 'valores' | 'interrupcoes' | 'classificacao'>('detalhes')
+  const [incomeTab, setIncomeTab] = useState<'detalhes' | 'valores' | 'interrupcoes' | 'classificacao' | 'observacoes'>('detalhes')
   const [modalScrollFade, setModalScrollFade] = useState({ top: false, bottom: false })
   const modalScrollRef = useRef<HTMLDivElement>(null)
   const [showValueEdit, setShowValueEdit] = useState(false)
@@ -445,6 +446,52 @@ export default function IncomePage() {
     })
   })()
 
+  const renderNotesTab = () => {
+    const blocks = parseNoteBlocks(form.notes)
+    const updateBlocks = (next: ReturnType<typeof parseNoteBlocks>) => {
+      setForm(f => ({ ...f, notes: serializeNoteBlocks(next) }))
+    }
+
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('itemsForm.notes')}</h4>
+          <Button size="sm" variant="outline" onClick={() => updateBlocks([createNoteBlock(), ...blocks])}>
+            <Plus size={14} /> {t('notes.addBlock')}
+          </Button>
+        </div>
+        {blocks.length === 0 ? (
+          <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
+            {t('notes.noBlocks')}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {blocks.map(block => (
+              <div key={block.id} className="rounded-lg border border-border bg-card p-4 space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {formatNoteBlockDate(block.createdAt, t('notes.previousBlock'))}
+                  </span>
+                  <button type="button" onClick={() => updateBlocks(blocks.filter(b => b.id !== block.id))}
+                    className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
+                    <X size={14} />
+                  </button>
+                </div>
+                <textarea
+                  value={block.text}
+                  onChange={e => updateBlocks(blocks.map(b => b.id === block.id ? { ...b, text: e.target.value } : b))}
+                  className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  rows={3}
+                  placeholder={t('itemsForm.notesPlaceholder')}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   if (!activePerson) {
     return (
       <div className="space-y-6">
@@ -752,7 +799,8 @@ export default function IncomePage() {
               { key: 'detalhes' as const, label: t('itemsForm.tabDetails') },
               ...(editing && form.isRecurring ? [{ key: 'valores' as const, label: t('itemsForm.tabValues') }] : []),
               ...(editing ? [{ key: 'interrupcoes' as const, label: t('itemsForm.tabInterruptions') }] : []),
-              { key: 'classificacao' as const, label: t('itemsForm.tabClassification') }
+              { key: 'classificacao' as const, label: t('itemsForm.tabClassification') },
+              { key: 'observacoes' as const, label: t('itemsForm.tabNotes') }
             ]).map(tab => (
               <button key={tab.key} type="button" onClick={() => setIncomeTab(tab.key)}
                 className={`text-sm font-medium pb-1 border-b-2 transition-colors ${
@@ -793,10 +841,7 @@ export default function IncomePage() {
                 <div className="space-y-2">
                   <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('itemsForm.information')}</h4>
                   <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
-                      <Input label={t('itemsForm.description')} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder={t('income.descriptionPlaceholder')} autoFocus />
-                      <Select label={t('itemsForm.storeEntity')} value={String(form.storeId)} onChange={e => setForm({ ...form, storeId: e.target.value })} options={stores.map(s => ({ value: s.id, label: s.name }))} placeholder={t('itemsForm.nonePlaceholder')} />
-                    </div>
+                    <Input label={t('itemsForm.description')} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder={t('income.descriptionPlaceholder')} autoFocus />
                     {currencies.length > 1 && (
                       <div>
                         <Select
@@ -951,13 +996,20 @@ export default function IncomePage() {
                 {/* Seção: Categoria */}
                 <div className="space-y-2">
                   <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('itemsForm.category')}</h4>
-                  <div className="rounded-lg border border-border bg-card p-4">
+                  <div className="rounded-lg border border-border bg-card p-4 space-y-4">
                     <Select
                       label={t('itemsForm.category')}
                       value={String(form.categoryId)}
                       onChange={e => setForm({ ...form, categoryId: e.target.value })}
                       options={incomeCategories.map(c => ({ value: c.id, label: c.name }))}
                       placeholder={t('itemsForm.noCategoryPlaceholder')}
+                    />
+                    <Select
+                      label={t('itemsForm.storeEntity')}
+                      value={String(form.storeId)}
+                      onChange={e => setForm({ ...form, storeId: e.target.value })}
+                      options={stores.map(s => ({ value: s.id, label: s.name }))}
+                      placeholder={t('itemsForm.nonePlaceholder')}
                     />
                   </div>
                 </div>
@@ -998,16 +1050,9 @@ export default function IncomePage() {
                 </div>
 
                 {/* Seção: Observações */}
-                <div className="space-y-2">
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('itemsForm.notes')}</h4>
-                  <div className="rounded-lg border border-border bg-card p-4">
-                    <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })}
-                      className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      rows={2} placeholder={t('itemsForm.notesPlaceholder')} />
-                  </div>
-                </div>
               </div>
             )}
+            {incomeTab === 'observacoes' && renderNotesTab()}
 
             {/* Bottom fade */}
             <div className={`sticky bottom-0 -mt-6 h-6 z-10 pointer-events-none bg-gradient-to-t from-background to-transparent transition-opacity ${modalScrollFade.bottom ? 'opacity-100' : 'opacity-0'}`} />

@@ -14,6 +14,7 @@ import { DayPicker } from '../../components/ui/DayPicker'
 import { ColorPicker } from '../../components/ui/ColorPicker'
 import { useTranslation } from '../../contexts/LanguageContext'
 import { toast } from 'sonner'
+import { createNoteBlock, formatNoteBlockDate, parseNoteBlocks, serializeNoteBlocks } from '../../lib/note-blocks'
 
 export interface FormSplit {
   cardId: string
@@ -22,7 +23,7 @@ export interface FormSplit {
   paymentMethod?: string
 }
 
-export type ModalTab = 'detalhes' | 'valores' | 'parcelas' | 'interrupcoes' | 'classificacao'
+export type ModalTab = 'detalhes' | 'valores' | 'parcelas' | 'interrupcoes' | 'classificacao' | 'observacoes'
 
 interface MonthlyValueOverride {
   month: string
@@ -449,21 +450,7 @@ export function ItemsForm({
         <div className="space-y-2">
           <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('itemsForm.information')}</h4>
           <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <Input label={t('itemsForm.description')} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder={t('itemsForm.descriptionPlaceholder')} autoFocus />
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">{t('itemsForm.storeEntity')}</label>
-                <div className="flex gap-1.5">
-                  <div className="flex-1">
-                    <Select value={String(form.storeId)} onChange={e => setForm({ ...form, storeId: e.target.value })} options={stores.map(s => ({ value: s.id, label: s.name }))} placeholder={t('common.none')} />
-                  </div>
-                  <button type="button" onClick={() => { setStoreCreateName(''); setStoreCreateColor(INLINE_COLORS[0]); setShowStoreCreate(true) }}
-                    className="h-9 w-9 flex items-center justify-center rounded-md border border-input hover:bg-accent transition-colors shrink-0" title={t('itemsForm.createStore')}>
-                    <Plus size={14} />
-                  </button>
-                </div>
-              </div>
-            </div>
+            <Input label={t('itemsForm.description')} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder={t('itemsForm.descriptionPlaceholder')} autoFocus />
             {currencies.length > 1 && (
               <div>
                 <Select
@@ -1026,7 +1013,7 @@ export function ItemsForm({
       {/* Seção: Categoria */}
       <div className="space-y-2">
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('itemsForm.category')}</h4>
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div className="rounded-lg border border-border bg-card p-4 space-y-4">
           <div className="flex gap-1.5">
             <div className="flex-1">
               <Select
@@ -1040,6 +1027,18 @@ export function ItemsForm({
               className="h-9 w-9 flex items-center justify-center rounded-md border border-input hover:bg-accent transition-colors shrink-0" title={t('itemsForm.createCategory')}>
               <Plus size={14} />
             </button>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-foreground">{t('itemsForm.storeEntity')}</label>
+            <div className="flex gap-1.5">
+              <div className="flex-1">
+                <Select value={String(form.storeId)} onChange={e => setForm({ ...form, storeId: e.target.value })} options={stores.map(s => ({ value: s.id, label: s.name }))} placeholder={t('common.none')} />
+              </div>
+              <button type="button" onClick={() => { setStoreCreateName(''); setStoreCreateColor(INLINE_COLORS[0]); setShowStoreCreate(true) }}
+                className="h-9 w-9 flex items-center justify-center rounded-md border border-input hover:bg-accent transition-colors shrink-0" title={t('itemsForm.createStore')}>
+                <Plus size={14} />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1080,16 +1079,54 @@ export function ItemsForm({
       </div>
 
       {/* Seção: Observações */}
-      <div className="space-y-2">
-        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('itemsForm.notes')}</h4>
-        <div className="rounded-lg border border-border bg-card p-4">
-          <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })}
-            className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            rows={2} placeholder={t('itemsForm.notesPlaceholder')} />
-        </div>
-      </div>
     </div>
   )
+
+  const renderTabObservacoes = () => {
+    const blocks = parseNoteBlocks(form.notes)
+    const updateBlocks = (next: ReturnType<typeof parseNoteBlocks>) => {
+      setForm(f => ({ ...f, notes: serializeNoteBlocks(next) }))
+    }
+
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('itemsForm.notes')}</h4>
+          <Button size="sm" variant="outline" onClick={() => updateBlocks([createNoteBlock(), ...blocks])}>
+            <Plus size={14} /> {t('notes.addBlock')}
+          </Button>
+        </div>
+        {blocks.length === 0 ? (
+          <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
+            {t('notes.noBlocks')}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {blocks.map(block => (
+              <div key={block.id} className="rounded-lg border border-border bg-card p-4 space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {formatNoteBlockDate(block.createdAt, t('notes.previousBlock'))}
+                  </span>
+                  <button type="button" onClick={() => updateBlocks(blocks.filter(b => b.id !== block.id))}
+                    className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
+                    <X size={14} />
+                  </button>
+                </div>
+                <textarea
+                  value={block.text}
+                  onChange={e => updateBlocks(blocks.map(b => b.id === block.id ? { ...b, text: e.target.value } : b))}
+                  className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  rows={3}
+                  placeholder={t('itemsForm.notesPlaceholder')}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <>
@@ -1102,7 +1139,8 @@ export function ItemsForm({
             ...(editing && form.type === 'subscription' ? [{ key: 'valores' as ModalTab, label: t('itemsForm.tabValues') }] : []),
             ...(showParcelasTab ? [{ key: 'parcelas' as ModalTab, label: t('itemsForm.tabInstallments') }] : []),
             ...(editing ? [{ key: 'interrupcoes' as ModalTab, label: t('itemsForm.tabInterruptions') }] : []),
-            { key: 'classificacao' as ModalTab, label: t('itemsForm.tabClassification') }
+            { key: 'classificacao' as ModalTab, label: t('itemsForm.tabClassification') },
+            { key: 'observacoes' as ModalTab, label: t('itemsForm.tabNotes') }
           ]).map(tab => (
             <button key={tab.key} type="button" onClick={() => setModalTab(tab.key)}
               className={`text-sm font-medium pb-1 border-b-2 transition-colors ${
@@ -1129,6 +1167,7 @@ export function ItemsForm({
           {modalTab === 'parcelas' && showParcelasTab && renderTabParcelas()}
           {modalTab === 'interrupcoes' && renderTabInterrupcoes()}
           {modalTab === 'classificacao' && renderTabClassificacao()}
+          {modalTab === 'observacoes' && renderTabObservacoes()}
 
           {/* Bottom fade (sticky) */}
           <div className={`sticky bottom-0 -mt-6 h-6 z-10 pointer-events-none bg-gradient-to-t from-background to-transparent transition-opacity ${modalScrollFade.bottom ? 'opacity-100' : 'opacity-0'}`} />
