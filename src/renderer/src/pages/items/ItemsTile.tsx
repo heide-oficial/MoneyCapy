@@ -140,7 +140,7 @@ export function ItemsTile({
     if ((item.type === 'installment' || item.type === 'emprestimo' || item.type === 'subscription') && item.interruptions && item.interruptions.length > 0) {
       base.push({ label: t('items.viewInterruptions'), icon: Repeat, onClick: () => onViewInterruptions(item) })
     }
-    if (item.type === 'subscription' && !(item.interruptions?.some(i => !i.resumeMonth))) {
+    if ((item.type === 'installment' || item.type === 'emprestimo' || item.type === 'subscription') && !(item.interruptions?.some(i => !i.resumeMonth))) {
       base.push({ label: t('items.interrupt'), icon: X, onClick: () => onInterrupt(item) })
     }
     base.push({ label: t('common.delete'), icon: Trash2, onClick: () => onDelete(item.id), destructive: true })

@@ -387,6 +387,7 @@ export default function ItemsPage() {
 
   const openCreate = () => {
     setEditing(null)
+    setFormInitialTab(undefined)
     const type = typeFilter || 'common'
     setForm({
       ...defaultForm,
@@ -681,6 +682,25 @@ export default function ItemsPage() {
       toast.error(e.message || t('common.errorSaving'))
     }
   }
+
+  const addMonthsForInterruption = (baseMonth: string, count: number) => {
+    const [year, monthNumber] = baseMonth.split('-').map(Number)
+    const total = year * 12 + monthNumber - 1 + count
+    const nextYear = Math.floor(total / 12)
+    const nextMonth = (total % 12) + 1
+    return `${nextYear}-${String(nextMonth).padStart(2, '0')}`
+  }
+
+  const interruptionPreview = (() => {
+    const pausedUntil = addMonthsForInterruption(month, interruptMonths)
+    const resumeMonth = addMonthsForInterruption(month, interruptMonths + 1)
+    return t('items.interruptionPreview', {
+      count: String(interruptMonths),
+      startMonth: fmtMonth(month),
+      endMonth: fmtMonth(pausedUntil),
+      resumeMonth: fmtMonth(resumeMonth)
+    })
+  })()
 
   return (
     <SectionLayout
@@ -1000,7 +1020,7 @@ export default function ItemsPage() {
               onEditValue={openValueEdit}
               onReactivate={handleReactivate}
               onInterrupt={item => { setInterruptItem(item); if (item.interruptions?.some(i => !i.resumeMonth)) setInterruptMode('temporary') }}
-              onViewInterruptions={item => openEdit(item, 'parcelas')}
+              onViewInterruptions={item => openEdit(item, 'interrupcoes')}
             />
           ))}
         </div>
@@ -1053,19 +1073,19 @@ export default function ItemsPage() {
               disabled={!!(interruptItem?.interruptions?.some(i => !i.resumeMonth))}
               className={`flex-1 px-3 py-2 rounded-md border text-sm font-medium transition-colors ${interruptMode === 'permanent' ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:bg-accent'} disabled:opacity-40 disabled:cursor-not-allowed`}
             >
-              {t('items.interrupted')}
+              {t('items.interruptedPermanentlyOption')}
             </button>
             <button
               type="button"
               onClick={() => setInterruptMode('temporary')}
               className={`flex-1 px-3 py-2 rounded-md border text-sm font-medium transition-colors ${interruptMode === 'temporary' ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:bg-accent'}`}
             >
-              {t('items.pausedUntil', { month: '' })}
+              {t('items.interruptedForOption')}
             </button>
           </div>
           {interruptMode === 'temporary' && (
             <div className="space-y-2">
-              <label className="text-sm font-medium">{t('items.pausedUntil', { month: `${interruptMonths}` })}</label>
+              <label className="text-sm font-medium">{t('items.interruptionMonths')}</label>
               <input
                 type="number"
                 min={1}
@@ -1074,6 +1094,7 @@ export default function ItemsPage() {
                 onChange={e => setInterruptMonths(Math.max(1, parseInt(e.target.value) || 1))}
                 className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm"
               />
+              <p className="text-xs text-muted-foreground">{interruptionPreview}</p>
             </div>
           )}
           <div className="flex justify-end gap-2 pt-2">

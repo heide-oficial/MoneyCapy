@@ -372,7 +372,7 @@ export default function IncomePage() {
 
   const handleInterrupt = async () => {
     if (!interruptItem) return
-    const pauseMonths = interruptMode === 'temporary' ? parseInt(interruptMonths) || 2 : undefined
+    const pauseMonths = interruptMode === 'temporary' ? interruptionMonthsCount : undefined
     await window.api.personIncome.interrupt(interruptItem.id, month, pauseMonths)
     toast.success(interruptMode === 'permanent' ? t('items.interrupted') : t('items.pausedUntil', { month: String(pauseMonths) }))
     setInterruptItem(null)
@@ -395,6 +395,26 @@ export default function IncomePage() {
   }
 
   const formatMonth = (m: string) => fmtMonth(m)
+
+  const addMonthsForInterruption = (baseMonth: string, count: number) => {
+    const [year, monthNumber] = baseMonth.split('-').map(Number)
+    const total = year * 12 + monthNumber - 1 + count
+    const nextYear = Math.floor(total / 12)
+    const nextMonth = (total % 12) + 1
+    return `${nextYear}-${String(nextMonth).padStart(2, '0')}`
+  }
+
+  const interruptionMonthsCount = Math.max(1, parseInt(interruptMonths) || 1)
+  const interruptionPreview = (() => {
+    const pausedUntil = addMonthsForInterruption(month, interruptionMonthsCount)
+    const resumeMonth = addMonthsForInterruption(month, interruptionMonthsCount + 1)
+    return t('items.interruptionPreview', {
+      count: String(interruptionMonthsCount),
+      startMonth: fmtMonth(month),
+      endMonth: fmtMonth(pausedUntil),
+      resumeMonth: fmtMonth(resumeMonth)
+    })
+  })()
 
   if (!activePerson) {
     return (
@@ -992,18 +1012,21 @@ export default function IncomePage() {
               className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
                 interruptMode === 'temporary' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
               }`}>
-              {t('income.temporary')}
+              {t('items.interruptedForOption')}
             </button>
             <button type="button" onClick={() => setInterruptMode('permanent')}
               className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
                 interruptMode === 'permanent' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
               }`}>
-              {t('income.permanent')}
+              {t('items.interruptedPermanentlyOption')}
             </button>
           </div>
           {interruptMode === 'temporary' && (
-            <Input label={t('income.pauseMonths')} type="number" min={1} value={interruptMonths}
-              onChange={e => setInterruptMonths(e.target.value)} />
+            <div className="space-y-2">
+              <Input label={t('items.interruptionMonths')} type="number" min={1} value={interruptMonths}
+                onChange={e => setInterruptMonths(e.target.value)} />
+              <p className="text-xs text-muted-foreground">{interruptionPreview}</p>
+            </div>
           )}
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setInterruptItem(null)}>{t('common.cancel')}</Button>

@@ -20,7 +20,7 @@ export interface FormSplit {
   totalInstallments: number
 }
 
-export type ModalTab = 'detalhes' | 'parcelas' | 'classificacao'
+export type ModalTab = 'detalhes' | 'parcelas' | 'interrupcoes' | 'classificacao'
 
 export function getTypeOptions(t: (key: string) => string) {
   return [
@@ -473,37 +473,54 @@ export function ItemsForm({
         </div>
 
         {/* Seção: Interrupções (subscription editing) */}
-        {editing && form.type === 'subscription' && (
-          (editing.interruptions?.length > 0 || (!editing.endReason && !(editing.interruptions?.some(i => !i.resumeMonth)))) && (
-            <div className="space-y-2">
-              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('itemsForm.interruptions')}</h4>
-              <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-                {editing.interruptions?.map(int => (
-                  <div key={int.id} className="flex items-center justify-between text-sm">
-                    <span>
-                      {int.resumeMonth
-                        ? t('itemsForm.pausedAt', { startMonth: fmtMonth(int.endMonth), resumeMonth: fmtMonth(int.resumeMonth) })
-                        : t('itemsForm.interruptedPermanently', { endMonth: fmtMonth(int.endMonth) })}
-                    </span>
-                    <Button size="sm" variant="outline" onClick={() => { handleReactivate(int.id); onClose() }}>
-                      <Undo2 size={12} /> {t('common.undo')}
-                    </Button>
-                  </div>
-                ))}
-                {!editing.endReason && !(editing.interruptions?.some(i => !i.resumeMonth)) && (
-                  <Button size="sm" variant="outline" onClick={() => { onClose(); setTimeout(() => setInterruptItem(editing), 50) }}>
-                    <X size={14} /> {t('itemsForm.interrupt')}
-                  </Button>
-                )}
-              </div>
-            </div>
-          )
-        )}
       </div>
     )
   }
 
   /* ─── Tab: Parcelas (only for editing installment/emprestimo) ─── */
+  const renderTabInterrupcoes = () => {
+    if (!editing) return null
+    const canInterrupt = editing.type === 'installment' || editing.type === 'emprestimo' || editing.type === 'subscription'
+    const hasPermanent = editing.interruptions?.some(i => !i.resumeMonth)
+
+    return (
+      <div className="space-y-4">
+        {!canInterrupt && (
+          <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
+            {t('itemsForm.interruptionsUnavailable')}
+          </div>
+        )}
+
+        {canInterrupt && (
+          <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+            {editing.interruptions && editing.interruptions.length > 0 ? (
+              editing.interruptions.map(int => (
+                <div key={int.id} className="flex items-center justify-between gap-3 text-sm">
+                  <span>
+                    {int.resumeMonth
+                      ? t('itemsForm.pausedAt', { startMonth: fmtMonth(int.endMonth), resumeMonth: fmtMonth(int.resumeMonth) })
+                      : t('itemsForm.interruptedPermanently', { endMonth: fmtMonth(int.endMonth) })}
+                  </span>
+                  <Button size="sm" variant="outline" onClick={() => { handleReactivate(int.id); onClose() }}>
+                    <Undo2 size={12} /> {t('common.undo')}
+                  </Button>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">{t('itemsForm.noInterruptions')}</p>
+            )}
+
+            {!editing.endReason && !hasPermanent && (
+              <Button size="sm" variant="outline" onClick={() => { onClose(); setTimeout(() => setInterruptItem(editing), 50) }}>
+                <X size={14} /> {t('itemsForm.interrupt')}
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   const renderTabParcelas = () => {
     if (!editing) return null
 
@@ -713,29 +730,6 @@ export function ItemsForm({
         )}
 
         {/* Interrupções */}
-        {(editing.interruptions?.length > 0 || (!editing.endReason && !(editing.interruptions?.some(i => !i.resumeMonth)))) && (
-          <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-            <span className="text-sm font-semibold">{t('itemsForm.interruptions')}</span>
-            {editing.interruptions?.map(int => (
-              <div key={int.id} className="flex items-center justify-between text-sm">
-                <span>
-                  {int.resumeMonth
-                    ? t('itemsForm.pausedAt', { startMonth: fmtMonth(int.endMonth), resumeMonth: fmtMonth(int.resumeMonth) })
-                    : t('itemsForm.interruptedPermanently', { endMonth: fmtMonth(int.endMonth) })}
-                </span>
-                <Button size="sm" variant="outline" onClick={() => { handleReactivate(int.id); onClose() }}>
-                  <Undo2 size={12} /> {t('common.undo')}
-                </Button>
-              </div>
-            ))}
-            {!editing.endReason && !(editing.interruptions?.some(i => !i.resumeMonth)) && (
-              <Button size="sm" variant="outline" onClick={() => { onClose(); setTimeout(() => setInterruptItem(editing), 50) }}>
-                <X size={14} /> {t('itemsForm.interrupt')}
-              </Button>
-            )}
-          </div>
-        )}
-
         {/* Historico de antecipacoes */}
         {editing.anticipations && editing.anticipations.length > 0 && (
           <div className="rounded-lg border border-border bg-card p-4 space-y-3">
@@ -880,6 +874,7 @@ export function ItemsForm({
           {([
             { key: 'detalhes' as ModalTab, label: t('itemsForm.tabDetails') },
             ...(showParcelasTab ? [{ key: 'parcelas' as ModalTab, label: t('itemsForm.tabInstallments') }] : []),
+            ...(editing ? [{ key: 'interrupcoes' as ModalTab, label: t('itemsForm.tabInterruptions') }] : []),
             { key: 'classificacao' as ModalTab, label: t('itemsForm.tabClassification') }
           ]).map(tab => (
             <button key={tab.key} type="button" onClick={() => setModalTab(tab.key)}
@@ -904,6 +899,7 @@ export function ItemsForm({
 
           {modalTab === 'detalhes' && renderTabDetalhes()}
           {modalTab === 'parcelas' && showParcelasTab && renderTabParcelas()}
+          {modalTab === 'interrupcoes' && renderTabInterrupcoes()}
           {modalTab === 'classificacao' && renderTabClassificacao()}
 
           {/* Bottom fade (sticky) */}
