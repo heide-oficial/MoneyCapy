@@ -172,11 +172,37 @@ export function ItemsForm({
     setForm(f => ({ ...f, splits: f.splits.filter((_, i) => i !== index) }))
   }
 
+  const getCardPaymentAvailability = (cardIds: string[]) => {
+    const selectedCards = cardIds
+      .filter(Boolean)
+      .map(id => cards.find(c => String(c.id) === String(id)))
+      .filter(Boolean) as CardData[]
+    return {
+      canCredit: !selectedCards.some(card => card.cardType === 'debit'),
+      canDebit: !selectedCards.some(card => card.cardType === 'credit')
+    }
+  }
+
+  const normalizePaymentMethodForCards = (current: string, cardIds: string[]) => {
+    const { canCredit, canDebit } = getCardPaymentAvailability(cardIds)
+    if (current === 'credit' && canCredit) return current
+    if (current === 'debit' && canDebit) return current
+    if (canCredit) return 'credit'
+    if (canDebit) return 'debit'
+    return current || 'credit'
+  }
+
   const updateSplit = (index: number, field: keyof FormSplit, val: any) => {
-    setForm(f => ({
-      ...f,
-      splits: f.splits.map((s, i) => i !== index ? s : { ...s, [field]: val })
-    }))
+    setForm(f => {
+      const splits = f.splits.map((s, i) => i !== index ? s : { ...s, [field]: val })
+      return {
+        ...f,
+        splits,
+        paymentMethod: field === 'cardId'
+          ? normalizePaymentMethodForCards(f.paymentMethod, splits.map(s => String(s.cardId)))
+          : f.paymentMethod
+      }
+    })
   }
 
   const handleTypeChange = (newType: string) => {
@@ -216,21 +242,51 @@ export function ItemsForm({
   const renderTabDetalhes = () => {
     const isInstallment = form.type === 'installment'
     const isEmprestimo = form.type === 'emprestimo'
+    const installmentCardIds = form.splits.map(s => String(s.cardId)).filter(Boolean)
+    const paymentAvailability = getCardPaymentAvailability(installmentCardIds)
 
     const setCardMode = (mode: CardMode) => {
       setForm(f => {
         const baseSplit = f.splits[0] || { cardId: '', value: f.value, totalInstallments: 1 }
-        if (mode === 'none') return { ...f, cardMode: mode, splits: [{ ...baseSplit, cardId: '' }] }
-        if (mode === 'single') return { ...f, cardMode: mode, splits: [{ ...baseSplit, value: f.value }] }
+        if (mode === 'none') return { ...f, cardMode: mode, splits: [{ ...baseSplit, cardId: '' }], paymentMethod: '' }
+        if (mode === 'single') {
+          const splits = [{ ...baseSplit, value: f.value }]
+          return { ...f, cardMode: mode, splits, paymentMethod: normalizePaymentMethodForCards(f.paymentMethod || 'credit', splits.map(s => String(s.cardId))) }
+        }
         if (f.splits.length < 2) {
-          return { ...f, cardMode: mode, splits: [
+          const splits = [
             { ...baseSplit, value: baseSplit.value || f.value },
             { cardId: '', value: 0, totalInstallments: baseSplit.totalInstallments }
-          ]}
+          ]
+          return { ...f, cardMode: mode, splits: [
+            ...splits
+          ], paymentMethod: normalizePaymentMethodForCards(f.paymentMethod || 'credit', splits.map(s => String(s.cardId)))}
         }
-        return { ...f, cardMode: mode }
+        return { ...f, cardMode: mode, paymentMethod: normalizePaymentMethodForCards(f.paymentMethod || 'credit', f.splits.map(s => String(s.cardId))) }
       })
     }
+
+    const renderPaymentMethodSelector = () => (
+      <div className="space-y-1.5">
+        <label className="text-sm font-medium text-foreground">{t('itemsForm.paymentMethod')}</label>
+        <div className="flex rounded-lg border border-input p-0.5 bg-muted/30">
+          <button type="button" onClick={() => setForm(f => ({ ...f, paymentMethod: 'credit' }))}
+            disabled={!paymentAvailability.canCredit}
+            className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
+              form.paymentMethod === 'credit' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            } ${!paymentAvailability.canCredit ? 'opacity-30 cursor-not-allowed' : ''}`}>
+            {t('itemsForm.credit')}
+          </button>
+          <button type="button" onClick={() => setForm(f => ({ ...f, paymentMethod: 'debit' }))}
+            disabled={!paymentAvailability.canDebit}
+            className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
+              form.paymentMethod === 'debit' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            } ${!paymentAvailability.canDebit ? 'opacity-30 cursor-not-allowed' : ''}`}>
+            {t('itemsForm.debit')}
+          </button>
+        </div>
+      </div>
+    )
 
     const renderCardWidget = (sp: FormSplit, idx: number) => (
       <div key={idx} className="rounded-lg border border-border p-3 space-y-3">
@@ -336,6 +392,8 @@ export function ItemsForm({
                   </button>
                 ))}
               </div>
+
+              {form.cardMode !== 'none' && renderPaymentMethodSelector()}
 
               {form.cardMode === 'none' && form.splits.length > 0 && (
                 <div className="space-y-3">
