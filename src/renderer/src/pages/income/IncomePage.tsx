@@ -132,6 +132,9 @@ export default function IncomePage() {
   const [showValueEdit, setShowValueEdit] = useState(false)
   const [valueEditTarget, setValueEditTarget] = useState<Income | null>(null)
   const [monthValue, setMonthValue] = useState(0)
+  const [showReceivedDateEdit, setShowReceivedDateEdit] = useState(false)
+  const [receivedDateTarget, setReceivedDateTarget] = useState<Income | null>(null)
+  const [receivedDateValue, setReceivedDateValue] = useState('')
 
   // Tag creation modal
   const [showTagCreate, setShowTagCreate] = useState(false)
@@ -285,6 +288,12 @@ export default function IncomePage() {
     setShowValueEdit(true)
   }
 
+  const openReceivedDateEdit = (inc: Income) => {
+    setReceivedDateTarget(inc)
+    setReceivedDateValue(inc.receivedAt || new Date().toISOString().substring(0, 10))
+    setShowReceivedDateEdit(true)
+  }
+
   const handleSave = async () => {
     if (!form.description.trim()) { toast.error(t('common.descriptionRequired')); return }
     if (!form.startMonth) { toast.error(t('common.startMonthRequired')); return }
@@ -337,6 +346,14 @@ export default function IncomePage() {
     load()
   }
 
+  const handleSaveReceivedDate = async () => {
+    if (!receivedDateTarget) return
+    await window.api.personIncome.setReceived(receivedDateTarget.id, month, true, receivedDateValue || undefined)
+    toast.success(t('income.receivedDateUpdated'))
+    setShowReceivedDateEdit(false)
+    setReceivedDateTarget(null)
+    load()
+  }
 
   const handleSaveMonthValue = async () => {
     if (!valueEditTarget) return
@@ -548,6 +565,7 @@ export default function IncomePage() {
             const kebabItems: any[] = [
               { label: t('income.editIncome'), icon: Pencil, onClick: () => openEdit(inc) },
               { label: t('items.editValueThisMonth'), icon: DollarSign, onClick: () => openValueEdit(inc) },
+              { label: t('income.changeReceivedDate'), icon: CalendarClock, onClick: () => openReceivedDateEdit(inc) },
             ]
             if (inc.isReceived) {
               kebabItems.push({ label: t('items.undoReceipt'), icon: CheckCircle, onClick: () => toggleReceived(inc.id) })
@@ -910,6 +928,20 @@ export default function IncomePage() {
               <Button variant="outline" onClick={() => setShowValueEdit(false)}>{t('common.cancel')}</Button>
               <Button onClick={handleSaveMonthValue}>{t('common.save')}</Button>
             </div>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal open={showReceivedDateEdit} onClose={() => setShowReceivedDateEdit(false)} title={t('income.changeReceivedDate')}>
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            {t('income.changeReceivedDateDesc', { name: receivedDateTarget?.description || '' })}
+          </p>
+          <DatePicker mode="date" label={t('income.receivedDate')} value={receivedDateValue}
+            onChange={setReceivedDateValue} />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setShowReceivedDateEdit(false)}>{t('common.cancel')}</Button>
+            <Button onClick={handleSaveReceivedDate}>{t('common.save')}</Button>
           </div>
         </div>
       </Modal>
