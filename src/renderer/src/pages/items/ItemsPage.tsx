@@ -9,16 +9,17 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { SearchInput } from '../../components/ui/SearchInput'
 import { MonthNavigator } from '../../components/ui/MonthNavigator'
 import { SectionLayout } from '../../components/layout/SectionLayout'
-import { formatCurrency } from '../../lib/currency'
+import { formatCurrency, formatCurrencyWith } from '../../lib/currency'
 import { useFormatDate } from '../../lib/date'
 import { usePageMonth } from '../../contexts/DefaultMonthContext'
 import {
   Plus, ChevronDown, Check, Filter, Receipt, Download,
-  Tags, Bookmark, Wallet, CreditCard, Store, ToggleLeft, CheckCircle as CheckCircleIcon
+  Tags, Bookmark, Wallet, CreditCard, Store, ToggleLeft, CheckCircle as CheckCircleIcon, Coins
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useActivePerson } from '../../contexts/ActivePersonContext'
 import { useColorSettings } from '../../contexts/ColorSettingsContext'
+import { useCurrencySettings } from '../../contexts/CurrencySettingsContext'
 import { useTranslation } from '../../contexts/LanguageContext'
 import { FilterDropdown } from '../../components/ui/FilterDropdown'
 import { SimpleDropdown } from '../../components/ui/SimpleDropdown'
@@ -110,6 +111,7 @@ export default function ItemsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { activePerson, bumpItems, itemsVersion } = useActivePerson()
   const { gastosStyle } = useColorSettings()
+  const { currencies, baseCurrency } = useCurrencySettings()
   const { fmtMonth, fmtDate } = useFormatDate()
   const { month, setMonth } = usePageMonth()
   const { t } = useTranslation()
@@ -212,6 +214,7 @@ export default function ItemsPage() {
   // Columns
   const { columns, gridClass, pickerButton } = useColumnsPicker('item-columns')
   const [showCsvExport, setShowCsvExport] = useState(false)
+  const [displayCurrencyId, setDisplayCurrencyId] = useState<number | null>(null)
 
   const loadData = async () => {
     if (!activePerson) return
@@ -371,6 +374,18 @@ export default function ItemsPage() {
   }
 
   const total = filteredAndSortedItems.filter(i => i.isActive).reduce((s, i) => s + getItemMonthlyValue(i), 0)
+  const displayCurrency = currencies.find(c => c.id === displayCurrencyId) || baseCurrency
+  const formatDisplayTotal = (value: number) =>
+    displayCurrency && displayCurrency.exchangeRate > 0
+      ? formatCurrencyWith(value / displayCurrency.exchangeRate, displayCurrency.symbol)
+      : formatCurrency(value)
+  const cycleDisplayCurrency = () => {
+    if (currencies.length === 0) return
+    const currentId = displayCurrency?.id
+    const currentIndex = currencies.findIndex(c => c.id === currentId)
+    const next = currencies[(currentIndex + 1) % currencies.length]
+    setDisplayCurrencyId(next.id)
+  }
 
   const csvColumns: CsvColumn<SectionItem>[] = [
     { id: 'description', label: t('csvExport.columns.description'), value: i => i.description },
@@ -1039,7 +1054,25 @@ export default function ItemsPage() {
         </>
       }
       stats={[
-        { label: hasActiveFilters ? t('items.totalActiveFiltered') : t('items.totalActive'), value: formatCurrency(total), style: gastosStyle('items', 'hero') },
+        {
+          label: hasActiveFilters ? t('items.totalActiveFiltered') : t('items.totalActive'),
+          value: (
+            <span className="inline-flex items-center gap-2">
+              {formatDisplayTotal(total)}
+              {currencies.length > 1 && (
+                <button
+                  type="button"
+                  onClick={cycleDisplayCurrency}
+                  className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                  title={t('currencyManagement.changeDisplayCurrency')}
+                >
+                  <Coins size={13} />
+                </button>
+              )}
+            </span>
+          ),
+          style: gastosStyle('items', 'hero')
+        },
         { label: t('items.title'), value: `${t(filteredAndSortedItems.length === 1 ? 'items.itemCount' : 'items.itemCountPlural', { count: filteredAndSortedItems.length })} · ${t('items.unpaidCount', { count: filteredAndSortedItems.filter(i => !i.isPaid).length })}` }
       ]}
     >

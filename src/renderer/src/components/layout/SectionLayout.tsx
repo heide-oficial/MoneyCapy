@@ -89,7 +89,7 @@ export function SectionLayout({
         {hasStats && (
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
             {stats![0] && (
-              <p className={`text-lg font-bold tabular-nums leading-tight ${stats![0].className || ''}`} style={stats![0].style}>
+              <p className={`text-lg font-bold tabular-nums leading-tight pointer-events-auto ${stats![0].className || ''}`} style={stats![0].style}>
                 {stats![0].value}
               </p>
             )}

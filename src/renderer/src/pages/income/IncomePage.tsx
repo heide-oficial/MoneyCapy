@@ -24,7 +24,7 @@ import { FilterGroup } from '../../components/ui/FilterGroup'
 import {
   HandCoins, Plus, Pencil, Trash2, Repeat, Users,
   CheckCircle, Circle, CircleDot, DollarSign,
-  ChevronDown, CalendarClock, Filter, Palette, X, Undo2, Tags, Bookmark, Download
+  ChevronDown, CalendarClock, Filter, Palette, X, Undo2, Tags, Bookmark, Download, Coins
 } from 'lucide-react'
 import { DayPicker } from '../../components/ui/DayPicker'
 import { formatDayLabelResolved } from '../../../../../shared/day-utils'
@@ -88,6 +88,7 @@ export default function IncomePage() {
   const { month, setMonth } = usePageMonth()
   const [incomes, setIncomes] = useState<Income[]>([])
   const [showCsvExport, setShowCsvExport] = useState(false)
+  const [displayCurrencyId, setDisplayCurrencyId] = useState<number | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Income | null>(null)
   const [form, setForm] = useState({
@@ -244,6 +245,18 @@ export default function IncomePage() {
   })
 
   const total = filteredIncomes.reduce((s, i) => s + i.effectiveValue * (i.exchangeRateSnapshot || 1.0), 0)
+  const displayCurrency = currencies.find(c => c.id === displayCurrencyId) || baseCurrency
+  const formatDisplayTotal = (value: number) =>
+    displayCurrency && displayCurrency.exchangeRate > 0
+      ? formatCurrencyWith(value / displayCurrency.exchangeRate, displayCurrency.symbol)
+      : formatCurrency(value)
+  const cycleDisplayCurrency = () => {
+    if (currencies.length === 0) return
+    const currentId = displayCurrency?.id
+    const currentIndex = currencies.findIndex(c => c.id === currentId)
+    const next = currencies[(currentIndex + 1) % currencies.length]
+    setDisplayCurrencyId(next.id)
+  }
   const receivedCount = filteredIncomes.filter(i => i.isReceived).length
 
   const sortedIncomes = [...filteredIncomes].sort((a, b) => {
@@ -487,8 +500,8 @@ export default function IncomePage() {
             {blocks.map(block => (
               <div key={block.id} className="rounded-lg border border-border bg-card p-4 space-y-2">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    {formatNoteBlockDate(block.createdAt, t('notes.previousBlock'))}
+                  <span className="text-sm font-medium text-foreground">
+                    {formatNoteBlockDate(block.createdAt, t('notes.previousBlock'), fmtDate)}
                   </span>
                   <button type="button" onClick={() => updateBlocks(blocks.filter(b => b.id !== block.id))}
                     className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
@@ -687,7 +700,25 @@ export default function IncomePage() {
         </>
       }
       stats={[
-        { label: t('items.total'), value: formatCurrency(total), style: receitasStyle('income', 'hero') },
+        {
+          label: t('items.total'),
+          value: (
+            <span className="inline-flex items-center gap-2">
+              {formatDisplayTotal(total)}
+              {currencies.length > 1 && (
+                <button
+                  type="button"
+                  onClick={cycleDisplayCurrency}
+                  className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                  title={t('currencyManagement.changeDisplayCurrency')}
+                >
+                  <Coins size={13} />
+                </button>
+              )}
+            </span>
+          ),
+          style: receitasStyle('income', 'hero')
+        },
         { label: t('income.title'), value: `${filteredIncomes.length} total · ${receivedCount} ${t('items.received').toLowerCase()}` }
       ]}
     >
@@ -759,7 +790,7 @@ export default function IncomePage() {
                   <p className="text-base font-bold truncate flex-1 min-w-0">
                     {inc.description}
                     {inc.categoryName && (
-                      <span className="text-[11px] font-normal text-muted-foreground ml-1.5">· {inc.categoryName}</span>
+                      <span className="text-[11px] font-normal text-muted-foreground ml-1.5"> - {inc.categoryName}{inc.subcategoryName ? `/${inc.subcategoryName}` : ''}</span>
                     )}
                   </p>
                   {inc.tags && inc.tags.length > 0 && (
@@ -887,7 +918,7 @@ export default function IncomePage() {
                 <div className="space-y-2">
                   <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('itemsForm.information')}</h4>
                   <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-                    <Input label={t('itemsForm.description')} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder={t('income.descriptionPlaceholder')} autoFocus />
+                    <Input label={t('income.incomeName')} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder={t('income.descriptionPlaceholder')} autoFocus />
                     {currencies.length > 1 && (
                       <div>
                         <Select
@@ -957,6 +988,9 @@ export default function IncomePage() {
                       {form.isReceived && (
                         <DatePicker className="w-full justify-start" mode="date" label={t('income.receivedDate')} value={form.receivedAt}
                           onChange={v => setForm({ ...form, receivedAt: v })} />
+                      )}
+                      {!form.isReceived && (
+                        <Input label={t('income.receivedDate')} value={t('income.notReceivedYet')} disabled />
                       )}
                     </div>
                   </div>
@@ -1057,7 +1091,7 @@ export default function IncomePage() {
               <div className="space-y-5">
                 {/* Seção: Categoria */}
                 <div className="space-y-2">
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('itemsForm.category')}</h4>
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('itemsForm.tabClassification')}</h4>
                   <div className="rounded-lg border border-border bg-card p-4 space-y-4">
                     <Select
                       label={t('itemsForm.category')}
