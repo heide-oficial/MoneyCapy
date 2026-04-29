@@ -54,7 +54,7 @@ export function getItemCardLabels(
     cardName?: string | null
     cardType?: string | null
     paymentMethod?: string | null
-    cardSplits?: { cardName?: string | null; cardType?: string | null }[]
+    cardSplits?: { cardName?: string | null; cardType?: string | null; paymentMethod?: string | null }[]
   },
   typeLabels?: Record<string, string>
 ): string[] {
@@ -63,7 +63,7 @@ export function getItemCardLabels(
   if (splits.length > 0) {
     return splits
       .filter(sp => sp.cardName)
-      .map(sp => formatCardLabel(sp.cardName!, sp.cardType || 'credit', undefined, typeLabels))
+      .map(sp => formatCardLabel(sp.cardName!, sp.cardType || 'credit', sp.paymentMethod, typeLabels))
   }
 
   if (item.cardName) {

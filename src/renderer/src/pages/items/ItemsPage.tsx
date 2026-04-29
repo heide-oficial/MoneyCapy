@@ -319,16 +319,15 @@ export default function ItemsPage() {
       }
       if (filterPaid === 'paid' && !item.isPaid) return false
       if (filterPaid === 'unpaid' && item.isPaid) return false
-      if (filterPayMethod === 'no-card' && item.cardId) return false
-      if (filterPayMethod === 'card-both' && !item.cardId) return false
+      const splitPaymentMethods = item.cardSplits?.map(sp => sp.paymentMethod || sp.cardType).filter(Boolean) || []
+      const hasAnyCard = !!item.cardId || splitPaymentMethods.length > 0
+      if (filterPayMethod === 'no-card' && hasAnyCard) return false
+      if (filterPayMethod === 'card-both' && !hasAnyCard) return false
       if (filterPayMethod === 'credit') {
-        if (item.type === 'installment' || item.type === 'emprestimo') {
-          if (!item.cardId) return false
-        } else {
-          if (item.paymentMethod !== 'credit') return false
-        }
+        const matchesCredit = item.paymentMethod === 'credit' || splitPaymentMethods.includes('credit')
+        if (!matchesCredit) return false
       }
-      if (filterPayMethod === 'debit' && item.paymentMethod !== 'debit') return false
+      if (filterPayMethod === 'debit' && item.paymentMethod !== 'debit' && !splitPaymentMethods.includes('debit')) return false
       if (search && !item.description.toLowerCase().includes(search.toLowerCase())) return false
       return true
     })
@@ -412,21 +411,24 @@ export default function ItemsPage() {
         splits = item.cardSplits!.map(s => ({
           cardId: String(s.cardId),
           value: s.value,
-          totalInstallments: s.totalInstallments
+          totalInstallments: s.totalInstallments,
+          paymentMethod: s.paymentMethod || item.paymentMethod || 'credit'
         }))
       } else if (item.cardId) {
         cardMode = 'single'
         splits = [{
           cardId: String(item.cardId),
           value: item.value,
-          totalInstallments: item.totalInstallments || 1
+          totalInstallments: item.totalInstallments || 1,
+          paymentMethod: item.paymentMethod || 'credit'
         }]
       } else {
         cardMode = 'none'
         splits = [{
           cardId: '',
           value: item.value,
-          totalInstallments: item.totalInstallments || 1
+          totalInstallments: item.totalInstallments || 1,
+          paymentMethod: item.paymentMethod || 'credit'
         }]
       }
     } else if (item.type === 'emprestimo') {
@@ -434,7 +436,8 @@ export default function ItemsPage() {
       splits = [{
         cardId: '',
         value: item.value,
-        totalInstallments: item.totalInstallments || 1
+        totalInstallments: item.totalInstallments || 1,
+        paymentMethod: item.paymentMethod || 'credit'
       }]
     }
 
@@ -528,14 +531,15 @@ export default function ItemsPage() {
       baseValue: form.type === 'emprestimo' ? form.baseValue : null,
       interestRate: form.type === 'emprestimo' && form.interestRate ? parseFloat(form.interestRate) : null,
       bankAccountId: form.type === 'emprestimo' && form.bankAccountId ? Number(form.bankAccountId) : null,
-      paymentMethod: form.paymentMethod || null,
+      paymentMethod: form.type === 'installment' && form.cardMode === 'multi' ? null : (form.paymentMethod || null),
       currencyId: form.currencyId ? Number(form.currencyId) : null,
       exchangeRateSnapshot: form.exchangeRateSnapshot ?? 1.0,
       cardSplits: (form.type !== 'emprestimo' && form.cardMode === 'multi' && validSplits.length >= 2)
         ? validSplits.map(s => ({
             cardId: Number(s.cardId),
             value: s.value,
-            totalInstallments: s.totalInstallments
+            totalInstallments: s.totalInstallments,
+            paymentMethod: s.paymentMethod || 'credit'
           }))
         : []
     }

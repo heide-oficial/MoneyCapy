@@ -112,7 +112,7 @@ export function ItemsTile({
       for (const sp of item.cardSplits!) {
         const cur = sp.currentInstallment || Math.min(item.currentInstallment!, sp.totalInstallments)
         const anticipated = sp.anticipatedThisMonth || 0
-        const spLabel = sp.cardName ? formatCardLabel(sp.cardName, sp.cardType) : t('items.cardFallback', { id: String(sp.cardId) })
+        const spLabel = sp.cardName ? formatCardLabel(sp.cardName, sp.cardType, sp.paymentMethod) : t('items.cardFallback', { id: String(sp.cardId) })
         installmentCards.push({ name: spLabel, current: cur, total: sp.totalInstallments, monthly: sp.value / sp.totalInstallments, anticipated })
       }
     } else {

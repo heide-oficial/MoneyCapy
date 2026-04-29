@@ -18,6 +18,7 @@ export interface FormSplit {
   cardId: string
   value: number
   totalInstallments: number
+  paymentMethod?: string
 }
 
 export type ModalTab = 'detalhes' | 'parcelas' | 'interrupcoes' | 'classificacao'
@@ -160,10 +161,10 @@ export function ItemsForm({
 
   const addCard = () => {
     setForm(f => {
-      const ref = f.splits[0] || { cardId: '', value: 0, totalInstallments: 1 }
+      const ref = f.splits[0] || { cardId: '', value: 0, totalInstallments: 1, paymentMethod: 'credit' }
       return {
         ...f,
-        splits: [...f.splits, { cardId: '', value: 0, totalInstallments: ref.totalInstallments }]
+        splits: [...f.splits, { cardId: '', value: 0, totalInstallments: ref.totalInstallments, paymentMethod: ref.paymentMethod || 'credit' }]
       }
     })
   }
@@ -192,9 +193,18 @@ export function ItemsForm({
     return current || 'credit'
   }
 
+  const normalizePaymentMethodForCard = (current: string | undefined, cardId: string | number) =>
+    normalizePaymentMethodForCards(current || 'credit', cardId ? [String(cardId)] : [])
+
   const updateSplit = (index: number, field: keyof FormSplit, val: any) => {
     setForm(f => {
-      const splits = f.splits.map((s, i) => i !== index ? s : { ...s, [field]: val })
+      const splits = f.splits.map((s, i) => {
+        if (i !== index) return s
+        const updated = { ...s, [field]: val }
+        return field === 'cardId'
+          ? { ...updated, paymentMethod: normalizePaymentMethodForCard(updated.paymentMethod, val) }
+          : updated
+      })
       return {
         ...f,
         splits,
@@ -213,7 +223,7 @@ export function ItemsForm({
           type: newType,
           cardMode: 'none' as CardMode,
           cardId: '',
-          splits: [{ cardId: '', value: f.value, totalInstallments: f.splits[0]?.totalInstallments || 1 }],
+          splits: [{ cardId: '', value: f.value, totalInstallments: f.splits[0]?.totalInstallments || 1, paymentMethod: 'credit' }],
           paymentMethod: 'credit'
         }
       }
@@ -223,7 +233,7 @@ export function ItemsForm({
         type: newType,
         cardMode: isInstType ? f.cardMode : 'none' as CardMode,
         splits: isInstType
-          ? (f.splits.length > 0 ? f.splits : [{ cardId: '', value: f.value, totalInstallments: 1 }])
+          ? (f.splits.length > 0 ? f.splits : [{ cardId: '', value: f.value, totalInstallments: 1, paymentMethod: 'credit' }])
           : [],
         cardId: !isInstType ? f.cardId : '',
         interestRate: newType !== 'emprestimo' ? '' : f.interestRate,
@@ -247,7 +257,7 @@ export function ItemsForm({
 
     const setCardMode = (mode: CardMode) => {
       setForm(f => {
-        const baseSplit = f.splits[0] || { cardId: '', value: f.value, totalInstallments: 1 }
+        const baseSplit = f.splits[0] || { cardId: '', value: f.value, totalInstallments: 1, paymentMethod: 'credit' }
         if (mode === 'none') return { ...f, cardMode: mode, splits: [{ ...baseSplit, cardId: '' }], paymentMethod: '' }
         if (mode === 'single') {
           const splits = [{ ...baseSplit, value: f.value }]
@@ -256,7 +266,7 @@ export function ItemsForm({
         if (f.splits.length < 2) {
           const splits = [
             { ...baseSplit, value: baseSplit.value || f.value },
-            { cardId: '', value: 0, totalInstallments: baseSplit.totalInstallments }
+            { cardId: '', value: 0, totalInstallments: baseSplit.totalInstallments, paymentMethod: baseSplit.paymentMethod || 'credit' }
           ]
           return { ...f, cardMode: mode, splits: [
             ...splits
@@ -288,6 +298,35 @@ export function ItemsForm({
       </div>
     )
 
+    const renderSplitPaymentMethodSelector = (sp: FormSplit, idx: number) => {
+      const selectedCard = cards.find(c => String(c.id) === String(sp.cardId))
+      const canCredit = selectedCard?.cardType !== 'debit'
+      const canDebit = selectedCard?.cardType !== 'credit'
+      const paymentMethod = normalizePaymentMethodForCard(sp.paymentMethod, sp.cardId)
+
+      return (
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-foreground">{t('itemsForm.paymentMethod')}</label>
+          <div className="flex rounded-lg border border-input p-0.5 bg-muted/30">
+            <button type="button" onClick={() => updateSplit(idx, 'paymentMethod', 'credit')}
+              disabled={!canCredit}
+              className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
+                paymentMethod === 'credit' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+              } ${!canCredit ? 'opacity-30 cursor-not-allowed' : ''}`}>
+              {t('itemsForm.credit')}
+            </button>
+            <button type="button" onClick={() => updateSplit(idx, 'paymentMethod', 'debit')}
+              disabled={!canDebit}
+              className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
+                paymentMethod === 'debit' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+              } ${!canDebit ? 'opacity-30 cursor-not-allowed' : ''}`}>
+              {t('itemsForm.debit')}
+            </button>
+          </div>
+        </div>
+      )
+    }
+
     const renderCardWidget = (sp: FormSplit, idx: number) => (
       <div key={idx} className="rounded-lg border border-border p-3 space-y-3">
         <div className="flex items-center justify-between">
@@ -297,6 +336,7 @@ export function ItemsForm({
           </button>
         </div>
         <Select value={sp.cardId} onChange={e => updateSplit(idx, 'cardId', e.target.value)} options={cards.map(c => ({ value: c.id, label: c.name }))} placeholder={t('itemsForm.selectCard')} />
+        {sp.cardId && renderSplitPaymentMethodSelector(sp, idx)}
         <CurrencyInput label={t('itemsForm.valueRequired')} value={sp.value} onChange={v => updateSplit(idx, 'value', v)} symbol={currencySymbol} />
         <Input label={t('itemsForm.installments')} type="number" min={1} value={String(sp.totalInstallments)} onChange={e => updateSplit(idx, 'totalInstallments', parseInt(e.target.value) || 1)} />
         {sp.totalInstallments > 0 && sp.value > 0 && (
@@ -393,7 +433,7 @@ export function ItemsForm({
                 ))}
               </div>
 
-              {form.cardMode !== 'none' && renderPaymentMethodSelector()}
+              {form.cardMode === 'single' && renderPaymentMethodSelector()}
 
               {form.cardMode === 'none' && form.splits.length > 0 && (
                 <div className="space-y-3">

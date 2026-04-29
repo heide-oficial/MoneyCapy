@@ -78,6 +78,7 @@ function mapSplit(s: any, db?: WrappedDatabase) {
     cardId: s.card_id,
     cardName: s.card_name || undefined,
     cardType: db ? getCardType(db, s.card_id) : null,
+    paymentMethod: s.payment_method || null,
     value: s.value,
     totalInstallments: s.total_installments,
     totalAnticipated: s.totalAnticipated || 0,
@@ -233,7 +234,8 @@ export function registerSectionItemsHandlers(db: WrappedDatabase): void {
       splitsRepo.replaceForItem(item.id, data.cardSplits.map((s: any) => ({
         card_id: s.cardId,
         value: s.value,
-        total_installments: s.totalInstallments
+        total_installments: s.totalInstallments,
+        payment_method: s.paymentMethod || null
       })))
     }
     const mapped = mapItem(item, db)
@@ -276,7 +278,8 @@ export function registerSectionItemsHandlers(db: WrappedDatabase): void {
         splitsRepo.replaceForItem(data.id, data.cardSplits.map((s: any) => ({
           card_id: s.cardId,
           value: s.value,
-          total_installments: s.totalInstallments
+          total_installments: s.totalInstallments,
+          payment_method: s.paymentMethod || null
         })))
       } else {
         splitsRepo.deleteByItemId(data.id)

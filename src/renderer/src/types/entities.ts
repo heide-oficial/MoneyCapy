@@ -7,6 +7,7 @@ export interface CardSplit {
   cardId: number
   cardName?: string
   cardType?: string | null
+  paymentMethod?: string | null
   value: number
   totalInstallments: number
   totalAnticipated?: number
