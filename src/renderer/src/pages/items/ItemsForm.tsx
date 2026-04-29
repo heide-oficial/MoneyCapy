@@ -554,21 +554,23 @@ export function ItemsForm({
         {/* Seção: Período */}
         <div className="space-y-2">
           <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('itemsForm.period')}</h4>
-          <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-            {form.type === 'common' && (
-              <DatePicker mode="month" label={form.cardId && form.paymentMethod === 'credit' ? t('itemsForm.billingMonth') : t('itemsForm.referenceMonth')} value={form.startMonth} onChange={v => setForm({ ...form, startMonth: v })} />
-            )}
-            {(isInstallment || isEmprestimo) && (
-              <DatePicker mode="month" label={t('itemsForm.firstInstallment')} value={form.startMonth} onChange={v => setForm({ ...form, startMonth: v })} />
-            )}
-            {form.type === 'subscription' && (
-              <div className="grid grid-cols-2 gap-3">
-                <DatePicker mode="month" label={t('itemsForm.startMonth')} value={form.startMonth} onChange={v => setForm({ ...form, startMonth: v })} />
-                <DatePicker mode="month" label={t('itemsForm.endMonth')} value={form.endMonth} onChange={v => setForm({ ...form, endMonth: v })} />
-              </div>
-            )}
-            <div className={`grid gap-3 items-end ${form.isPaid ? 'grid-cols-2' : 'grid-cols-1'}`}>
-              <div className="space-y-1.5">
+          <div className="rounded-lg border border-border bg-card p-4 space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              {form.type === 'common' && (
+                <DatePicker className="w-full justify-start" mode="month" label={form.cardId && form.paymentMethod === 'credit' ? t('itemsForm.billingMonth') : t('itemsForm.referenceMonth')} value={form.startMonth} onChange={v => setForm({ ...form, startMonth: v })} />
+              )}
+              {(isInstallment || isEmprestimo) && (
+                <DatePicker className="w-full justify-start" mode="month" label={t('itemsForm.firstInstallment')} value={form.startMonth} onChange={v => setForm({ ...form, startMonth: v })} />
+              )}
+              {form.type === 'subscription' && (
+                <>
+                  <DatePicker className="w-full justify-start" mode="month" label={t('itemsForm.startMonth')} value={form.startMonth} onChange={v => setForm({ ...form, startMonth: v })} />
+                  <DatePicker className="w-full justify-start" mode="month" label={t('itemsForm.endMonth')} value={form.endMonth} onChange={v => setForm({ ...form, endMonth: v })} />
+                </>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-3 items-end">
+              <div className="space-y-1.5 min-w-0">
                 <label className="text-sm font-medium text-foreground">{t('itemsForm.status')}</label>
                 <div className="flex h-9 rounded-lg border border-input p-0.5 bg-muted/30">
                   <button type="button" onClick={() => setForm({ ...form, isPaid: false, paidAt: '' })}
@@ -586,7 +588,7 @@ export function ItemsForm({
                 </div>
               </div>
               {form.isPaid && (
-                <DatePicker mode="date" label={t('itemsForm.paymentDate')} value={form.paidAt}
+                <DatePicker className="w-full justify-start" mode="date" label={t('itemsForm.paymentDate')} value={form.paidAt}
                   onChange={v => setForm({ ...form, paidAt: v })} />
               )}
             </div>

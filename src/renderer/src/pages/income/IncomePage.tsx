@@ -289,7 +289,7 @@ export default function IncomePage() {
       await window.api.personIncome.update({
         id: editing.id, description: form.description, value: form.value,
         isRecurring: form.isRecurring, startMonth: form.startMonth,
-        endMonth: form.endMonth || null,
+        endMonth: form.isRecurring && form.endMonth ? form.endMonth : null,
         categoryId: form.categoryId ? Number(form.categoryId) : null,
         tagIds: form.tagIds,
         dueDay: form.dueDay ? parseInt(form.dueDay) : null,
@@ -309,7 +309,7 @@ export default function IncomePage() {
       const created = await window.api.personIncome.create({
         personId: activePerson.id, description: form.description, value: form.value,
         isRecurring: form.isRecurring, startMonth: form.startMonth,
-        endMonth: form.endMonth || null,
+        endMonth: form.isRecurring && form.endMonth ? form.endMonth : null,
         categoryId: form.categoryId ? Number(form.categoryId) : null,
         tagIds: form.tagIds,
         dueDay: form.dueDay ? parseInt(form.dueDay) : null,
@@ -560,8 +560,10 @@ export default function IncomePage() {
           {sortedIncomes.map(inc => {
             const kebabItems: any[] = [
               { label: t('income.editIncome'), icon: Pencil, onClick: () => openEdit(inc) },
-              { label: t('items.editValueThisMonth'), icon: DollarSign, onClick: () => openValueEdit(inc) },
             ]
+            if (inc.isRecurring) {
+              kebabItems.push({ label: t('items.editValueThisMonth'), icon: DollarSign, onClick: () => openValueEdit(inc) })
+            }
             if (inc.isReceived) {
               kebabItems.push({ label: t('items.undoReceipt'), icon: CheckCircle, onClick: () => toggleReceived(inc.id) })
             }
@@ -726,7 +728,7 @@ export default function IncomePage() {
                       { value: false, label: t('income.single') },
                       { value: true, label: t('income.recurring') }
                     ].map(opt => (
-                      <button key={String(opt.value)} type="button" onClick={() => setForm({ ...form, isRecurring: opt.value })}
+                      <button key={String(opt.value)} type="button" onClick={() => setForm({ ...form, isRecurring: opt.value, endMonth: opt.value ? form.endMonth : '' })}
                         className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
                           form.isRecurring === opt.value ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
                         }`}>
@@ -783,18 +785,24 @@ export default function IncomePage() {
                   <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('itemsForm.period')}</h4>
                   <div className="rounded-lg border border-border bg-card p-4 space-y-3">
                     <div className="grid grid-cols-2 gap-3">
-                      <DatePicker mode="month" label={t('income.startMonth')} value={form.startMonth} onChange={v => setForm({ ...form, startMonth: v })} />
-                      <DatePicker mode="month" label={t('income.endMonth')} value={form.endMonth} onChange={v => setForm({ ...form, endMonth: v })} />
+                      {form.isRecurring ? (
+                        <>
+                          <DatePicker className="w-full justify-start" mode="month" label={t('income.startMonth')} value={form.startMonth} onChange={v => setForm({ ...form, startMonth: v })} />
+                          <DatePicker className="w-full justify-start" mode="month" label={t('income.endMonth')} value={form.endMonth} onChange={v => setForm({ ...form, endMonth: v })} />
+                        </>
+                      ) : (
+                        <DatePicker className="w-full justify-start" mode="month" label={t('itemsForm.referenceMonth')} value={form.startMonth} onChange={v => setForm({ ...form, startMonth: v, endMonth: '' })} />
+                      )}
                     </div>
-                    <div className={`grid gap-3 items-end ${form.isReceived ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                      <div className="space-y-1.5">
+                    <div className="grid grid-cols-2 gap-3 items-end">
+                      <div className="space-y-1.5 min-w-0">
                         <label className="text-sm font-medium text-foreground">{t('itemsForm.status')}</label>
                         <div className="flex h-9 rounded-lg border border-input p-0.5 bg-muted/30">
                           <button type="button" onClick={() => setForm({ ...form, isReceived: false, receivedAt: '' })}
                             className={`flex-1 text-sm font-medium rounded-md transition-all ${
                               !form.isReceived ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
                             }`}>
-                            {t('items.markNotReceived')}
+                            {t('items.notReceived')}
                           </button>
                           <button type="button" onClick={() => setForm({ ...form, isReceived: true, receivedAt: form.receivedAt || new Date().toISOString().substring(0, 10) })}
                             className={`flex-1 text-sm font-medium rounded-md transition-all ${
@@ -805,7 +813,7 @@ export default function IncomePage() {
                         </div>
                       </div>
                       {form.isReceived && (
-                        <DatePicker mode="date" label={t('income.receivedDate')} value={form.receivedAt}
+                        <DatePicker className="w-full justify-start" mode="date" label={t('income.receivedDate')} value={form.receivedAt}
                           onChange={v => setForm({ ...form, receivedAt: v })} />
                       )}
                     </div>
