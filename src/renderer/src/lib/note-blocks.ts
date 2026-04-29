@@ -43,7 +43,6 @@ export function parseNoteBlocks(raw?: string | null): NoteBlock[] {
 export function serializeNoteBlocks(blocks: NoteBlock[]): string {
   const normalized = blocks
     .map(block => ({ ...block, text: block.text.trimEnd() }))
-    .filter(block => block.text.trim().length > 0)
 
   if (normalized.length === 0) return ''
 
