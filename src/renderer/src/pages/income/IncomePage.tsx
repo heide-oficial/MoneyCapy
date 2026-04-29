@@ -6,7 +6,6 @@ import { Modal } from '../../components/ui/Modal'
 import { Input } from '../../components/ui/Input'
 import { CurrencyInput } from '../../components/ui/CurrencyInput'
 import { DatePicker } from '../../components/ui/DatePicker'
-import { Toggle } from '../../components/ui/Toggle'
 import { Select } from '../../components/ui/Select'
 import { MonthNavigator } from '../../components/ui/MonthNavigator'
 import { SearchInput } from '../../components/ui/SearchInput'
@@ -125,7 +124,7 @@ export default function IncomePage() {
   const sortBtnRef = useRef<HTMLButtonElement>(null)
   const sortDropRef = useRef<HTMLDivElement>(null)
 
-  const [incomeTab, setIncomeTab] = useState<'detalhes' | 'classificacao'>('detalhes')
+  const [incomeTab, setIncomeTab] = useState<'detalhes' | 'interrupcoes' | 'classificacao'>('detalhes')
   const [modalScrollFade, setModalScrollFade] = useState({ top: false, bottom: false })
   const modalScrollRef = useRef<HTMLDivElement>(null)
   const [showValueEdit, setShowValueEdit] = useState(false)
@@ -697,14 +696,18 @@ export default function IncomePage() {
         <div className="flex flex-col overflow-hidden" style={{ maxHeight: '70vh' }}>
           {/* Tab bar */}
           <div className="flex gap-4 -mx-6 px-6 pb-3 mb-4 border-b border-border shrink-0">
-            {(['detalhes', 'classificacao'] as const).map(tab => (
-              <button key={tab} type="button" onClick={() => setIncomeTab(tab)}
+            {([
+              { key: 'detalhes' as const, label: t('itemsForm.tabDetails') },
+              ...(editing ? [{ key: 'interrupcoes' as const, label: t('itemsForm.tabInterruptions') }] : []),
+              { key: 'classificacao' as const, label: t('itemsForm.tabClassification') }
+            ]).map(tab => (
+              <button key={tab.key} type="button" onClick={() => setIncomeTab(tab.key)}
                 className={`text-sm font-medium pb-1 border-b-2 transition-colors ${
-                  incomeTab === tab
+                  incomeTab === tab.key
                     ? 'border-primary text-primary'
                     : 'border-transparent text-muted-foreground hover:text-foreground'
                 }`}>
-                {tab === 'detalhes' ? t('itemsForm.tabDetails') : t('itemsForm.tabClassification')}
+                {tab.label}
               </button>
             ))}
           </div>
@@ -716,6 +719,23 @@ export default function IncomePage() {
 
             {incomeTab === 'detalhes' && (
               <div className="space-y-5">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-foreground">{t('income.type')}</label>
+                  <div className="flex rounded-lg border border-input p-0.5 bg-muted/30">
+                    {[
+                      { value: false, label: t('income.single') },
+                      { value: true, label: t('income.recurring') }
+                    ].map(opt => (
+                      <button key={String(opt.value)} type="button" onClick={() => setForm({ ...form, isRecurring: opt.value })}
+                        className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
+                          form.isRecurring === opt.value ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                        }`}>
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Seção: Informações */}
                 <div className="space-y-2">
                   <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('itemsForm.information')}</h4>
@@ -746,10 +766,6 @@ export default function IncomePage() {
                     <CurrencyInput label={t('itemsForm.value')} value={form.value} onChange={v => setForm({ ...form, value: v })}
                       symbol={(() => { const c = currencies.find(c => c.id === Number(form.currencyId)); return c?.symbol || baseCurrency?.symbol || undefined })()}
                     />
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium text-foreground">{t('income.recurring')}</label>
-                      <Toggle checked={form.isRecurring} onChange={v => setForm({ ...form, isRecurring: v })} />
-                    </div>
                   </div>
                 </div>
 
@@ -795,33 +811,40 @@ export default function IncomePage() {
                     </div>
                   </div>
                 </div>
+              </div>
+            )}
 
-                {/* Seção: Interrupções (editing recurring income) */}
-                {editing && editing.isRecurring && (
-                  (editing.interruptions?.length > 0 || !(editing.interruptions?.some(i => !i.resumeMonth))) && (
-                    <div className="space-y-2">
-                      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('itemsForm.interruptions')}</h4>
-                      <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-                        {editing.interruptions?.map(int => (
-                          <div key={int.id} className="flex items-center justify-between text-sm">
-                            <span>
-                              {int.resumeMonth
-                                ? t('itemsForm.pausedAt', { startMonth: fmtMonth(int.endMonth), resumeMonth: fmtMonth(int.resumeMonth) })
-                                : t('itemsForm.interruptedPermanently', { endMonth: fmtMonth(int.endMonth) })}
-                            </span>
-                            <Button size="sm" variant="outline" onClick={() => { handleReactivate(int.id); setShowForm(false) }}>
-                              <Undo2 size={12} /> {t('common.undo')}
-                            </Button>
-                          </div>
-                        ))}
-                        {!(editing.interruptions?.some(i => !i.resumeMonth)) && (
-                          <Button size="sm" variant="outline" onClick={() => { setShowForm(false); setInterruptMode('temporary'); setInterruptMonths('2'); setTimeout(() => setInterruptItem(editing), 50) }}>
-                            <X size={14} /> {t('itemsForm.interrupt')}
+            {incomeTab === 'interrupcoes' && editing && (
+              <div className="space-y-4">
+                {!editing.isRecurring && (
+                  <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
+                    {t('income.interruptionsUnavailable')}
+                  </div>
+                )}
+                {editing.isRecurring && (
+                  <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+                    {editing.interruptions && editing.interruptions.length > 0 ? (
+                      editing.interruptions.map(int => (
+                        <div key={int.id} className="flex items-center justify-between gap-3 text-sm">
+                          <span>
+                            {int.resumeMonth
+                              ? t('itemsForm.pausedAt', { startMonth: fmtMonth(int.endMonth), resumeMonth: fmtMonth(int.resumeMonth) })
+                              : t('itemsForm.interruptedPermanently', { endMonth: fmtMonth(int.endMonth) })}
+                          </span>
+                          <Button size="sm" variant="outline" onClick={() => { handleReactivate(int.id); setShowForm(false) }}>
+                            <Undo2 size={12} /> {t('common.undo')}
                           </Button>
-                        )}
-                      </div>
-                    </div>
-                  )
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground">{t('itemsForm.noInterruptions')}</p>
+                    )}
+                    {!(editing.interruptions?.some(i => !i.resumeMonth)) && (
+                      <Button size="sm" variant="outline" onClick={() => { setShowForm(false); setInterruptMode('temporary'); setInterruptMonths('2'); setTimeout(() => setInterruptItem(editing), 50) }}>
+                        <X size={14} /> {t('itemsForm.interrupt')}
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
             )}
