@@ -11,7 +11,7 @@ import { MonthNavigator } from '../../components/ui/MonthNavigator'
 import { SectionLayout } from '../../components/layout/SectionLayout'
 import { formatCurrency } from '../../lib/currency'
 import { useFormatDate } from '../../lib/date'
-import { useDefaultMonth } from '../../contexts/DefaultMonthContext'
+import { usePageMonth } from '../../contexts/DefaultMonthContext'
 import {
   Plus, ChevronDown, Check, Filter, Receipt, Download,
   Tags, Bookmark, Wallet, CreditCard, Store, ToggleLeft, CheckCircle as CheckCircleIcon
@@ -110,7 +110,7 @@ export default function ItemsPage() {
   const { activePerson, bumpItems, itemsVersion } = useActivePerson()
   const { gastosStyle } = useColorSettings()
   const { fmtMonth, fmtDate } = useFormatDate()
-  const { getDefaultMonth } = useDefaultMonth()
+  const { month, setMonth } = usePageMonth()
   const { t } = useTranslation()
 
   const ITEM_TABS = getItemTabs(t)
@@ -125,7 +125,6 @@ export default function ItemsPage() {
   const tabConfig = ITEM_TABS.find(t => t.key === activeTab)!
   const typeFilter = tabConfig.typeFilter
 
-  const [month, setMonth] = useState(() => getDefaultMonth())
   const [items, setItems] = useState<SectionItem[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [cards, setCards] = useState<CardData[]>([])

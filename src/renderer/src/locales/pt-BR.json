@@ -161,6 +161,7 @@
     "defaultMonthDesc": "Mês inicial ao abrir as páginas",
     "currentMonth": "Mês atual",
     "nextMonth": "Próximo mês",
+    "keepMonthOnNavigation": "Manter o mês filtrado ao mudar de aba",
     "businessDays": "Dias úteis",
     "businessDaysDesc": "Configure como dias úteis são calculados para vencimentos e cobranças com tipo \"dia útil\".",
     "mode": "Modo",

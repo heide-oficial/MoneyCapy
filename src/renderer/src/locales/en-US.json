@@ -161,6 +161,7 @@
     "defaultMonthDesc": "Default month when opening pages",
     "currentMonth": "Current month",
     "nextMonth": "Next month",
+    "keepMonthOnNavigation": "Keep the filtered month when switching tabs",
     "businessDays": "Business days",
     "businessDaysDesc": "Configure how business days are calculated for due dates and billing with type \"business day\".",
     "mode": "Mode",

@@ -15,7 +15,7 @@ import { formatCurrency, formatCurrencyWith } from '../../lib/currency'
 import { CurrencyTooltip } from '../../components/ui/CurrencyTooltip'
 import { useCurrencySettings } from '../../contexts/CurrencySettingsContext'
 import { getCurrentMonth, useFormatDate } from '../../lib/date'
-import { useDefaultMonth } from '../../contexts/DefaultMonthContext'
+import { usePageMonth } from '../../contexts/DefaultMonthContext'
 import { useActivePerson } from '../../contexts/ActivePersonContext'
 import { useColorSettings } from '../../contexts/ColorSettingsContext'
 import { useColumnsPicker } from '../../components/ui/ColumnsPickerDropdown'
@@ -79,15 +79,14 @@ export default function IncomePage() {
   const { receitasFields } = useTileFields('income')
   const { currencies, baseCurrency } = useCurrencySettings()
   const { gridClass, pickerButton } = useColumnsPicker('income-columns')
-  const { getDefaultMonth } = useDefaultMonth()
+  const { month, setMonth } = usePageMonth()
   const [incomes, setIncomes] = useState<Income[]>([])
-  const [month, setMonth] = useState(() => getDefaultMonth())
   const [showCsvExport, setShowCsvExport] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Income | null>(null)
   const [form, setForm] = useState({
     description: '', value: 0, isRecurring: false,
-    startMonth: getDefaultMonth(), endMonth: '' as string,
+    startMonth: month, endMonth: '' as string,
     categoryId: '' as string | number, tagIds: [] as number[],
     isReceived: false, receivedAt: '',
     dueDay: '' as string, dueDayType: '' as string,

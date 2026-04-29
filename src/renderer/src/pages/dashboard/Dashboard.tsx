@@ -5,7 +5,7 @@ import { Card } from '../../components/ui/Card'
 import { SectionLayout } from '../../components/layout/SectionLayout'
 import { Button } from '../../components/ui/Button'
 import { MonthNavigator } from '../../components/ui/MonthNavigator'
-import { useDefaultMonth } from '../../contexts/DefaultMonthContext'
+import { usePageMonth } from '../../contexts/DefaultMonthContext'
 import { ROUTES } from '../../lib/constants'
 import { useActivePerson } from '../../contexts/ActivePersonContext'
 import { useColorSettings } from '../../contexts/ColorSettingsContext'
@@ -159,7 +159,6 @@ export default function Dashboard() {
   const { activePerson, people } = useActivePerson()
   const { gastosStyle, receitasStyle, saldoStyle } = useColorSettings()
   const { startCountingMonth } = useStartCountingMonth()
-  const { getDefaultMonth } = useDefaultMonth()
   const { t } = useTranslation()
   const [summary, setSummary] = useState<Summary | null>(null)
   const [widgetsData, setWidgetsData] = useState<DashboardWidgetsData | null>(null)
@@ -168,7 +167,7 @@ export default function Dashboard() {
   const [editingRowId, setEditingRowId] = useState<string | null>(null)
   const [editMode, setEditMode] = useState(false)
   const [settingsTarget, setSettingsTarget] = useState<{ rowId: string; slotIdx: number; widgetId: string } | null>(null)
-  const [month, setMonth] = useState(() => getDefaultMonth())
+  const { month, setMonth } = usePageMonth()
 
   const settingsKey = activePerson ? `dashboard-widgets-${activePerson.id}` : ''
 

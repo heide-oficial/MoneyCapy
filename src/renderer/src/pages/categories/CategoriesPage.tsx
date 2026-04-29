@@ -14,7 +14,7 @@ import { useColumnsPicker } from '../../components/ui/ColumnsPickerDropdown'
 import { formatCurrency } from '../../lib/currency'
 import { getItemCardLabels, formatCardLabel } from '../../lib/card-utils'
 import { getCurrentMonth, useFormatDate } from '../../lib/date'
-import { useDefaultMonth } from '../../contexts/DefaultMonthContext'
+import { usePageMonth } from '../../contexts/DefaultMonthContext'
 import {
   Tags, Plus, Pencil, Trash2, CheckCircle, Circle,
   ToggleLeft, ToggleRight, ChevronDown, ChevronRight,
@@ -55,10 +55,9 @@ export default function CategoriesPage() {
   const { dimPaid } = useDimPaid()
   const { gastosFields, receitasFields } = useTileFields('categories')
   const { fmtMonth, fmtDate } = useFormatDate()
-  const { getDefaultMonth } = useDefaultMonth()
 
   // Month
-  const [month, setMonth] = useState(() => getDefaultMonth())
+  const { month, setMonth } = usePageMonth()
 
   // Data
   const [categories, setCategories] = useState<Category[]>([])

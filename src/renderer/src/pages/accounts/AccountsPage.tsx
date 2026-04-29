@@ -13,7 +13,7 @@ import { KebabMenu } from '../../components/ui/KebabMenu'
 import { SortableGrid } from '../../components/dnd/SortableGrid'
 import { SortableItem } from '../../components/dnd/SortableItem'
 import { useSortOrder } from '../../hooks/useSortOrder'
-import { useDefaultMonth } from '../../contexts/DefaultMonthContext'
+import { usePageMonth } from '../../contexts/DefaultMonthContext'
 import { useActivePerson } from '../../contexts/ActivePersonContext'
 import { useColorSettings } from '../../contexts/ColorSettingsContext'
 import { formatCurrency, formatCurrencyWith } from '../../lib/currency'
@@ -106,9 +106,8 @@ export default function AccountsPage() {
   const { receitasStyle } = useColorSettings()
   const { currencies } = useCurrencySettings()
   const accountSortLabels = ACCOUNT_SORT_LABELS_FN(t)
-  const { getDefaultMonth } = useDefaultMonth()
   const [accounts, setAccounts] = useState<BankAccountEnriched[]>([])
-  const [month, setMonth] = useState(() => getDefaultMonth())
+  const { month, setMonth } = usePageMonth()
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<number | null>(null)
   const { gridClass, pickerButton } = useColumnsPicker('accounts-columns')

@@ -15,7 +15,7 @@ import { KebabMenu } from '../../components/ui/KebabMenu'
 import { SortableGrid } from '../../components/dnd/SortableGrid'
 import { SortableItem } from '../../components/dnd/SortableItem'
 import { useSortOrder } from '../../hooks/useSortOrder'
-import { useDefaultMonth } from '../../contexts/DefaultMonthContext'
+import { usePageMonth } from '../../contexts/DefaultMonthContext'
 import { useActivePerson } from '../../contexts/ActivePersonContext'
 import { useSession } from '../../contexts/SessionContext'
 import { useColorSettings } from '../../contexts/ColorSettingsContext'
@@ -104,10 +104,9 @@ export default function CardsPage() {
   const { gastosStyle } = useColorSettings()
   const { currencies } = useCurrencySettings()
   const cardSortLabels = CARD_SORT_LABELS_FN(t)
-  const { getDefaultMonth } = useDefaultMonth()
   const [cards, setCards] = useState<CardEnriched[]>([])
   const [accounts, setAccounts] = useState<BankAccountBasic[]>([])
-  const [month, setMonth] = useState(() => getDefaultMonth())
+  const { month, setMonth } = usePageMonth()
   const [showForm, setShowForm] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [editing, setEditing] = useState<number | null>(null)

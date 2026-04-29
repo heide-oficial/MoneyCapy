@@ -48,7 +48,7 @@ export default function SettingsPage() {
   const { hasPassword, isUnlocked } = useSession()
   const { activePerson, reloadPeople } = useActivePerson()
   const { order, separator, setOrder, setSeparator } = useDateFormat()
-  const { offset, setOffset } = useDefaultMonth()
+  const { offset, setOffset, keepMonthOnNavigation, setKeepMonthOnNavigation } = useDefaultMonth()
   const { startCountingMonth, setStartCountingMonth } = useStartCountingMonth()
   const { colors, applyAt, setColor, setApplyAt, gastosStyle, receitasStyle, saldoStyle } = useColorSettings()
   const { config: currencyConfig, updateConfig: updateCurrencyConfig } = useCurrencySettings()
@@ -531,6 +531,11 @@ export default function SettingsPage() {
                   { value: 'current', label: t('settings.currentMonth') },
                   { value: 'next', label: t('settings.nextMonth') }
                 ]}
+              />
+              <Toggle
+                checked={keepMonthOnNavigation}
+                onChange={setKeepMonthOnNavigation}
+                label={t('settings.keepMonthOnNavigation')}
               />
             </div>
           </CardContent>
