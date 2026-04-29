@@ -246,7 +246,7 @@ export default function CategoriesPage() {
       if (filterPayMethod === 'debit' && item.paymentMethod !== 'debit') return false
       return true
     })
-    return sortItems(result, sortMode)
+    return sortItems(result, sortMode, month)
   }
 
   // Pre-filter items by card, bank account, and item type

@@ -332,7 +332,7 @@ export default function ItemsPage() {
       if (search && !item.description.toLowerCase().includes(search.toLowerCase())) return false
       return true
     })
-    return sortItems(result, sortMode)
+    return sortItems(result, sortMode, month)
   })()
 
   const getItemMonthlyValue = (i: SectionItem) => {
