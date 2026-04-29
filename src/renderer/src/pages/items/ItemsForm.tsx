@@ -72,6 +72,15 @@ interface StoreData2 { id: number; name: string }
 interface CardData { id: number; name: string; personId: number | null; bankAccountId: number | null; billingCloseDay?: number; cardType?: 'credit' | 'debit' | 'both' }
 interface BankAccountData { id: number; name: string; nomeBanco: string | null }
 
+function addMonths(month: string, offset: number): string {
+  const [year, monthIndex] = month.split('-').map(Number)
+  if (!year || !monthIndex) return ''
+  const total = year * 12 + monthIndex - 1 + offset
+  const nextYear = Math.floor(total / 12)
+  const nextMonth = (total % 12) + 1
+  return `${nextYear}-${String(nextMonth).padStart(2, '0')}`
+}
+
 export interface ItemsFormProps {
   open: boolean
   onClose: () => void
@@ -247,6 +256,23 @@ export function ItemsForm({
 
   const normalizePaymentMethodForCard = (current: string | undefined, cardId: string | number) =>
     normalizePaymentMethodForCards(current || 'credit', cardId ? [String(cardId)] : [])
+
+  const getLastInstallmentMonth = () => {
+    if (!form.startMonth || !(form.type === 'installment' || form.type === 'emprestimo')) return ''
+    if (form.type === 'emprestimo' || form.cardMode !== 'multi') {
+      const totalInstallments = Number(form.splits[0]?.totalInstallments || editing?.totalInstallments) || 0
+      const effectiveTotal = Math.max(totalInstallments - (editing?.totalAnticipated || 0), 0)
+      return effectiveTotal > 0 ? addMonths(form.startMonth, effectiveTotal - 1) : ''
+    }
+    const totals = form.splits.length > 0
+      ? form.splits.map(split => {
+        const savedSplit = editing?.cardSplits?.find(sp => String(sp.cardId) === String(split.cardId))
+        return Math.max((Number(split.totalInstallments) || 0) - (savedSplit?.totalAnticipated || 0), 0)
+      })
+      : [Math.max((Number(form.splits[0]?.totalInstallments || editing?.totalInstallments) || 0) - (editing?.totalAnticipated || 0), 0)]
+    const effectiveTotal = Math.max(...totals, 0)
+    return effectiveTotal > 0 ? addMonths(form.startMonth, effectiveTotal - 1) : ''
+  }
 
   const updateSplit = (index: number, field: keyof FormSplit, val: any) => {
     setForm(f => {
@@ -459,7 +485,7 @@ export function ItemsForm({
             {!isInstallment && !isEmprestimo && (
               <CurrencyInput label={t('itemsForm.valueRequired')} value={form.value} onChange={v => setForm({ ...form, value: v })} symbol={currencySymbol} />
             )}
-            <DayPicker label={t('itemsForm.billing')} day={form.billingDay} dayType={form.billingDayType}
+            <DayPicker label={form.type === 'common' ? t('itemsForm.expenseDay') : t('itemsForm.billing')} day={form.billingDay} dayType={form.billingDayType}
               monthOffset={form.billingDayMonthOffset} showMonthOffsetOptions
               monthOffsetOptions={[{ value: '0', label: t('dayPicker.currentMonth') }, { value: '-1', label: t('monthNavigator.previousMonth') }]}
               onChange={(d, tp, mo) => setForm({ ...form, billingDay: d, billingDayType: tp, billingDayMonthOffset: mo ?? 0 })} />
@@ -609,15 +635,18 @@ export function ItemsForm({
           <div className="rounded-lg border border-border bg-card p-4 space-y-4">
             <div className="grid grid-cols-2 gap-3">
               {form.type === 'common' && (
-                <DatePicker className="w-full justify-start" mode="month" label={form.cardId && form.paymentMethod === 'credit' ? t('itemsForm.billingMonth') : t('itemsForm.referenceMonth')} value={form.startMonth} onChange={v => setForm({ ...form, startMonth: v })} />
+                <DatePicker className="w-full justify-start" mode="month" label={t('itemsForm.expenseOccurredMonth')} value={form.startMonth} onChange={v => setForm({ ...form, startMonth: v })} />
               )}
               {(isInstallment || isEmprestimo) && (
-                <DatePicker className="w-full justify-start" mode="month" label={t('itemsForm.firstInstallment')} value={form.startMonth} onChange={v => setForm({ ...form, startMonth: v })} />
+                <>
+                  <DatePicker className="w-full justify-start" mode="month" label={t('itemsForm.firstInstallment')} value={form.startMonth} onChange={v => setForm({ ...form, startMonth: v })} />
+                  <Input label={t('itemsForm.lastInstallment')} value={getLastInstallmentMonth() ? fmtMonth(getLastInstallmentMonth()) : ''} readOnly disabled />
+                </>
               )}
               {form.type === 'subscription' && (
                 <>
                   <DatePicker className="w-full justify-start" mode="month" label={t('itemsForm.startMonth')} value={form.startMonth} onChange={v => setForm({ ...form, startMonth: v })} />
-                  <DatePicker className="w-full justify-start" mode="month" label={t('itemsForm.endMonth')} value={form.endMonth} onChange={v => setForm({ ...form, endMonth: v })} />
+                  <DatePicker className="w-full justify-start" mode="month" label={t('itemsForm.endMonth')} value={form.endMonth} onChange={v => setForm({ ...form, endMonth: v })} clearable clearLabel={t('common.clear')} />
                 </>
               )}
             </div>

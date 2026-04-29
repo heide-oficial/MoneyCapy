@@ -838,10 +838,10 @@ export default function IncomePage() {
                       {form.isRecurring ? (
                         <>
                           <DatePicker className="w-full justify-start" mode="month" label={t('income.startMonth')} value={form.startMonth} onChange={v => setForm({ ...form, startMonth: v })} />
-                          <DatePicker className="w-full justify-start" mode="month" label={t('income.endMonth')} value={form.endMonth} onChange={v => setForm({ ...form, endMonth: v })} />
+                          <DatePicker className="w-full justify-start" mode="month" label={t('income.endMonth')} value={form.endMonth} onChange={v => setForm({ ...form, endMonth: v })} clearable clearLabel={t('common.clear')} />
                         </>
                       ) : (
-                        <DatePicker className="w-full justify-start" mode="month" label={t('itemsForm.referenceMonth')} value={form.startMonth} onChange={v => setForm({ ...form, startMonth: v, endMonth: '' })} />
+                        <DatePicker className="w-full justify-start" mode="month" label={t('income.incomeOccurredMonth')} value={form.startMonth} onChange={v => setForm({ ...form, startMonth: v, endMonth: '' })} />
                       )}
                     </div>
                     <div className="grid grid-cols-2 gap-3 items-end">

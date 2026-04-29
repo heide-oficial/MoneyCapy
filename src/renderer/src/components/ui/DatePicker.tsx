@@ -10,6 +10,8 @@ interface DatePickerProps {
   label?: string
   small?: boolean
   placeholder?: string
+  clearable?: boolean
+  clearLabel?: string
   className?: string
 }
 
@@ -60,6 +62,8 @@ export function DatePicker({
   label,
   small,
   placeholder,
+  clearable,
+  clearLabel = 'Limpar',
   className = ''
 }: DatePickerProps) {
   const [open, setOpen] = useState(false)
@@ -381,6 +385,24 @@ export function DatePicker({
     )
   }
 
+  const renderClearAction = () => {
+    if (!clearable || !value) return null
+    return (
+      <div className="border-t border-border px-2 py-2">
+        <button
+          type="button"
+          onClick={() => {
+            onChange('')
+            setOpen(false)
+          }}
+          className="w-full rounded px-2 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        >
+          {clearLabel}
+        </button>
+      </div>
+    )
+  }
+
   const displayText = getDisplayText()
   const hasValue = !!value
 
@@ -416,6 +438,7 @@ export function DatePicker({
           {view === 'days' && renderDays()}
           {view === 'months' && renderMonths()}
           {view === 'years' && renderYears()}
+          {renderClearAction()}
         </div>,
         document.body
       )}
