@@ -469,24 +469,29 @@ export function ItemsForm({
                 <DatePicker mode="month" label={t('itemsForm.endMonth')} value={form.endMonth} onChange={v => setForm({ ...form, endMonth: v })} />
               </div>
             )}
-            <div className="flex rounded-lg border border-input p-0.5 bg-muted/30">
-              <button type="button" onClick={() => setForm({ ...form, isPaid: false, paidAt: '' })}
-                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
-                  !form.isPaid ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                }`}>
-                {t('itemsForm.unpaid')}
-              </button>
-              <button type="button" onClick={() => setForm({ ...form, isPaid: true, paidAt: form.paidAt || new Date().toISOString().substring(0, 10) })}
-                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
-                  form.isPaid ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                }`}>
-                {t('itemsForm.paid')}
-              </button>
+            <div className={`grid gap-3 items-end ${form.isPaid ? 'grid-cols-2' : 'grid-cols-1'}`}>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">{t('itemsForm.status')}</label>
+                <div className="flex h-9 rounded-lg border border-input p-0.5 bg-muted/30">
+                  <button type="button" onClick={() => setForm({ ...form, isPaid: false, paidAt: '' })}
+                    className={`flex-1 text-sm font-medium rounded-md transition-all ${
+                      !form.isPaid ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                    }`}>
+                    {t('itemsForm.unpaid')}
+                  </button>
+                  <button type="button" onClick={() => setForm({ ...form, isPaid: true, paidAt: form.paidAt || new Date().toISOString().substring(0, 10) })}
+                    className={`flex-1 text-sm font-medium rounded-md transition-all ${
+                      form.isPaid ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                    }`}>
+                    {t('itemsForm.paid')}
+                  </button>
+                </div>
+              </div>
+              {form.isPaid && (
+                <DatePicker mode="date" label={t('itemsForm.paymentDate')} value={form.paidAt}
+                  onChange={v => setForm({ ...form, paidAt: v })} />
+              )}
             </div>
-            {form.isPaid && (
-              <DatePicker mode="date" label={t('itemsForm.paymentDate')} value={form.paidAt}
-                onChange={v => setForm({ ...form, paidAt: v })} />
-            )}
           </div>
         </div>
 

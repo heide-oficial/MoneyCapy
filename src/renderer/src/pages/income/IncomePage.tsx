@@ -770,24 +770,29 @@ export default function IncomePage() {
                       <DatePicker mode="month" label={t('income.startMonth')} value={form.startMonth} onChange={v => setForm({ ...form, startMonth: v })} />
                       <DatePicker mode="month" label={t('income.endMonth')} value={form.endMonth} onChange={v => setForm({ ...form, endMonth: v })} />
                     </div>
-                    <div className="flex rounded-lg border border-input p-0.5 bg-muted/30">
-                      <button type="button" onClick={() => setForm({ ...form, isReceived: false, receivedAt: '' })}
-                        className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
-                          !form.isReceived ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                        }`}>
-                        {t('items.markNotReceived')}
-                      </button>
-                      <button type="button" onClick={() => setForm({ ...form, isReceived: true, receivedAt: form.receivedAt || new Date().toISOString().substring(0, 10) })}
-                        className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
-                          form.isReceived ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                        }`}>
-                        {t('items.received')}
-                      </button>
+                    <div className={`grid gap-3 items-end ${form.isReceived ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                      <div className="space-y-1.5">
+                        <label className="text-sm font-medium text-foreground">{t('itemsForm.status')}</label>
+                        <div className="flex h-9 rounded-lg border border-input p-0.5 bg-muted/30">
+                          <button type="button" onClick={() => setForm({ ...form, isReceived: false, receivedAt: '' })}
+                            className={`flex-1 text-sm font-medium rounded-md transition-all ${
+                              !form.isReceived ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                            }`}>
+                            {t('items.markNotReceived')}
+                          </button>
+                          <button type="button" onClick={() => setForm({ ...form, isReceived: true, receivedAt: form.receivedAt || new Date().toISOString().substring(0, 10) })}
+                            className={`flex-1 text-sm font-medium rounded-md transition-all ${
+                              form.isReceived ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                            }`}>
+                            {t('items.received')}
+                          </button>
+                        </div>
+                      </div>
+                      {form.isReceived && (
+                        <DatePicker mode="date" label={t('income.receivedDate')} value={form.receivedAt}
+                          onChange={v => setForm({ ...form, receivedAt: v })} />
+                      )}
                     </div>
-                    {form.isReceived && (
-                      <DatePicker mode="date" label={t('income.receivedDate')} value={form.receivedAt}
-                        onChange={v => setForm({ ...form, receivedAt: v })} />
-                    )}
                   </div>
                 </div>
 
