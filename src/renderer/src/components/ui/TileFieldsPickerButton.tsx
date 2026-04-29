@@ -37,7 +37,7 @@ export function TileFieldsPickerButton({ page, showGastos = true, showReceitas =
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center justify-center h-7 w-7 rounded-md border border-input hover:bg-accent transition-colors"
+        className="inline-flex items-center justify-center h-7 w-7 rounded-md hover:bg-accent transition-colors"
         title={t('tileFields.title')}
       >
         <Eye size={14} className="text-muted-foreground" />
