@@ -13,6 +13,7 @@ export const ROUTES = {
   PEOPLE: '/people',
 
   CATEGORIES: '/categories',
+  SUBCATEGORIES: '/subcategories',
   TAGS: '/tags',
   STORES: '/stores',
   INSIGHTS: '/insights',

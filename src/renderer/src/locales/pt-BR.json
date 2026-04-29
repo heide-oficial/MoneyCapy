@@ -100,6 +100,7 @@
     "accounts": "Contas",
     "cards": "Cartões",
     "categories": "Categorias",
+    "subcategories": "Subcategorias",
     "tags": "Tags",
     "stores": "Lojas/Entidades",
     "people": "Pessoas",
@@ -516,6 +517,7 @@
     "tabClassification": "Classificação",
     "tabNotes": "Observações",
     "description": "Descrição *",
+    "expenseName": "Nome do gasto",
     "descriptionPlaceholder": "Ex: Aluguel, Netflix...",
     "storeEntity": "Loja/Entidade",
     "createStore": "Criar loja/entidade",
@@ -605,6 +607,7 @@
     "unpaid": "Não pago",
     "paid": "Pago",
     "paymentDate": "Data de pagamento",
+    "notPaidYet": "Não pago ainda",
     "editItem": "Editar gasto",
     "newItem": "Novo gasto",
     "newStore": "Nova loja/entidade",
@@ -618,6 +621,7 @@
     "title": "Receitas",
     "newIncome": "Nova receita",
     "editIncome": "Editar receita",
+    "incomeName": "Nome da receita",
     "incomeUpdated": "Receita atualizada",
     "incomeAdded": "Receita adicionada",
     "incomeDeleted": "Receita excluída",
@@ -630,6 +634,7 @@
     "endMonth": "Mês final (opcional)",
     "incomeOccurredMonth": "Mês que a receita ocorreu",
     "receivedDate": "Data de recebimento",
+    "notReceivedYet": "Não recebido ainda",
     "newValue": "Novo valor",
     "interruptIncome": "Interromper receita",
     "pauseMonths": "Meses de pausa",
@@ -781,7 +786,14 @@
   "subcategories": {
     "title": "Subcategorias",
     "newSubcategory": "Nova subcategoria",
+    "createSubcategory": "Criar subcategoria",
+    "editSubcategory": "Editar subcategoria",
+    "subcategoryCreated": "Subcategoria criada",
+    "subcategoryUpdated": "Subcategoria atualizada",
+    "subcategoryDeleted": "Subcategoria excluída",
     "noSubcategories": "Nenhuma subcategoria cadastrada.",
+    "noLinkedCategories": "Nenhuma categoria vinculada",
+    "categoryRequired": "Selecione pelo menos uma categoria",
     "placeholder": "Ex: Comida, Transporte..."
   },
   "stores": {
@@ -1097,6 +1109,7 @@
     "deleteCurrency": "Excluir moeda",
     "deleteCurrencyConfirm": "Tem certeza que deseja excluir a moeda {{name}} ({{code}})?",
     "changeBaseCurrency": "Trocar moeda base",
+    "changeDisplayCurrency": "Alterar moeda exibida",
     "changeBaseConfirm": "Deseja definir {{name}} ({{code}}) como moeda base? Todas as taxas e snapshots serão recalculados."
   },
   "errors": {

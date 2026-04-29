@@ -171,6 +171,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           )}
           {collapsed && <div className="my-2 mx-2 border-t border-sidebar-border" />}
           {renderNavButton(Tags, t('sidebar.categories'), ROUTES.CATEGORIES)}
+          {renderNavButton(Bookmark, t('sidebar.subcategories'), ROUTES.SUBCATEGORIES)}
           {renderNavButton(Bookmark, t('sidebar.tags'), ROUTES.TAGS)}
           {renderNavButton(Store, t('sidebar.stores'), ROUTES.STORES)}
           {renderNavButton(Users, t('sidebar.people'), ROUTES.PEOPLE)}

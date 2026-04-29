@@ -100,6 +100,7 @@
     "accounts": "Accounts",
     "cards": "Cards",
     "categories": "Categories",
+    "subcategories": "Subcategories",
     "tags": "Tags",
     "stores": "Stores/Entities",
     "people": "People",
@@ -516,6 +517,7 @@
     "tabClassification": "Classification",
     "tabNotes": "Notes",
     "description": "Description *",
+    "expenseName": "Expense name",
     "descriptionPlaceholder": "e.g.: Rent, Netflix...",
     "storeEntity": "Store/Entity",
     "createStore": "Create store/entity",
@@ -605,6 +607,7 @@
     "unpaid": "Unpaid",
     "paid": "Paid",
     "paymentDate": "Payment date",
+    "notPaidYet": "Not paid yet",
     "editItem": "Edit expense",
     "newItem": "New expense",
     "newStore": "New store/entity",
@@ -618,6 +621,7 @@
     "title": "Income",
     "newIncome": "New income",
     "editIncome": "Edit income",
+    "incomeName": "Income name",
     "incomeUpdated": "Income updated",
     "incomeAdded": "Income added",
     "incomeDeleted": "Income deleted",
@@ -630,6 +634,7 @@
     "endMonth": "End month (optional)",
     "incomeOccurredMonth": "Month the income occurred",
     "receivedDate": "Received date",
+    "notReceivedYet": "Not received yet",
     "newValue": "New value",
     "interruptIncome": "Interrupt income",
     "pauseMonths": "Pause months",
@@ -781,7 +786,14 @@
   "subcategories": {
     "title": "Subcategories",
     "newSubcategory": "New subcategory",
+    "createSubcategory": "Create subcategory",
+    "editSubcategory": "Edit subcategory",
+    "subcategoryCreated": "Subcategory created",
+    "subcategoryUpdated": "Subcategory updated",
+    "subcategoryDeleted": "Subcategory deleted",
     "noSubcategories": "No subcategories registered.",
+    "noLinkedCategories": "No linked categories",
+    "categoryRequired": "Select at least one category",
     "placeholder": "e.g.: Food, Transport..."
   },
   "stores": {
@@ -1097,6 +1109,7 @@
     "deleteCurrency": "Delete currency",
     "deleteCurrencyConfirm": "Are you sure you want to delete the currency {{name}} ({{code}})?",
     "changeBaseCurrency": "Change base currency",
+    "changeDisplayCurrency": "Change displayed currency",
     "changeBaseConfirm": "Set {{name}} ({{code}}) as base currency? All rates and snapshots will be recalculated."
   },
   "errors": {

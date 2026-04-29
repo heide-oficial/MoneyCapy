@@ -28,6 +28,7 @@ import CardsPage from './pages/cards/CardsPage'
 import IncomePage from './pages/income/IncomePage'
 import PeoplePage from './pages/people/PeoplePage'
 import CategoriesPage from './pages/categories/CategoriesPage'
+import SubcategoriesPage from './pages/subcategories/SubcategoriesPage'
 import TagsPage from './pages/tags/TagsPage'
 
 import ItemsPage from './pages/items/ItemsPage'
@@ -123,6 +124,7 @@ function App() {
                 <Route path={ROUTES.INCOME} element={<IncomePage />} />
                 <Route path={ROUTES.PEOPLE} element={<PeoplePage />} />
                 <Route path={ROUTES.CATEGORIES} element={<CategoriesPage />} />
+                <Route path={ROUTES.SUBCATEGORIES} element={<SubcategoriesPage />} />
                 <Route path={ROUTES.TAGS} element={<TagsPage />} />
                 <Route path={ROUTES.STORES} element={<StoresPage />} />
 
