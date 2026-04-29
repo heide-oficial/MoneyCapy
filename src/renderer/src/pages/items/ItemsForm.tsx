@@ -67,7 +67,7 @@ export const defaultForm = {
 
 export type ItemForm = typeof defaultForm
 
-interface Category { id: number; name: string; icon: string; color: string }
+interface Category { id: number; name: string; icon: string; color: string; scope?: 'expense' | 'income' | 'both' }
 interface StoreData2 { id: number; name: string }
 interface CardData { id: number; name: string; personId: number | null; bankAccountId: number | null; billingCloseDay?: number; cardType?: 'credit' | 'debit' | 'both' }
 interface BankAccountData { id: number; name: string; nomeBanco: string | null }
@@ -124,6 +124,7 @@ export function ItemsForm({
   const { currencies, baseCurrency } = useCurrencySettings()
   const { t } = useTranslation()
   const typeOptions = getTypeOptions(t)
+  const expenseCategories = categories.filter(c => c.scope !== 'income')
   const [modalTab, setModalTab] = useState<ModalTab>('detalhes')
   const [modalScrollFade, setModalScrollFade] = useState({ top: false, bottom: false })
   const modalScrollRef = useRef<HTMLDivElement>(null)
@@ -1031,7 +1032,7 @@ export function ItemsForm({
               <Select
                 value={String(form.categoryId)}
                 onChange={e => setForm({ ...form, categoryId: e.target.value })}
-                options={categories.map(c => ({ value: c.id, label: c.name }))}
+                options={expenseCategories.map(c => ({ value: c.id, label: c.name }))}
                 placeholder={t('itemsForm.noCategoryPlaceholder')}
               />
             </div>
@@ -1209,7 +1210,7 @@ export function ItemsForm({
           <Button variant="outline" onClick={() => setShowCatCreate(false)}>{t('common.cancel')}</Button>
           <Button onClick={async () => {
             if (!catCreateName.trim()) return
-            const created = await window.api.categories.create({ name: catCreateName.trim(), icon: 'Circle', color: catCreateColor })
+            const created = await window.api.categories.create({ name: catCreateName.trim(), icon: 'Circle', color: catCreateColor, scope: 'expense' })
             const updated = await window.api.categories.list()
             setCategories(updated)
             setForm(f => ({ ...f, categoryId: created.id }))

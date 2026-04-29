@@ -98,7 +98,7 @@ function TabDropdown({ anchorRef, dropRef, current, onChange, onClose, tabs }: {
   )
 }
 
-interface Category { id: number; name: string; icon: string; color: string }
+interface Category { id: number; name: string; icon: string; color: string; scope?: 'expense' | 'income' | 'both' }
 interface StoreData2 { id: number; name: string }
 interface CardData { id: number; name: string; personId: number | null; bankAccountId: number | null; billingCloseDay?: number; cardType?: 'credit' | 'debit' | 'both' }
 interface BankAccountData { id: number; name: string; nomeBanco: string | null }
@@ -127,6 +127,7 @@ export default function ItemsPage() {
 
   const [items, setItems] = useState<SectionItem[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const expenseCategories = categories.filter(c => c.scope !== 'income')
   const [cards, setCards] = useState<CardData[]>([])
   const [bankAccounts, setBankAccounts] = useState<BankAccountData[]>([])
   const [stores, setStores] = useState<StoreData2[]>([])
@@ -771,7 +772,7 @@ export default function ItemsPage() {
                   anchorRef={catFilterRef}
                   dropRef={catDropRef}
                   onClose={() => setShowCatFilter(false)}
-                  items={[{ id: -1, name: t('filters.noCategory'), color: '#6b7280' }, ...categories.map(c => ({ id: c.id, name: c.name, color: c.color }))]}
+                  items={[{ id: -1, name: t('filters.noCategory'), color: '#6b7280' }, ...expenseCategories.map(c => ({ id: c.id, name: c.name, color: c.color }))]}
                   selected={filterCategories}
                   onToggle={id => setFilterCategories(f => f.includes(id) ? f.filter(x => x !== id) : [...f, id])}
                   emptyText={t('filters.noOptions')}

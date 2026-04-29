@@ -1,5 +1,7 @@
 import { WrappedDatabase } from '../connection'
 
+type CategoryScope = 'expense' | 'income' | 'both'
+
 export class CategoriesRepository {
   constructor(private db: WrappedDatabase) {}
 
@@ -11,19 +13,20 @@ export class CategoriesRepository {
     return this.db.prepare('SELECT * FROM categories WHERE id = ?').get(id)
   }
 
-  create(data: { name: string; icon: string; color: string }) {
+  create(data: { name: string; icon: string; color: string; scope?: CategoryScope }) {
     const result = this.db.prepare(
-      'INSERT INTO categories (name, icon, color) VALUES (?, ?, ?)'
-    ).run(data.name, data.icon, data.color)
+      'INSERT INTO categories (name, icon, color, scope) VALUES (?, ?, ?, ?)'
+    ).run(data.name, data.icon, data.color, data.scope || 'both')
     return this.findById(result.lastInsertRowid as number)
   }
 
-  update(id: number, data: { name?: string; icon?: string; color?: string }) {
+  update(id: number, data: { name?: string; icon?: string; color?: string; scope?: CategoryScope }) {
     const fields: string[] = []
     const values: any[] = []
     if (data.name !== undefined) { fields.push('name = ?'); values.push(data.name) }
     if (data.icon !== undefined) { fields.push('icon = ?'); values.push(data.icon) }
     if (data.color !== undefined) { fields.push('color = ?'); values.push(data.color) }
+    if (data.scope !== undefined) { fields.push('scope = ?'); values.push(data.scope) }
     if (fields.length === 0) return this.findById(id)
     fields.push("updated_at = datetime('now')")
     values.push(id)

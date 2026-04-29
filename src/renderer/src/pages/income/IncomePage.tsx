@@ -44,7 +44,7 @@ import type { TagData, ItemInterruption } from '../../types/entities'
 
 import { PRESET_COLORS } from '../../lib/constants'
 
-interface Category { id: number; name: string; icon: string; color: string }
+interface Category { id: number; name: string; icon: string; color: string; scope?: 'expense' | 'income' | 'both' }
 
 interface Income {
   id: number; personId: number; description: string
@@ -109,6 +109,7 @@ export default function IncomePage() {
 
   // Categories, tags & stores
   const [categories, setCategories] = useState<Category[]>([])
+  const incomeCategories = categories.filter(c => c.scope !== 'expense')
   const [allTags, setAllTags] = useState<TagData[]>([])
   const [stores, setStores] = useState<{ id: number; name: string; color: string }[]>([])
 
@@ -521,7 +522,7 @@ export default function IncomePage() {
                   anchorRef={catFilterRef}
                   dropRef={catDropRef}
                   onClose={() => setShowCatFilter(false)}
-                  items={[{ id: -1, name: t('categories.noCategory'), color: '#6b7280' }, ...categories.map(c => ({ id: c.id, name: c.name, color: c.color }))]}
+                  items={[{ id: -1, name: t('categories.noCategory'), color: '#6b7280' }, ...incomeCategories.map(c => ({ id: c.id, name: c.name, color: c.color }))]}
                   selected={filterCategories}
                   onToggle={id => setFilterCategories(f => f.includes(id) ? f.filter(x => x !== id) : [...f, id])}
                   emptyText={t('categories.noCategories')}
@@ -955,7 +956,7 @@ export default function IncomePage() {
                       label={t('itemsForm.category')}
                       value={String(form.categoryId)}
                       onChange={e => setForm({ ...form, categoryId: e.target.value })}
-                      options={categories.map(c => ({ value: c.id, label: c.name }))}
+                      options={incomeCategories.map(c => ({ value: c.id, label: c.name }))}
                       placeholder={t('itemsForm.noCategoryPlaceholder')}
                     />
                   </div>

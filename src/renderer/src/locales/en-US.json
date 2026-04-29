@@ -746,6 +746,10 @@
     "noCategories": "No categories registered.",
     "addCategory": "Add category",
     "hideEmpty": "Hide empty",
+    "scope": "Use for",
+    "scopeExpense": "Expenses",
+    "scopeIncome": "Income",
+    "scopeBoth": "Both",
     "placeholder": "e.g.: Food, Transport..."
   },
   "tags": {

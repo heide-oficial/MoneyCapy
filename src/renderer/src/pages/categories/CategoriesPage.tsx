@@ -39,7 +39,8 @@ import { useTranslation } from '../../contexts/LanguageContext'
 import type { TagData, SectionItem, IncomeRecord } from '../../types/entities'
 import { PRESET_COLORS } from '../../lib/constants'
 
-interface Category { id: number; name: string; icon: string; color: string }
+type CategoryScope = 'expense' | 'income' | 'both'
+interface Category { id: number; name: string; icon: string; color: string; scope?: CategoryScope }
 interface CardData { id: number; name: string; bankAccountId: number | null }
 interface BankAccountData { id: number; name: string }
 
@@ -126,6 +127,7 @@ export default function CategoriesPage() {
   const [editing, setEditing] = useState<Category | null>(null)
   const [name, setName] = useState('')
   const [color, setColor] = useState(PRESET_COLORS[0])
+  const [scope, setScope] = useState<CategoryScope>('both')
   const [showColorPicker, setShowColorPicker] = useState(false)
 
   const loadData = async () => {
@@ -149,16 +151,16 @@ export default function CategoriesPage() {
   useEffect(() => { loadData() }, [activePerson, month])
 
   // CRUD handlers
-  const openCreate = () => { setEditing(null); setName(''); setColor(PRESET_COLORS[0]); setShowForm(true) }
-  const openEdit = (cat: Category) => { setEditing(cat); setName(cat.name); setColor(cat.color || PRESET_COLORS[0]); setShowForm(true) }
+  const openCreate = () => { setEditing(null); setName(''); setColor(PRESET_COLORS[0]); setScope('both'); setShowForm(true) }
+  const openEdit = (cat: Category) => { setEditing(cat); setName(cat.name); setColor(cat.color || PRESET_COLORS[0]); setScope(cat.scope || 'both'); setShowForm(true) }
 
   const handleSave = async () => {
     if (!name.trim()) { toast.error(t('common.nameIsRequired')); return }
     if (editing) {
-      await window.api.categories.update({ id: editing.id, name, icon: 'Circle', color })
+      await window.api.categories.update({ id: editing.id, name, icon: 'Circle', color, scope })
       toast.success(t('categories.categoryUpdated'))
     } else {
-      await window.api.categories.create({ name, icon: 'Circle', color })
+      await window.api.categories.create({ name, icon: 'Circle', color, scope })
       toast.success(t('categories.categoryCreated'))
     }
     setShowForm(false)
@@ -674,6 +676,12 @@ export default function CategoriesPage() {
     return itemTotal + incomeTotal
   }
 
+  const getCategoryScopeLabel = (scopeValue?: CategoryScope) => {
+    if (scopeValue === 'expense') return t('categories.scopeExpense')
+    if (scopeValue === 'income') return t('categories.scopeIncome')
+    return t('categories.scopeBoth')
+  }
+
   if (!activePerson) {
     return (
       <SectionLayout icon={Tags} title={t('categories.title')}>
@@ -1026,6 +1034,11 @@ export default function CategoriesPage() {
                       <Tags size={14} style={{ color: group.color }} />
                     </div>
                     <span className="text-sm font-semibold flex-1">{group.name}</span>
+                    {group.category && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full border border-border text-muted-foreground">
+                        {getCategoryScopeLabel(group.category.scope)}
+                      </span>
+                    )}
                     <span className="text-xs text-muted-foreground">{groupCountLabel(group)}</span>
                     <span className="text-sm font-bold tabular-nums" style={gastosStyle('categories', 'itens')}>{formatCurrency(total)}</span>
                     {group.category && (
@@ -1066,6 +1079,28 @@ export default function CategoriesPage() {
           />
 
           {/* Color Picker — only in custom mode */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-foreground">{t('categories.scope')}</label>
+            <div className="flex rounded-lg border border-input p-0.5 bg-muted/30">
+              {([
+                { value: 'both', label: t('categories.scopeBoth') },
+                { value: 'expense', label: t('categories.scopeExpense') },
+                { value: 'income', label: t('categories.scopeIncome') }
+              ] as { value: CategoryScope; label: string }[]).map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setScope(opt.value)}
+                  className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
+                    scope === opt.value ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {colorMode === 'custom' && (
             <div className="space-y-1">
               <label className="text-sm font-medium text-foreground">{t('common.color')}</label>

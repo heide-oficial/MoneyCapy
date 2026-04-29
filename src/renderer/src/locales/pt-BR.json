@@ -746,6 +746,10 @@
     "noCategories": "Nenhuma categoria cadastrada.",
     "addCategory": "Adicionar categoria",
     "hideEmpty": "Ocultar vazias",
+    "scope": "Usar em",
+    "scopeExpense": "Gastos",
+    "scopeIncome": "Receitas",
+    "scopeBoth": "Ambos",
     "placeholder": "Ex: Alimentação"
   },
   "tags": {
