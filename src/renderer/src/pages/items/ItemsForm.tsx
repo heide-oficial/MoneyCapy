@@ -50,7 +50,7 @@ export const defaultForm = {
   billingDay: '' as string,
   billingDayType: '' as string,
   billingDayMonthOffset: 0 as number,
-  categoryId: '' as string | number, cardId: '' as string | number,
+  categoryId: '' as string | number, subcategoryId: '' as string | number, cardId: '' as string | number,
   notes: '', tagIds: [] as number[],
   cardMode: 'none' as CardMode,
   splits: [] as FormSplit[],
@@ -69,6 +69,7 @@ export const defaultForm = {
 export type ItemForm = typeof defaultForm
 
 interface Category { id: number; name: string; icon: string; color: string; scope?: 'expense' | 'income' | 'both' }
+interface Subcategory { id: number; name: string; color: string; categoryIds?: number[] }
 interface StoreData2 { id: number; name: string }
 interface CardData { id: number; name: string; personId: number | null; bankAccountId: number | null; billingCloseDay?: number; cardType?: 'credit' | 'debit' | 'both' }
 interface BankAccountData { id: number; name: string; nomeBanco: string | null }
@@ -92,6 +93,7 @@ export interface ItemsFormProps {
   setForm: React.Dispatch<React.SetStateAction<ItemForm>>
   categories: Category[]
   setCategories: React.Dispatch<React.SetStateAction<Category[]>>
+  subcategories: Subcategory[]
   cards: CardData[]
   bankAccounts: BankAccountData[]
   stores: StoreData2[]
@@ -113,7 +115,7 @@ export interface ItemsFormProps {
 export function ItemsForm({
   open, onClose, editing, month, typeFilter,
   form, setForm,
-  categories, setCategories, cards, bankAccounts, stores, setStores,
+  categories, setCategories, subcategories, cards, bankAccounts, stores, setStores,
   allTags, setAllTags,
   handleSave, handleAnticipate, handleUndoAnticipation,
   handleReactivate, setInterruptItem,
@@ -126,6 +128,7 @@ export function ItemsForm({
   const { t } = useTranslation()
   const typeOptions = getTypeOptions(t)
   const expenseCategories = categories.filter(c => c.scope !== 'income')
+  const availableSubcategories = subcategories.filter(s => !form.categoryId || (s.categoryIds || []).includes(Number(form.categoryId)))
   const [modalTab, setModalTab] = useState<ModalTab>('detalhes')
   const [modalScrollFade, setModalScrollFade] = useState({ top: false, bottom: false })
   const modalScrollRef = useRef<HTMLDivElement>(null)
@@ -1033,7 +1036,7 @@ export function ItemsForm({
             <div className="flex-1">
               <Select
                 value={String(form.categoryId)}
-                onChange={e => setForm({ ...form, categoryId: e.target.value })}
+                onChange={e => setForm({ ...form, categoryId: e.target.value, subcategoryId: '' })}
                 options={expenseCategories.map(c => ({ value: c.id, label: c.name }))}
                 placeholder={t('itemsForm.noCategoryPlaceholder')}
               />
@@ -1042,6 +1045,15 @@ export function ItemsForm({
               className="h-9 w-9 flex items-center justify-center rounded-md border border-input hover:bg-accent transition-colors shrink-0" title={t('itemsForm.createCategory')}>
               <Plus size={14} />
             </button>
+          </div>
+          <div className="space-y-1.5">
+            <Select
+              label={t('itemsForm.subcategory')}
+              value={String(form.subcategoryId)}
+              onChange={e => setForm({ ...form, subcategoryId: e.target.value })}
+              options={availableSubcategories.map(s => ({ value: s.id, label: s.name }))}
+              placeholder={form.categoryId ? t('itemsForm.noSubcategoryPlaceholder') : t('itemsForm.selectCategoryFirst')}
+            />
           </div>
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground">{t('itemsForm.storeEntity')}</label>

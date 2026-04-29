@@ -41,6 +41,7 @@ import { PRESET_COLORS } from '../../lib/constants'
 
 type CategoryScope = 'expense' | 'income' | 'both'
 interface Category { id: number; name: string; icon: string; color: string; scope?: CategoryScope }
+interface Subcategory { id: number; name: string; color: string; categoryIds?: number[] }
 interface CardData { id: number; name: string; bankAccountId: number | null }
 interface BankAccountData { id: number; name: string }
 
@@ -62,6 +63,7 @@ export default function CategoriesPage() {
 
   // Data
   const [categories, setCategories] = useState<Category[]>([])
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([])
   const [items, setItems] = useState<SectionItem[]>([])
   const [incomes, setIncomes] = useState<IncomeRecord[]>([])
   const [cards, setCards] = useState<CardData[]>([])
@@ -128,11 +130,15 @@ export default function CategoriesPage() {
   const [name, setName] = useState('')
   const [color, setColor] = useState(PRESET_COLORS[0])
   const [scope, setScope] = useState<CategoryScope>('both')
+  const [selectedSubcategoryIds, setSelectedSubcategoryIds] = useState<number[]>([])
+  const [newSubcategoryName, setNewSubcategoryName] = useState('')
   const [showColorPicker, setShowColorPicker] = useState(false)
 
   const loadData = async () => {
     const cats = await window.api.categories.list()
+    const subcats = await window.api.subcategories.list()
     setCategories(cats)
+    setSubcategories(subcats)
     if (!activePerson) return
     const [its, incs, cds, accs, strs] = await Promise.all([
       window.api.items.list(activePerson.id, month),
@@ -151,17 +157,42 @@ export default function CategoriesPage() {
   useEffect(() => { loadData() }, [activePerson, month])
 
   // CRUD handlers
-  const openCreate = () => { setEditing(null); setName(''); setColor(PRESET_COLORS[0]); setScope('both'); setShowForm(true) }
-  const openEdit = (cat: Category) => { setEditing(cat); setName(cat.name); setColor(cat.color || PRESET_COLORS[0]); setScope(cat.scope || 'both'); setShowForm(true) }
+  const openCreate = () => { setEditing(null); setName(''); setColor(PRESET_COLORS[0]); setScope('both'); setSelectedSubcategoryIds([]); setNewSubcategoryName(''); setShowForm(true) }
+  const openEdit = (cat: Category) => {
+    setEditing(cat)
+    setName(cat.name)
+    setColor(cat.color || PRESET_COLORS[0])
+    setScope(cat.scope || 'both')
+    setSelectedSubcategoryIds(subcategories.filter(s => (s.categoryIds || []).includes(cat.id)).map(s => s.id))
+    setNewSubcategoryName('')
+    setShowForm(true)
+  }
 
   const handleSave = async () => {
     if (!name.trim()) { toast.error(t('common.nameIsRequired')); return }
+    let savedCategory: Category | null = null
     if (editing) {
-      await window.api.categories.update({ id: editing.id, name, icon: 'Circle', color, scope })
+      savedCategory = await window.api.categories.update({ id: editing.id, name, icon: 'Circle', color, scope })
       toast.success(t('categories.categoryUpdated'))
     } else {
-      await window.api.categories.create({ name, icon: 'Circle', color, scope })
+      savedCategory = await window.api.categories.create({ name, icon: 'Circle', color, scope })
       toast.success(t('categories.categoryCreated'))
+    }
+    if (savedCategory?.id) {
+      const categoryId = savedCategory.id
+      for (const subcat of subcategories) {
+        const ids = new Set(subcat.categoryIds || [])
+        const shouldBeLinked = selectedSubcategoryIds.includes(subcat.id)
+        const wasLinked = ids.has(categoryId)
+        if (shouldBeLinked && !wasLinked) ids.add(categoryId)
+        if (!shouldBeLinked && wasLinked) ids.delete(categoryId)
+        if (shouldBeLinked !== wasLinked) {
+          await window.api.subcategories.update({ id: subcat.id, categoryIds: Array.from(ids) })
+        }
+      }
+      if (newSubcategoryName.trim()) {
+        await window.api.subcategories.create({ name: newSubcategoryName.trim(), color: color || PRESET_COLORS[0], categoryIds: [categoryId] })
+      }
     }
     setShowForm(false)
     loadData()
@@ -1098,6 +1129,44 @@ export default function CategoriesPage() {
                   {opt.label}
                 </button>
               ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">{t('subcategories.title')}</label>
+            <div className="rounded-lg border border-border bg-card p-3 space-y-3">
+              {subcategories.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{t('subcategories.noSubcategories')}</p>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {subcategories.map(subcat => {
+                    const selected = selectedSubcategoryIds.includes(subcat.id)
+                    return (
+                      <button
+                        key={subcat.id}
+                        type="button"
+                        onClick={() => setSelectedSubcategoryIds(ids => selected ? ids.filter(id => id !== subcat.id) : [...ids, subcat.id])}
+                        className={`text-xs px-2.5 py-1 rounded-full font-medium transition-all border ${
+                          selected ? 'ring-1 ring-offset-1 ring-offset-card' : 'opacity-60 hover:opacity-100'
+                        }`}
+                        style={{
+                          backgroundColor: `${subcat.color || '#6b7280'}20`,
+                          color: subcat.color || '#6b7280',
+                          borderColor: selected ? subcat.color || '#6b7280' : 'transparent'
+                        }}
+                      >
+                        {subcat.name}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+              <Input
+                label={t('subcategories.newSubcategory')}
+                value={newSubcategoryName}
+                onChange={e => setNewSubcategoryName(e.target.value)}
+                placeholder={t('subcategories.placeholder')}
+              />
             </div>
           </div>
 

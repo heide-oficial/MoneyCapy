@@ -592,7 +592,10 @@
     "end": "End",
     "perMonth": "/mo",
     "category": "Category",
+    "subcategory": "Subcategory",
     "noCategoryPlaceholder": "None",
+    "noSubcategoryPlaceholder": "None",
+    "selectCategoryFirst": "Select a category first",
     "createCategory": "Create category",
     "tags": "Tags",
     "newTag": "+ New tag",
@@ -774,6 +777,12 @@
     "addBlock": "Add note",
     "noBlocks": "No notes registered.",
     "previousBlock": "Previous note"
+  },
+  "subcategories": {
+    "title": "Subcategories",
+    "newSubcategory": "New subcategory",
+    "noSubcategories": "No subcategories registered.",
+    "placeholder": "e.g.: Food, Transport..."
   },
   "stores": {
     "title": "Stores/Entities",

@@ -592,7 +592,10 @@
     "end": "Fim",
     "perMonth": "/mês",
     "category": "Categoria",
+    "subcategory": "Subcategoria",
     "noCategoryPlaceholder": "Nenhuma",
+    "noSubcategoryPlaceholder": "Nenhuma",
+    "selectCategoryFirst": "Selecione uma categoria primeiro",
     "createCategory": "Criar categoria",
     "tags": "Tags",
     "newTag": "+ Nova tag",
@@ -774,6 +777,12 @@
     "addBlock": "Adicionar observação",
     "noBlocks": "Nenhuma observação registrada.",
     "previousBlock": "Observação anterior"
+  },
+  "subcategories": {
+    "title": "Subcategorias",
+    "newSubcategory": "Nova subcategoria",
+    "noSubcategories": "Nenhuma subcategoria cadastrada.",
+    "placeholder": "Ex: Comida, Transporte..."
   },
   "stores": {
     "title": "Lojas/Entidades",

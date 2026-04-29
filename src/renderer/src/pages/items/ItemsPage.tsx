@@ -99,6 +99,7 @@ function TabDropdown({ anchorRef, dropRef, current, onChange, onClose, tabs }: {
 }
 
 interface Category { id: number; name: string; icon: string; color: string; scope?: 'expense' | 'income' | 'both' }
+interface Subcategory { id: number; name: string; color: string; categoryIds?: number[] }
 interface StoreData2 { id: number; name: string }
 interface CardData { id: number; name: string; personId: number | null; bankAccountId: number | null; billingCloseDay?: number; cardType?: 'credit' | 'debit' | 'both' }
 interface BankAccountData { id: number; name: string; nomeBanco: string | null }
@@ -128,6 +129,7 @@ export default function ItemsPage() {
   const [items, setItems] = useState<SectionItem[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const expenseCategories = categories.filter(c => c.scope !== 'income')
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([])
   const [cards, setCards] = useState<CardData[]>([])
   const [bankAccounts, setBankAccounts] = useState<BankAccountData[]>([])
   const [stores, setStores] = useState<StoreData2[]>([])
@@ -151,6 +153,7 @@ export default function ItemsPage() {
 
   // Filters & Sort
   const [filterCategories, setFilterCategories] = useState<number[]>([])
+  const [filterSubcategories, setFilterSubcategories] = useState<number[]>([])
   const [filterTags, setFilterTags] = useState<number[]>([])
   const [filterCards, setFilterCards] = useState<number[]>(() => {
     const p = searchParams.get('cardId')
@@ -167,17 +170,20 @@ export default function ItemsPage() {
   const activeBtnRef = useRef<HTMLButtonElement>(null)
   const activeDropRef = useRef<HTMLDivElement>(null)
   const [showCatFilter, setShowCatFilter] = useState(false)
+  const [showSubcatFilter, setShowSubcatFilter] = useState(false)
   const [showTagFilter, setShowTagFilter] = useState(false)
   const [showCardFilter, setShowCardFilter] = useState(false)
   const [showBankFilter, setShowBankFilter] = useState(false)
   const [filterStores, setFilterStores] = useState<number[]>([])
   const [showStoreFilter, setShowStoreFilter] = useState(false)
   const catFilterRef = useRef<HTMLButtonElement>(null)
+  const subcatFilterRef = useRef<HTMLButtonElement>(null)
   const tagFilterRef = useRef<HTMLButtonElement>(null)
   const cardFilterRef = useRef<HTMLButtonElement>(null)
   const bankFilterRef = useRef<HTMLButtonElement>(null)
   const storeFilterRef = useRef<HTMLButtonElement>(null)
   const catDropRef = useRef<HTMLDivElement>(null)
+  const subcatDropRef = useRef<HTMLDivElement>(null)
   const tagDropRef = useRef<HTMLDivElement>(null)
   const cardDropRef = useRef<HTMLDivElement>(null)
   const bankDropRef = useRef<HTMLDivElement>(null)
@@ -209,9 +215,10 @@ export default function ItemsPage() {
 
   const loadData = async () => {
     if (!activePerson) return
-    const [its, cats, tags, cds, accs, strs] = await Promise.all([
+    const [its, cats, subcats, tags, cds, accs, strs] = await Promise.all([
       window.api.items.list(activePerson.id, month, typeFilter),
       window.api.categories.list(),
+      window.api.subcategories.list(),
       window.api.tags.list(),
       window.api.cards.list(activePerson.id, month),
       window.api.bankAccounts.list(activePerson.id),
@@ -219,6 +226,7 @@ export default function ItemsPage() {
     ])
     setItems(its)
     setCategories(cats)
+    setSubcategories(subcats)
     setAllTags(tags)
     setCards(cds)
     setBankAccounts(accs)
@@ -287,6 +295,12 @@ export default function ItemsPage() {
         const none = filterCategories.includes(-1)
         const ids = filterCategories.filter(x => x !== -1)
         const match = (none && !item.categoryId) || (ids.length > 0 && item.categoryId && ids.includes(item.categoryId))
+        if (!match) return false
+      }
+      if (filterSubcategories.length > 0) {
+        const none = filterSubcategories.includes(-1)
+        const ids = filterSubcategories.filter(x => x !== -1)
+        const match = (none && !item.subcategoryId) || (ids.length > 0 && item.subcategoryId && ids.includes(item.subcategoryId))
         if (!match) return false
       }
       if (filterTags.length > 0) {
@@ -381,7 +395,7 @@ export default function ItemsPage() {
     { id: 'notes', label: t('csvExport.columns.notes'), value: i => i.notes || '' }
   ]
 
-  const hasActiveFilters = filterCategories.length > 0 || filterTags.length > 0 || filterCards.length > 0 || filterBankAccounts.length > 0 || filterStores.length > 0 || filterActive !== 'all' || filterPaid !== 'all' || filterPayMethod !== 'all'
+  const hasActiveFilters = filterCategories.length > 0 || filterSubcategories.length > 0 || filterTags.length > 0 || filterCards.length > 0 || filterBankAccounts.length > 0 || filterStores.length > 0 || filterActive !== 'all' || filterPaid !== 'all' || filterPayMethod !== 'all'
 
   const showParcelasTab = form.type === 'installment' || form.type === 'emprestimo'
 
@@ -452,6 +466,7 @@ export default function ItemsPage() {
       billingDayType: (item.billingDayType === 'static' || !item.billingDayType) && item.billingDay == null ? '' : (item.billingDayType || ''),
       billingDayMonthOffset: item.billingDayMonthOffset || 0,
       categoryId: item.categoryId || '',
+      subcategoryId: item.subcategoryId || '',
       cardId: (item.type !== 'installment' && item.type !== 'emprestimo') ? (item.cardId || '') : '',
       notes: item.notes || '',
       tagIds: item.tags?.map(t => t.id) || [],
@@ -525,6 +540,7 @@ export default function ItemsPage() {
       startMonth: form.startMonth || month,
       endMonth: form.type === 'subscription' && form.endMonth ? form.endMonth : null,
       categoryId: form.categoryId ? Number(form.categoryId) : null,
+      subcategoryId: form.subcategoryId ? Number(form.subcategoryId) : null,
       cardId,
       notes: form.notes || null,
       tagIds: form.tagIds,
@@ -744,17 +760,17 @@ export default function ItemsPage() {
 
           <FilterGroup
             activeCount={
-              (filterCategories.length > 0 ? 1 : 0) + (filterTags.length > 0 ? 1 : 0) +
+              (filterCategories.length > 0 ? 1 : 0) + (filterSubcategories.length > 0 ? 1 : 0) + (filterTags.length > 0 ? 1 : 0) +
               (filterBankAccounts.length > 0 ? 1 : 0) + (filterCards.length > 0 ? 1 : 0) +
               (filterStores.length > 0 ? 1 : 0) + (filterActive !== 'all' ? 1 : 0) +
               (filterPaid !== 'all' ? 1 : 0) + (filterPayMethod !== 'all' ? 1 : 0)
             }
-            onClear={() => { setFilterCategories([]); setFilterTags([]); setFilterCards([]); setFilterBankAccounts([]); setFilterStores([]); setFilterActive('all'); setFilterPaid('all'); setFilterPayMethod('all'); setSearchParams({}) }}
+            onClear={() => { setFilterCategories([]); setFilterSubcategories([]); setFilterTags([]); setFilterCards([]); setFilterBankAccounts([]); setFilterStores([]); setFilterActive('all'); setFilterPaid('all'); setFilterPayMethod('all'); setSearchParams({}) }}
             primaryCount={3}
           >
             <div className="relative">
               <button ref={catFilterRef} type="button" title={t('filters.category')}
-                onClick={() => { setShowCatFilter(f => !f); setShowTagFilter(false); setShowCardFilter(false); setShowBankFilter(false) }}
+                onClick={() => { setShowCatFilter(f => !f); setShowSubcatFilter(false); setShowTagFilter(false); setShowCardFilter(false); setShowBankFilter(false) }}
                 className={`inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border transition-colors ${
                   filterCategories.length > 0
                     ? 'bg-primary text-primary-foreground border-primary'
@@ -776,6 +792,34 @@ export default function ItemsPage() {
                   selected={filterCategories}
                   onToggle={id => setFilterCategories(f => f.includes(id) ? f.filter(x => x !== id) : [...f, id])}
                   emptyText={t('filters.noOptions')}
+                />
+              )}
+            </div>
+
+            <div className="relative">
+              <button ref={subcatFilterRef} type="button" title={t('itemsForm.subcategory')}
+                onClick={() => { setShowSubcatFilter(f => !f); setShowCatFilter(false); setShowTagFilter(false); setShowCardFilter(false); setShowBankFilter(false) }}
+                className={`inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border transition-colors ${
+                  filterSubcategories.length > 0
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-transparent text-foreground border-input hover:bg-accent'
+                }`}>
+                <Tags size={11} />
+                <span data-filter-label>{t('itemsForm.subcategory')}</span>
+                {filterSubcategories.length > 0 && (
+                  <span className="bg-primary-foreground text-primary text-[10px] rounded-full h-4 min-w-[16px] flex items-center justify-center font-bold">{filterSubcategories.length}</span>
+                )}
+                <ChevronDown size={12} className="text-muted-foreground" />
+              </button>
+              {showSubcatFilter && (
+                <FilterDropdown
+                  anchorRef={subcatFilterRef}
+                  dropRef={subcatDropRef}
+                  onClose={() => setShowSubcatFilter(false)}
+                  items={[{ id: -1, name: t('itemsForm.noSubcategoryPlaceholder'), color: '#6b7280' }, ...subcategories.map(s => ({ id: s.id, name: s.name, color: s.color }))]}
+                  selected={filterSubcategories}
+                  onToggle={id => setFilterSubcategories(f => f.includes(id) ? f.filter(x => x !== id) : [...f, id])}
+                  emptyText={t('subcategories.noSubcategories')}
                 />
               )}
             </div>
@@ -1051,6 +1095,7 @@ export default function ItemsPage() {
         setForm={setForm}
         categories={categories}
         setCategories={setCategories}
+        subcategories={subcategories}
         cards={cards}
         bankAccounts={bankAccounts}
         stores={stores}

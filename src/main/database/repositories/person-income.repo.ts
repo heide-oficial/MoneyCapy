@@ -42,11 +42,13 @@ export class PersonIncomeRepository {
     return this.db.prepare(`
       SELECT pi.*, p.name as person_name,
         c.name as category_name, c.color as category_color,
+        sub.name as subcategory_name, sub.color as subcategory_color,
         s.name as store_name, s.color as store_color,
         cur.symbol as currency_symbol, cur.code as currency_code
       FROM person_income pi
       LEFT JOIN people p ON pi.person_id = p.id
       LEFT JOIN categories c ON pi.category_id = c.id
+      LEFT JOIN subcategories sub ON pi.subcategory_id = sub.id
       LEFT JOIN stores s ON pi.store_id = s.id
       LEFT JOIN currencies cur ON pi.currency_id = cur.id
       WHERE pi.person_id = ?
@@ -58,11 +60,13 @@ export class PersonIncomeRepository {
     const all = this.db.prepare(`
       SELECT pi.*, p.name as person_name,
         c.name as category_name, c.color as category_color,
+        sub.name as subcategory_name, sub.color as subcategory_color,
         s.name as store_name, s.color as store_color,
         cur.symbol as currency_symbol, cur.code as currency_code
       FROM person_income pi
       LEFT JOIN people p ON pi.person_id = p.id
       LEFT JOIN categories c ON pi.category_id = c.id
+      LEFT JOIN subcategories sub ON pi.subcategory_id = sub.id
       LEFT JOIN stores s ON pi.store_id = s.id
       LEFT JOIN currencies cur ON pi.currency_id = cur.id
       WHERE pi.person_id = ?
@@ -75,10 +79,12 @@ export class PersonIncomeRepository {
   findById(id: number) {
     return this.db.prepare(`
       SELECT pi.*, c.name as category_name, c.color as category_color,
+        sub.name as subcategory_name, sub.color as subcategory_color,
         s.name as store_name, s.color as store_color,
         cur.symbol as currency_symbol, cur.code as currency_code
       FROM person_income pi
       LEFT JOIN categories c ON pi.category_id = c.id
+      LEFT JOIN subcategories sub ON pi.subcategory_id = sub.id
       LEFT JOIN stores s ON pi.store_id = s.id
       LEFT JOIN currencies cur ON pi.currency_id = cur.id
       WHERE pi.id = ?
@@ -88,18 +94,19 @@ export class PersonIncomeRepository {
   create(data: {
     person_id: number; description: string; value: number;
     is_recurring?: number; start_month: string; end_month?: string | null;
-    category_id?: number | null; due_day?: number | null; due_day_type?: string | null;
+    category_id?: number | null; subcategory_id?: number | null; due_day?: number | null; due_day_type?: string | null;
     notes?: string; store_id?: number | null;
     currency_id?: number | null; exchange_rate_snapshot?: number;
   }) {
     const result = this.db.prepare(`
-      INSERT INTO person_income (person_id, description, value, reference_month, is_recurring, start_month, end_month, category_id, due_day, due_day_type, notes, store_id, currency_id, exchange_rate_snapshot)
-      VALUES (?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO person_income (person_id, description, value, reference_month, is_recurring, start_month, end_month, category_id, subcategory_id, due_day, due_day_type, notes, store_id, currency_id, exchange_rate_snapshot)
+      VALUES (?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       data.person_id, data.description, data.value,
       data.is_recurring || 0,
       data.start_month, data.end_month || null,
       data.category_id || null,
+      data.subcategory_id || null,
       data.due_day || null, data.due_day_type || 'static',
       data.notes || '',
       data.store_id || null,
@@ -188,9 +195,11 @@ export class PersonIncomeRepository {
 
     return this.db.prepare(`
       SELECT pi.*, c.name as category_name, c.color as category_color,
+        sub.name as subcategory_name, sub.color as subcategory_color,
         cur.symbol as currency_symbol, cur.code as currency_code
       FROM person_income pi
       LEFT JOIN categories c ON pi.category_id = c.id
+      LEFT JOIN subcategories sub ON pi.subcategory_id = sub.id
       LEFT JOIN currencies cur ON pi.currency_id = cur.id
       WHERE ${conditions.join(' AND ')}
       ORDER BY pi.start_month DESC

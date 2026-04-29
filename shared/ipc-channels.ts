@@ -14,6 +14,12 @@ export const IPC_CHANNELS = {
   CATEGORIES_UPDATE: 'categories:update',
   CATEGORIES_DELETE: 'categories:delete',
 
+  // Subcategories
+  SUBCATEGORIES_LIST: 'subcategories:list',
+  SUBCATEGORIES_CREATE: 'subcategories:create',
+  SUBCATEGORIES_UPDATE: 'subcategories:update',
+  SUBCATEGORIES_DELETE: 'subcategories:delete',
+
   // People
   PEOPLE_LIST: 'people:list',
   PEOPLE_CREATE: 'people:create',

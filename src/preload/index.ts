@@ -17,6 +17,12 @@ const api = {
     update: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.CATEGORIES_UPDATE, data),
     delete: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.CATEGORIES_DELETE, id)
   },
+  subcategories: {
+    list: () => ipcRenderer.invoke(IPC_CHANNELS.SUBCATEGORIES_LIST),
+    create: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.SUBCATEGORIES_CREATE, data),
+    update: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.SUBCATEGORIES_UPDATE, data),
+    delete: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.SUBCATEGORIES_DELETE, id)
+  },
   people: {
     list: () => ipcRenderer.invoke(IPC_CHANNELS.PEOPLE_LIST),
     create: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.PEOPLE_CREATE, data),

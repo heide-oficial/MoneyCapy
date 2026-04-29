@@ -22,6 +22,9 @@ function mapIncome(i: any) {
     categoryId: i.category_id || null,
     categoryName: i.category_name || undefined,
     categoryColor: i.category_color || undefined,
+    subcategoryId: i.subcategory_id || null,
+    subcategoryName: i.subcategory_name || undefined,
+    subcategoryColor: i.subcategory_color || undefined,
     dueDay: i.due_day || null,
     dueDayType: i.due_day_type || 'static',
     notes: i.notes || '',
@@ -83,6 +86,7 @@ export function registerPersonIncomeHandlers(db: WrappedDatabase): void {
       start_month: data.startMonth,
       end_month: data.endMonth || null,
       category_id: data.categoryId || null,
+      subcategory_id: data.subcategoryId || null,
       due_day: data.dueDay || null,
       due_day_type: data.dueDayType || 'static',
       notes: data.notes || '',
@@ -105,6 +109,7 @@ export function registerPersonIncomeHandlers(db: WrappedDatabase): void {
     if (data.startMonth !== undefined) updateData.start_month = data.startMonth
     if (data.endMonth !== undefined) updateData.end_month = data.endMonth
     if (data.categoryId !== undefined) updateData.category_id = data.categoryId || null
+    if (data.subcategoryId !== undefined) updateData.subcategory_id = data.subcategoryId || null
     if (data.dueDay !== undefined) updateData.due_day = data.dueDay
     if (data.dueDayType !== undefined) updateData.due_day_type = data.dueDayType
     if (data.notes !== undefined) updateData.notes = data.notes

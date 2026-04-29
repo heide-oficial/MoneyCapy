@@ -28,6 +28,9 @@ function mapItem(item: any, db?: WrappedDatabase) {
     categoryName: item.category_name || undefined,
     categoryIcon: item.category_icon || undefined,
     categoryColor: item.category_color || undefined,
+    subcategoryId: item.subcategory_id || null,
+    subcategoryName: item.subcategory_name || undefined,
+    subcategoryColor: item.subcategory_color || undefined,
     cardId: item.card_id,
     cardName: item.card_name || undefined,
     cardType: db ? getCardType(db, item.card_id) : null,
@@ -204,6 +207,7 @@ export function registerSectionItemsHandlers(db: WrappedDatabase): void {
     const item = repo.create({
       person_id: data.personId,
       category_id: data.categoryId,
+      subcategory_id: data.subcategoryId,
       card_id: data.cardId,
       bank_account_id: data.bankAccountId || null,
       description: data.description,
@@ -246,6 +250,7 @@ export function registerSectionItemsHandlers(db: WrappedDatabase): void {
     const updateData: Record<string, any> = {}
     if (data.personId !== undefined) updateData.person_id = data.personId
     if (data.categoryId !== undefined) updateData.category_id = data.categoryId
+    if (data.subcategoryId !== undefined) updateData.subcategory_id = data.subcategoryId
     if (data.cardId !== undefined) updateData.card_id = data.cardId
     if (data.bankAccountId !== undefined) updateData.bank_account_id = data.bankAccountId
     if (data.description !== undefined) updateData.description = data.description

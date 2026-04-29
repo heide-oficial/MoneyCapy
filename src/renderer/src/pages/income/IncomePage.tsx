@@ -46,6 +46,7 @@ import type { TagData, ItemInterruption } from '../../types/entities'
 import { PRESET_COLORS } from '../../lib/constants'
 
 interface Category { id: number; name: string; icon: string; color: string; scope?: 'expense' | 'income' | 'both' }
+interface Subcategory { id: number; name: string; color: string; categoryIds?: number[] }
 
 interface Income {
   id: number; personId: number; description: string
@@ -92,7 +93,7 @@ export default function IncomePage() {
   const [form, setForm] = useState({
     description: '', value: 0, isRecurring: false,
     startMonth: month, endMonth: '' as string,
-    categoryId: '' as string | number, tagIds: [] as number[],
+    categoryId: '' as string | number, subcategoryId: '' as string | number, tagIds: [] as number[],
     isReceived: false, receivedAt: '',
     dueDay: '' as string, dueDayType: '' as string,
     notes: '', storeId: '' as string | number,
@@ -111,14 +112,20 @@ export default function IncomePage() {
   // Categories, tags & stores
   const [categories, setCategories] = useState<Category[]>([])
   const incomeCategories = categories.filter(c => c.scope !== 'expense')
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([])
+  const availableSubcategories = subcategories.filter(s => !form.categoryId || (s.categoryIds || []).includes(Number(form.categoryId)))
   const [allTags, setAllTags] = useState<TagData[]>([])
   const [stores, setStores] = useState<{ id: number; name: string; color: string }[]>([])
 
   // Category & tag filters
   const [filterCategories, setFilterCategories] = useState<number[]>([])
+  const [filterSubcategories, setFilterSubcategories] = useState<number[]>([])
   const [showCatFilter, setShowCatFilter] = useState(false)
+  const [showSubcatFilter, setShowSubcatFilter] = useState(false)
   const catFilterRef = useRef<HTMLButtonElement>(null)
+  const subcatFilterRef = useRef<HTMLButtonElement>(null)
   const catDropRef = useRef<HTMLDivElement>(null)
+  const subcatDropRef = useRef<HTMLDivElement>(null)
   const [filterTags, setFilterTags] = useState<number[]>([])
   const [showTagFilter, setShowTagFilter] = useState(false)
   const tagFilterRef = useRef<HTMLButtonElement>(null)
@@ -155,14 +162,16 @@ export default function IncomePage() {
 
   const load = async () => {
     if (!activePerson) { setIncomes([]); return }
-    const [data, cats, tgs, strs] = await Promise.all([
+    const [data, cats, subcats, tgs, strs] = await Promise.all([
       window.api.personIncome.listByMonth(activePerson.id, month),
       window.api.categories.list(),
+      window.api.subcategories.list(),
       window.api.tags.list(),
       window.api.stores.list()
     ])
     setIncomes(data)
     setCategories(cats)
+    setSubcategories(subcats)
     setAllTags(tgs)
     setStores(strs)
   }
@@ -219,6 +228,12 @@ export default function IncomePage() {
       const match = (none && !inc.categoryId) || (ids.length > 0 && inc.categoryId && ids.includes(inc.categoryId))
       if (!match) return false
     }
+    if (filterSubcategories.length > 0) {
+      const none = filterSubcategories.includes(-1)
+      const ids = filterSubcategories.filter(x => x !== -1)
+      const match = (none && !inc.subcategoryId) || (ids.length > 0 && inc.subcategoryId && ids.includes(inc.subcategoryId))
+      if (!match) return false
+    }
     if (filterTags.length > 0) {
       const none = filterTags.includes(-1)
       const ids = filterTags.filter(x => x !== -1)
@@ -264,7 +279,7 @@ export default function IncomePage() {
 
   const openCreate = () => {
     setEditing(null)
-    setForm({ description: '', value: 0, isRecurring: false, startMonth: month, endMonth: '', categoryId: '', tagIds: [], isReceived: false, receivedAt: '', dueDay: '', dueDayType: '', notes: '', storeId: '', currencyId: '', exchangeRateSnapshot: 1.0 })
+    setForm({ description: '', value: 0, isRecurring: false, startMonth: month, endMonth: '', categoryId: '', subcategoryId: '', tagIds: [], isReceived: false, receivedAt: '', dueDay: '', dueDayType: '', notes: '', storeId: '', currencyId: '', exchangeRateSnapshot: 1.0 })
     setShowForm(true)
   }
 
@@ -275,6 +290,7 @@ export default function IncomePage() {
       isRecurring: inc.isRecurring, startMonth: inc.startMonth,
       endMonth: inc.endMonth || '',
       categoryId: inc.categoryId || '',
+      subcategoryId: inc.subcategoryId || '',
       tagIds: inc.tags?.map(t => t.id) || [],
       isReceived: inc.isReceived,
       receivedAt: inc.receivedAt || '',
@@ -342,6 +358,7 @@ export default function IncomePage() {
         isRecurring: form.isRecurring, startMonth: form.startMonth,
         endMonth: form.isRecurring && form.endMonth ? form.endMonth : null,
         categoryId: form.categoryId ? Number(form.categoryId) : null,
+        subcategoryId: form.subcategoryId ? Number(form.subcategoryId) : null,
         tagIds: form.tagIds,
         dueDay: form.dueDay ? parseInt(form.dueDay) : null,
         dueDayType: form.dueDayType || 'static',
@@ -362,6 +379,7 @@ export default function IncomePage() {
         isRecurring: form.isRecurring, startMonth: form.startMonth,
         endMonth: form.isRecurring && form.endMonth ? form.endMonth : null,
         categoryId: form.categoryId ? Number(form.categoryId) : null,
+        subcategoryId: form.subcategoryId ? Number(form.subcategoryId) : null,
         tagIds: form.tagIds,
         dueDay: form.dueDay ? parseInt(form.dueDay) : null,
         dueDayType: form.dueDayType || 'static',
@@ -522,8 +540,8 @@ export default function IncomePage() {
         <>
           <SearchInput value={search} onChange={setSearch} />
           <FilterGroup
-            activeCount={(recurringFilter !== 'all' ? 1 : 0) + (filterCategories.length > 0 ? 1 : 0) + (filterTags.length > 0 ? 1 : 0)}
-            onClear={() => { setRecurringFilter('all'); setFilterCategories([]); setFilterTags([]) }}
+            activeCount={(recurringFilter !== 'all' ? 1 : 0) + (filterCategories.length > 0 ? 1 : 0) + (filterSubcategories.length > 0 ? 1 : 0) + (filterTags.length > 0 ? 1 : 0)}
+            onClear={() => { setRecurringFilter('all'); setFilterCategories([]); setFilterSubcategories([]); setFilterTags([]) }}
             primaryCount={1}
           >
             <div className="relative">
@@ -551,7 +569,7 @@ export default function IncomePage() {
 
             <div className="relative">
               <button ref={catFilterRef} type="button" title={t('categories.title')}
-                onClick={() => { setShowCatFilter(f => !f); setShowTagFilter(false) }}
+                onClick={() => { setShowCatFilter(f => !f); setShowSubcatFilter(false); setShowTagFilter(false) }}
                 className={`inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border transition-colors ${
                   filterCategories.length > 0
                     ? 'bg-primary text-primary-foreground border-primary'
@@ -578,8 +596,36 @@ export default function IncomePage() {
             </div>
 
             <div className="relative">
+              <button ref={subcatFilterRef} type="button" title={t('itemsForm.subcategory')}
+                onClick={() => { setShowSubcatFilter(f => !f); setShowCatFilter(false); setShowTagFilter(false) }}
+                className={`inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border transition-colors ${
+                  filterSubcategories.length > 0
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-transparent text-foreground border-input hover:bg-accent'
+                }`}>
+                <Tags size={11} />
+                <span data-filter-label>{t('itemsForm.subcategory')}</span>
+                {filterSubcategories.length > 0 && (
+                  <span className="bg-primary-foreground text-primary text-[10px] rounded-full h-4 min-w-[16px] flex items-center justify-center font-bold">{filterSubcategories.length}</span>
+                )}
+                <ChevronDown size={12} className="text-muted-foreground" />
+              </button>
+              {showSubcatFilter && (
+                <FilterDropdown
+                  anchorRef={subcatFilterRef}
+                  dropRef={subcatDropRef}
+                  onClose={() => setShowSubcatFilter(false)}
+                  items={[{ id: -1, name: t('itemsForm.noSubcategoryPlaceholder'), color: '#6b7280' }, ...subcategories.map(s => ({ id: s.id, name: s.name, color: s.color }))]}
+                  selected={filterSubcategories}
+                  onToggle={id => setFilterSubcategories(f => f.includes(id) ? f.filter(x => x !== id) : [...f, id])}
+                  emptyText={t('subcategories.noSubcategories')}
+                />
+              )}
+            </div>
+
+            <div className="relative">
               <button ref={tagFilterRef} type="button" title={t('tags.title')}
-                onClick={() => { setShowTagFilter(f => !f); setShowCatFilter(false) }}
+                onClick={() => { setShowTagFilter(f => !f); setShowCatFilter(false); setShowSubcatFilter(false) }}
                 className={`inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border transition-colors ${
                   filterTags.length > 0
                     ? 'bg-primary text-primary-foreground border-primary'
@@ -1016,9 +1062,16 @@ export default function IncomePage() {
                     <Select
                       label={t('itemsForm.category')}
                       value={String(form.categoryId)}
-                      onChange={e => setForm({ ...form, categoryId: e.target.value })}
+                      onChange={e => setForm({ ...form, categoryId: e.target.value, subcategoryId: '' })}
                       options={incomeCategories.map(c => ({ value: c.id, label: c.name }))}
                       placeholder={t('itemsForm.noCategoryPlaceholder')}
+                    />
+                    <Select
+                      label={t('itemsForm.subcategory')}
+                      value={String(form.subcategoryId)}
+                      onChange={e => setForm({ ...form, subcategoryId: e.target.value })}
+                      options={availableSubcategories.map(s => ({ value: s.id, label: s.name }))}
+                      placeholder={form.categoryId ? t('itemsForm.noSubcategoryPlaceholder') : t('itemsForm.selectCategoryFirst')}
                     />
                     <Select
                       label={t('itemsForm.storeEntity')}

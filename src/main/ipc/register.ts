@@ -1,6 +1,7 @@
 import { WrappedDatabase } from '../database/connection'
 import { registerSettingsHandlers } from './settings.ipc'
 import { registerCategoriesHandlers } from './categories.ipc'
+import { registerSubcategoriesHandlers } from './subcategories.ipc'
 import { registerCardsHandlers } from './cards.ipc'
 import { registerPeopleHandlers } from './people.ipc'
 import { registerPersonIncomeHandlers } from './person-income.ipc'
@@ -17,6 +18,7 @@ import { registerCurrenciesHandlers } from './currencies.ipc'
 export function registerAllIpcHandlers(db: WrappedDatabase): void {
   registerSettingsHandlers(db)
   registerCategoriesHandlers(db)
+  registerSubcategoriesHandlers(db)
   registerCardsHandlers(db)
   registerPeopleHandlers(db)
   registerPersonIncomeHandlers(db)

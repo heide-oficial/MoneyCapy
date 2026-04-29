@@ -8,12 +8,14 @@ export class SectionItemsRepository {
     return `
       SELECT si.*,
         cat.name as category_name, cat.icon as category_icon, cat.color as category_color,
+        sub.name as subcategory_name, sub.color as subcategory_color,
         c.name as card_name, c.due_day as card_due_day,
         ba.name as bank_account_name,
         st.name as store_name,
         cur.symbol as currency_symbol, cur.code as currency_code
       FROM section_items si
       LEFT JOIN categories cat ON si.category_id = cat.id
+      LEFT JOIN subcategories sub ON si.subcategory_id = sub.id
       LEFT JOIN cards c ON si.card_id = c.id
       LEFT JOIN bank_accounts ba ON si.bank_account_id = ba.id
       LEFT JOIN stores st ON si.store_id = st.id
@@ -307,7 +309,7 @@ export class SectionItemsRepository {
   }
 
   create(data: {
-    person_id: number; category_id?: number | null; card_id?: number | null; bank_account_id?: number | null;
+    person_id: number; category_id?: number | null; subcategory_id?: number | null; card_id?: number | null; bank_account_id?: number | null;
     description: string; type: string; value: number;
     due_day?: number | null; due_day_label?: string | null; due_day_type?: string | null;
     billing_day?: number | null; billing_day_type?: string | null;
@@ -321,12 +323,12 @@ export class SectionItemsRepository {
     exchange_rate_snapshot?: number;
   }) {
     const result = this.db.prepare(`
-      INSERT INTO section_items (person_id, category_id, card_id, bank_account_id, description, type, value,
+      INSERT INTO section_items (person_id, category_id, subcategory_id, card_id, bank_account_id, description, type, value,
         due_day, due_day_label, due_day_type, billing_day, billing_day_type, due_day_month_offset,
         total_installments, start_month, end_month, notes, store_id, interest_rate, payment_method, base_value, currency_id, exchange_rate_snapshot, sort_order)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
     `).run(
-      data.person_id, data.category_id || null, data.card_id || null, data.bank_account_id || null,
+      data.person_id, data.category_id || null, data.subcategory_id || null, data.card_id || null, data.bank_account_id || null,
       data.description, data.type, data.value,
       data.due_day || null, data.due_day_label || null, data.due_day_type || 'static',
       data.billing_day || null, data.billing_day_type || 'static',

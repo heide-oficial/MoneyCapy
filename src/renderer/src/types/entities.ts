@@ -33,6 +33,7 @@ export interface SectionItem {
   isMonthlyDeactivated?: boolean
   notes: string | null
   categoryId: number | null; categoryName?: string; categoryIcon?: string; categoryColor?: string
+  subcategoryId?: number | null; subcategoryName?: string; subcategoryColor?: string
   cardId: number | null; cardName?: string; cardType?: string | null
   storeId: number | null; storeName?: string | null
   baseValue?: number | null
@@ -63,6 +64,7 @@ export interface IncomeRecord {
   isRecurring: boolean; startMonth: string; endMonth: string | null
   isReceived: boolean; receivedAt: string | null; hasOverride: boolean
   categoryId: number | null; categoryName?: string; categoryColor?: string
+  subcategoryId?: number | null; subcategoryName?: string; subcategoryColor?: string
   dueDay?: number | null; dueDayType?: string
   notes?: string
   storeId?: number | null; storeName?: string; storeColor?: string
