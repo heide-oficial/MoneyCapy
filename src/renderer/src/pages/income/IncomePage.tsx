@@ -25,13 +25,14 @@ import { FilterGroup } from '../../components/ui/FilterGroup'
 import {
   HandCoins, Plus, Pencil, Trash2, Repeat, Users,
   CheckCircle, Circle, CircleDot, DollarSign,
-  ChevronDown, CalendarClock, Filter, Palette, X, Undo2, Tags, Bookmark
+  ChevronDown, CalendarClock, Filter, Palette, X, Undo2, Tags, Bookmark, Download
 } from 'lucide-react'
 import { DayPicker } from '../../components/ui/DayPicker'
 import { formatDayLabelResolved } from '../../../../../shared/day-utils'
 import { useBusinessDayConfig } from '../../contexts/BusinessDayContext'
 import { useDimPaid } from '../../contexts/DimPaidContext'
 import { TileFieldsPickerButton } from '../../components/ui/TileFieldsPickerButton'
+import { CsvExportModal, type CsvColumn } from '../../components/ui/CsvExportModal'
 import { useTileFields } from '../../contexts/TileFieldsContext'
 import { ROUTES } from '../../lib/constants'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -81,6 +82,7 @@ export default function IncomePage() {
   const { getDefaultMonth } = useDefaultMonth()
   const [incomes, setIncomes] = useState<Income[]>([])
   const [month, setMonth] = useState(() => getDefaultMonth())
+  const [showCsvExport, setShowCsvExport] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Income | null>(null)
   const [form, setForm] = useState({
@@ -235,6 +237,23 @@ export default function IncomePage() {
       default: return 0
     }
   })
+
+  const csvColumns: CsvColumn<Income>[] = [
+    { id: 'description', label: t('csvExport.columns.description'), value: i => i.description },
+    { id: 'type', label: t('csvExport.columns.type'), value: i => i.isRecurring ? t('income.recurring') : t('income.nonRecurring') },
+    { id: 'monthValue', label: t('csvExport.columns.monthValue'), value: i => formatCurrency(i.effectiveValue * (i.exchangeRateSnapshot || 1.0)) },
+    { id: 'baseValue', label: t('csvExport.columns.baseValue'), value: i => formatCurrency(i.value * (i.exchangeRateSnapshot || 1.0)) },
+    { id: 'category', label: t('csvExport.columns.category'), value: i => i.categoryName || '' },
+    { id: 'tags', label: t('csvExport.columns.tags'), value: i => i.tags?.map(tag => tag.name).join(', ') || '' },
+    { id: 'store', label: t('csvExport.columns.store'), value: i => i.storeName || '' },
+    { id: 'receivingDay', label: t('csvExport.columns.receivingDay'), value: i => i.dueDay ?? '' },
+    { id: 'startMonth', label: t('csvExport.columns.startMonth'), value: i => fmtMonth(i.startMonth) },
+    { id: 'endMonth', label: t('csvExport.columns.endMonth'), value: i => i.endMonth ? fmtMonth(i.endMonth) : '' },
+    { id: 'status', label: t('csvExport.columns.status'), value: i => i.isReceived ? t('items.received') : t('items.notReceived') },
+    { id: 'receivedAt', label: t('csvExport.columns.receivedAt'), value: i => i.receivedAt ? fmtDate(i.receivedAt) : '' },
+    { id: 'currency', label: t('csvExport.columns.currency'), value: i => i.currencyCode || '' },
+    { id: 'notes', label: t('csvExport.columns.notes'), value: i => i.notes || '' }
+  ]
 
   const openCreate = () => {
     setEditing(null)
@@ -478,6 +497,14 @@ export default function IncomePage() {
           <div className="h-6 w-px bg-border shrink-0 ml-auto" />
           {pickerButton}
           <TileFieldsPickerButton page="income" showGastos={false} />
+          <button
+            type="button"
+            onClick={() => setShowCsvExport(true)}
+            className="inline-flex items-center justify-center h-7 w-7 rounded-md hover:bg-accent transition-colors"
+            title={t('csvExport.exportFiltered')}
+          >
+            <Download size={14} className="text-muted-foreground" />
+          </button>
           <div className="relative">
             <button ref={sortBtnRef} type="button" onClick={() => setShowSortMenu(f => !f)}
               className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border border-input hover:bg-accent transition-colors">
@@ -641,6 +668,15 @@ export default function IncomePage() {
           })}
         </div>
       )}
+
+      <CsvExportModal
+        open={showCsvExport}
+        onClose={() => setShowCsvExport(false)}
+        settingsKey="income-csv-export-columns"
+        filename={`moneycapy-receitas-${month}.csv`}
+        rows={sortedIncomes}
+        columns={csvColumns}
+      />
 
       {/* Create/Edit Modal */}
       <Modal open={showForm} onClose={() => setShowForm(false)} title={editing ? t('income.editIncome') : t('income.newIncome')} maxWidth="max-w-xl">

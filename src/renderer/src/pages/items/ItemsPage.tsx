@@ -13,7 +13,7 @@ import { formatCurrency } from '../../lib/currency'
 import { useFormatDate } from '../../lib/date'
 import { useDefaultMonth } from '../../contexts/DefaultMonthContext'
 import {
-  Plus, ChevronDown, Check, Filter, Receipt,
+  Plus, ChevronDown, Check, Filter, Receipt, Download,
   Tags, Bookmark, Wallet, CreditCard, Store, ToggleLeft, CheckCircle as CheckCircleIcon
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -25,6 +25,7 @@ import { SimpleDropdown } from '../../components/ui/SimpleDropdown'
 import { useColumnsPicker } from '../../components/ui/ColumnsPickerDropdown'
 import { TileFieldsPickerButton } from '../../components/ui/TileFieldsPickerButton'
 import { FilterGroup } from '../../components/ui/FilterGroup'
+import { CsvExportModal, type CsvColumn } from '../../components/ui/CsvExportModal'
 
 import type { TagData, CardSplit, SectionItem } from '../../types/entities'
 import { type ItemSortMode, sortItems, getItemSortOptions, getSortLabelMap } from '../../hooks/useSortItems'
@@ -204,6 +205,7 @@ export default function ItemsPage() {
 
   // Columns
   const { columns, gridClass, pickerButton } = useColumnsPicker('item-columns')
+  const [showCsvExport, setShowCsvExport] = useState(false)
 
   const loadData = async () => {
     if (!activePerson) return
@@ -334,11 +336,11 @@ export default function ItemsPage() {
     return sortItems(result, sortMode)
   })()
 
-  const total = filteredAndSortedItems.filter(i => i.isActive).reduce((s, i) => {
+  const getItemMonthlyValue = (i: SectionItem) => {
     const rate = i.exchangeRateSnapshot || 1.0
     if ((i.type === 'installment' || i.type === 'emprestimo') && i.totalInstallments) {
       if (i.cardSplits && i.cardSplits.length > 0) {
-        return s + i.cardSplits.reduce((acc, sp) => {
+        return i.cardSplits.reduce((acc, sp) => {
           const monthly = Math.round((sp.value / sp.totalInstallments) * 100) / 100
           if ((sp.anticipatedThisMonth || 0) > 0 && sp.discountedTotalThisMonth != null) {
             return acc + monthly + sp.discountedTotalThisMonth
@@ -348,12 +350,37 @@ export default function ItemsPage() {
       }
       const monthly = Math.round((i.value / i.totalInstallments) * 100) / 100
       if ((i.anticipatedThisMonth || 0) > 0 && i.discountedTotalThisMonth != null) {
-        return s + (monthly + i.discountedTotalThisMonth) * rate
+        return (monthly + i.discountedTotalThisMonth) * rate
       }
-      return s + monthly * (1 + (i.anticipatedThisMonth || 0)) * rate
+      return monthly * (1 + (i.anticipatedThisMonth || 0)) * rate
     }
-    return s + (i.type === 'subscription' ? (i.effectiveValue ?? i.value) : i.value) * rate
-  }, 0)
+    return (i.type === 'subscription' ? (i.effectiveValue ?? i.value) : i.value) * rate
+  }
+
+  const total = filteredAndSortedItems.filter(i => i.isActive).reduce((s, i) => s + getItemMonthlyValue(i), 0)
+
+  const csvColumns: CsvColumn<SectionItem>[] = [
+    { id: 'description', label: t('csvExport.columns.description'), value: i => i.description },
+    { id: 'type', label: t('csvExport.columns.type'), value: i => t(`itemTypes.${i.type}`) },
+    { id: 'monthValue', label: t('csvExport.columns.monthValue'), value: i => formatCurrency(getItemMonthlyValue(i)) },
+    { id: 'totalValue', label: t('csvExport.columns.totalValue'), value: i => formatCurrency(i.value * (i.exchangeRateSnapshot || 1.0)) },
+    { id: 'category', label: t('csvExport.columns.category'), value: i => i.categoryName || '' },
+    { id: 'tags', label: t('csvExport.columns.tags'), value: i => i.tags?.map(tag => tag.name).join(', ') || '' },
+    { id: 'store', label: t('csvExport.columns.store'), value: i => i.storeName || '' },
+    { id: 'card', label: t('csvExport.columns.card'), value: i => i.cardName || i.cardSplits?.map(sp => sp.cardName).filter(Boolean).join(', ') || '' },
+    { id: 'bankAccount', label: t('csvExport.columns.bankAccount'), value: i => i.bankAccountName || '' },
+    { id: 'paymentMethod', label: t('csvExport.columns.paymentMethod'), value: i => i.paymentMethod || '' },
+    { id: 'dueDay', label: t('csvExport.columns.dueDay'), value: i => i.dueDay ?? '' },
+    { id: 'billingDay', label: t('csvExport.columns.billingDay'), value: i => i.billingDay ?? '' },
+    { id: 'startMonth', label: t('csvExport.columns.startMonth'), value: i => fmtMonth(i.startMonth) },
+    { id: 'endMonth', label: t('csvExport.columns.endMonth'), value: i => i.endMonth ? fmtMonth(i.endMonth) : '' },
+    { id: 'status', label: t('csvExport.columns.status'), value: i => i.isPaid ? t('items.paid') : t('items.unpaid') },
+    { id: 'paidAt', label: t('csvExport.columns.paidAt'), value: i => i.paidAt ? fmtDate(i.paidAt) : '' },
+    { id: 'installments', label: t('csvExport.columns.installments'), value: i => i.totalInstallments || '' },
+    { id: 'currentInstallment', label: t('csvExport.columns.currentInstallment'), value: i => i.currentInstallment || '' },
+    { id: 'currency', label: t('csvExport.columns.currency'), value: i => i.currencyCode || '' },
+    { id: 'notes', label: t('csvExport.columns.notes'), value: i => i.notes || '' }
+  ]
 
   const hasActiveFilters = filterCategories.length > 0 || filterTags.length > 0 || filterCards.length > 0 || filterBankAccounts.length > 0 || filterStores.length > 0 || filterActive !== 'all' || filterPaid !== 'all' || filterPayMethod !== 'all'
 
@@ -920,6 +947,14 @@ export default function ItemsPage() {
 
           {pickerButton}
           <TileFieldsPickerButton page="items" showReceitas={false} />
+          <button
+            type="button"
+            onClick={() => setShowCsvExport(true)}
+            className="inline-flex items-center justify-center h-7 w-7 rounded-md hover:bg-accent transition-colors"
+            title={t('csvExport.exportFiltered')}
+          >
+            <Download size={14} className="text-muted-foreground" />
+          </button>
 
           <div className="relative">
             <button ref={sortBtnRef} type="button" onClick={() => setShowSortMenu(f => !f)}
@@ -973,6 +1008,15 @@ export default function ItemsPage() {
       )}
 
       {/* ═══════════ Form Modal ═══════════ */}
+      <CsvExportModal
+        open={showCsvExport}
+        onClose={() => setShowCsvExport(false)}
+        settingsKey="items-csv-export-columns"
+        filename={`moneycapy-gastos-${month}.csv`}
+        rows={filteredAndSortedItems}
+        columns={csvColumns}
+      />
+
       <ItemsForm
         open={showForm}
         onClose={() => setShowForm(false)}
