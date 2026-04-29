@@ -41,6 +41,7 @@ import { PRESET_COLORS } from '../../lib/constants'
 
 type CategoryScope = 'expense' | 'income' | 'both'
 interface Category { id: number; name: string; icon: string; color: string; scope?: CategoryScope }
+interface Subcategory { id: number; name: string; color: string; scope?: CategoryScope; categoryIds?: number[] }
 interface CardData { id: number; name: string; bankAccountId: number | null }
 interface BankAccountData { id: number; name: string }
 
@@ -62,6 +63,7 @@ export default function CategoriesPage() {
 
   // Data
   const [categories, setCategories] = useState<Category[]>([])
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([])
   const [items, setItems] = useState<SectionItem[]>([])
   const [incomes, setIncomes] = useState<IncomeRecord[]>([])
   const [cards, setCards] = useState<CardData[]>([])
@@ -100,6 +102,10 @@ export default function CategoriesPage() {
   const [showCatFilter, setShowCatFilter] = useState(false)
   const catFilterRef = useRef<HTMLButtonElement>(null)
   const catDropRef = useRef<HTMLDivElement>(null)
+  const [filterSubcategoryKeys, setFilterSubcategoryKeys] = useState<string[]>([])
+  const [showSubcatFilter, setShowSubcatFilter] = useState(false)
+  const subcatFilterRef = useRef<HTMLButtonElement>(null)
+  const subcatDropRef = useRef<HTMLDivElement>(null)
   const [filterCardKeys, setFilterCardKeys] = useState<string[]>([])
   const [showCardFilter, setShowCardFilter] = useState(false)
   const cardFilterRef = useRef<HTMLButtonElement>(null)
@@ -127,12 +133,15 @@ export default function CategoriesPage() {
   const [editing, setEditing] = useState<Category | null>(null)
   const [name, setName] = useState('')
   const [color, setColor] = useState(PRESET_COLORS[0])
-  const [scope, setScope] = useState<CategoryScope>('both')
   const [showColorPicker, setShowColorPicker] = useState(false)
 
   const loadData = async () => {
-    const cats = await window.api.categories.list()
+    const [cats, subcats] = await Promise.all([
+      window.api.categories.list(),
+      window.api.subcategories.list()
+    ])
     setCategories(cats)
+    setSubcategories(subcats)
     if (!activePerson) return
     const [its, incs, cds, accs, strs] = await Promise.all([
       window.api.items.list(activePerson.id, month),
@@ -151,22 +160,21 @@ export default function CategoriesPage() {
   useEffect(() => { loadData() }, [activePerson, month])
 
   // CRUD handlers
-  const openCreate = () => { setEditing(null); setName(''); setColor(PRESET_COLORS[0]); setScope('both'); setShowForm(true) }
+  const openCreate = () => { setEditing(null); setName(''); setColor(PRESET_COLORS[0]); setShowForm(true) }
   const openEdit = (cat: Category) => {
     setEditing(cat)
     setName(cat.name)
     setColor(cat.color || PRESET_COLORS[0])
-    setScope(cat.scope || 'both')
     setShowForm(true)
   }
 
   const handleSave = async () => {
     if (!name.trim()) { toast.error(t('common.nameIsRequired')); return }
     if (editing) {
-      await window.api.categories.update({ id: editing.id, name, icon: 'Circle', color, scope })
+      await window.api.categories.update({ id: editing.id, name, icon: 'Circle', color })
       toast.success(t('categories.categoryUpdated'))
     } else {
-      await window.api.categories.create({ name, icon: 'Circle', color, scope })
+      await window.api.categories.create({ name, icon: 'Circle', color })
       toast.success(t('categories.categoryCreated'))
     }
     setShowForm(false)
@@ -281,6 +289,12 @@ export default function CategoriesPage() {
       const match = (none && !item.storeId) || (ids.length > 0 && item.storeId && ids.includes(String(item.storeId)))
       if (!match) return false
     }
+    if (filterSubcategoryKeys.length > 0) {
+      const none = filterSubcategoryKeys.includes('none')
+      const ids = filterSubcategoryKeys.filter(x => x !== 'none')
+      const match = (none && !item.subcategoryId) || (ids.length > 0 && item.subcategoryId && ids.includes(String(item.subcategoryId)))
+      if (!match) return false
+    }
     return true
   })
 
@@ -294,6 +308,12 @@ export default function CategoriesPage() {
       const none = filterStoreKeys.includes('none')
       const ids = filterStoreKeys.filter(x => x !== 'none')
       const match = (none && !i.storeId) || (ids.length > 0 && i.storeId && ids.includes(String(i.storeId)))
+      if (!match) return false
+    }
+    if (filterSubcategoryKeys.length > 0) {
+      const none = filterSubcategoryKeys.includes('none')
+      const ids = filterSubcategoryKeys.filter(x => x !== 'none')
+      const match = (none && !i.subcategoryId) || (ids.length > 0 && i.subcategoryId && ids.includes(String(i.subcategoryId)))
       if (!match) return false
     }
     return true
@@ -342,11 +362,15 @@ export default function CategoriesPage() {
     { id: 'none', name: t('categories.noCategory'), color: '#6b7280' },
     ...categories.map((c, idx) => ({ id: String(c.id), name: c.name, color: resolveEntityColor(c.color || PRESET_COLORS[0], idx) }))
   ]
+  const subcatFilterItems = [
+    { id: 'none', name: t('itemsForm.noSubcategoryPlaceholder'), color: '#6b7280' },
+    ...subcategories.map(s => ({ id: String(s.id), name: s.name, color: s.color || '#6b7280' }))
+  ]
   const cardFilterItems = [{ id: 'none', name: t('filters.noCard'), color: '#6b7280' }, ...cards.map(c => ({ id: String(c.id), name: c.name, color: '#8b5cf6' }))]
   const bankFilterItems = [{ id: 'none', name: t('filters.noAccount'), color: '#6b7280' }, ...bankAccounts.map(a => ({ id: String(a.id), name: a.name, color: '#3b82f6' }))]
   const storeFilterItems = [{ id: 'none', name: t('filters.noStore'), color: '#6b7280' }, ...stores.map(s => ({ id: String(s.id), name: s.name, color: '#6366f1' }))]
 
-  const hasActiveFilters = filterActive !== 'all' || filterPaid !== 'all' || filterPayMethod !== 'all' || filterItemType !== 'all' || filterCategoryKeys.length > 0 || filterCardKeys.length > 0 || filterBankKeys.length > 0 || filterStoreKeys.length > 0 || hideEmpty
+  const hasActiveFilters = filterActive !== 'all' || filterPaid !== 'all' || filterPayMethod !== 'all' || filterItemType !== 'all' || filterCategoryKeys.length > 0 || filterSubcategoryKeys.length > 0 || filterCardKeys.length > 0 || filterBankKeys.length > 0 || filterStoreKeys.length > 0 || hideEmpty
 
   // Tile helpers
   const computeInstallmentValue = (item: SectionItem) => {
@@ -690,12 +714,6 @@ export default function CategoriesPage() {
     return itemTotal + incomeTotal
   }
 
-  const getCategoryScopeLabel = (scopeValue?: CategoryScope) => {
-    if (scopeValue === 'expense') return t('categories.scopeExpense')
-    if (scopeValue === 'income') return t('categories.scopeIncome')
-    return t('categories.scopeBoth')
-  }
-
   if (!activePerson) {
     return (
       <SectionLayout icon={Tags} title={t('categories.title')}>
@@ -779,12 +797,12 @@ export default function CategoriesPage() {
 
           <FilterGroup
             activeCount={
-              (filterCategoryKeys.length > 0 ? 1 : 0) + (filterBankKeys.length > 0 ? 1 : 0) +
+              (filterCategoryKeys.length > 0 ? 1 : 0) + (filterSubcategoryKeys.length > 0 ? 1 : 0) + (filterBankKeys.length > 0 ? 1 : 0) +
               (filterCardKeys.length > 0 ? 1 : 0) + (filterStoreKeys.length > 0 ? 1 : 0) +
               (hideEmpty ? 1 : 0) + (filterActive !== 'all' ? 1 : 0) +
               (filterPaid !== 'all' ? 1 : 0) + (filterPayMethod !== 'all' ? 1 : 0)
             }
-            onClear={() => { setFilterActive('all'); setFilterPaid('all'); setFilterPayMethod('all'); setFilterItemType('all'); setFilterCategoryKeys([]); setFilterCardKeys([]); setFilterBankKeys([]); setFilterStoreKeys([]); setHideEmpty(false) }}
+            onClear={() => { setFilterActive('all'); setFilterPaid('all'); setFilterPayMethod('all'); setFilterItemType('all'); setFilterCategoryKeys([]); setFilterSubcategoryKeys([]); setFilterCardKeys([]); setFilterBankKeys([]); setFilterStoreKeys([]); setHideEmpty(false) }}
             primaryCount={3}
           >
             <div className="relative">
@@ -810,6 +828,34 @@ export default function CategoriesPage() {
                   items={catFilterItems}
                   selected={filterCategoryKeys}
                   onToggle={id => setFilterCategoryKeys(f => f.includes(id) ? f.filter(x => x !== id) : [...f, id])}
+                />
+              )}
+            </div>
+
+            <div className="relative">
+              <button ref={subcatFilterRef} type="button" title={t('itemsForm.subcategory')}
+                onClick={() => { setShowSubcatFilter(f => !f); setShowCatFilter(false); setShowCardFilter(false); setShowBankFilter(false) }}
+                className={`inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border transition-colors ${
+                  filterSubcategoryKeys.length > 0
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-transparent text-foreground border-input hover:bg-accent'
+                }`}>
+                <Bookmark size={11} />
+                <span data-filter-label>{t('itemsForm.subcategory')}</span>
+                {filterSubcategoryKeys.length > 0 && (
+                  <span className="bg-primary-foreground text-primary text-[10px] rounded-full h-4 min-w-[16px] flex items-center justify-center font-bold">{filterSubcategoryKeys.length}</span>
+                )}
+                <ChevronDown size={12} className="text-muted-foreground" />
+              </button>
+              {showSubcatFilter && (
+                <FilterDropdown
+                  anchorRef={subcatFilterRef}
+                  dropRef={subcatDropRef}
+                  onClose={() => setShowSubcatFilter(false)}
+                  items={subcatFilterItems}
+                  selected={filterSubcategoryKeys}
+                  onToggle={id => setFilterSubcategoryKeys(f => f.includes(id) ? f.filter(x => x !== id) : [...f, id])}
+                  emptyText={t('subcategories.noSubcategories')}
                 />
               )}
             </div>
@@ -1048,11 +1094,6 @@ export default function CategoriesPage() {
                       <Tags size={14} style={{ color: group.color }} />
                     </div>
                     <span className="text-sm font-semibold flex-1">{group.name}</span>
-                    {group.category && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full border border-border text-muted-foreground">
-                        {getCategoryScopeLabel(group.category.scope)}
-                      </span>
-                    )}
                     <span className="text-xs text-muted-foreground">{groupCountLabel(group)}</span>
                     <span className="text-sm font-bold tabular-nums" style={gastosStyle('categories', 'itens')}>{formatCurrency(total)}</span>
                     {group.category && (
@@ -1091,29 +1132,6 @@ export default function CategoriesPage() {
             placeholder={t('categories.placeholder')}
             autoFocus
           />
-
-          {/* Color Picker — only in custom mode */}
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">{t('categories.scope')}</label>
-            <div className="flex rounded-lg border border-input p-0.5 bg-muted/30">
-              {([
-                { value: 'both', label: t('categories.scopeBoth') },
-                { value: 'expense', label: t('categories.scopeExpense') },
-                { value: 'income', label: t('categories.scopeIncome') }
-              ] as { value: CategoryScope; label: string }[]).map(opt => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setScope(opt.value)}
-                  className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
-                    scope === opt.value ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
 
           {colorMode === 'custom' && (
             <div className="space-y-1">

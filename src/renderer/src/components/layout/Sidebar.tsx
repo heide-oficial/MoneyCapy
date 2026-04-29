@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import {
   House, Landmark, CreditCard, HandCoins, Tags, Bookmark,
   Settings, ChevronLeft, ChevronRight, Plus,
-  Receipt, ArrowRightLeft, Users, BarChart3, Store, Search
+  Receipt, ArrowRightLeft, Users, BarChart3, Store, Search, ListTree
 } from 'lucide-react'
 import { ROUTES } from '../../lib/constants'
 import appIcon from '../../../../../resources/icon.png'
@@ -171,7 +171,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           )}
           {collapsed && <div className="my-2 mx-2 border-t border-sidebar-border" />}
           {renderNavButton(Tags, t('sidebar.categories'), ROUTES.CATEGORIES)}
-          {renderNavButton(Bookmark, t('sidebar.subcategories'), ROUTES.SUBCATEGORIES)}
+          {renderNavButton(ListTree, t('sidebar.subcategories'), ROUTES.SUBCATEGORIES)}
           {renderNavButton(Bookmark, t('sidebar.tags'), ROUTES.TAGS)}
           {renderNavButton(Store, t('sidebar.stores'), ROUTES.STORES)}
           {renderNavButton(Users, t('sidebar.people'), ROUTES.PEOPLE)}

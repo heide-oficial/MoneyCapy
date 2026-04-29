@@ -23,20 +23,21 @@ export class SubcategoriesRepository {
     return row ? this.attachCategories(row) : null
   }
 
-  create(data: { name: string; color?: string; categoryIds?: number[] }) {
+  create(data: { name: string; color?: string; scope?: 'expense' | 'income' | 'both'; categoryIds?: number[] }) {
     const result = this.db.prepare(
-      'INSERT INTO subcategories (name, color) VALUES (?, ?)'
-    ).run(data.name, data.color || '#6b7280')
+      'INSERT INTO subcategories (name, color, scope) VALUES (?, ?, ?)'
+    ).run(data.name, data.color || '#6b7280', data.scope || 'both')
     const id = result.lastInsertRowid as number
     this.setCategories(id, data.categoryIds || [])
     return this.findById(id)
   }
 
-  update(id: number, data: { name?: string; color?: string; categoryIds?: number[] }) {
+  update(id: number, data: { name?: string; color?: string; scope?: 'expense' | 'income' | 'both'; categoryIds?: number[] }) {
     const fields: string[] = []
     const values: any[] = []
     if (data.name !== undefined) { fields.push('name = ?'); values.push(data.name) }
     if (data.color !== undefined) { fields.push('color = ?'); values.push(data.color) }
+    if (data.scope !== undefined) { fields.push('scope = ?'); values.push(data.scope) }
     if (fields.length > 0) {
       fields.push("updated_at = datetime('now')")
       values.push(id)
