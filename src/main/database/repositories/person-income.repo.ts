@@ -142,6 +142,12 @@ export class PersonIncomeRepository {
     ).run(incomeId, month)
   }
 
+  listValueOverrides(incomeId: number): { month: string; value: number }[] {
+    return this.db.prepare(
+      'SELECT month, value FROM income_monthly_values WHERE income_id = ? ORDER BY month ASC'
+    ).all(incomeId) as any[]
+  }
+
   getOverrideInfo(incomeId: number, month: string): { value: number } | null {
     const row = this.db.prepare(
       'SELECT value FROM income_monthly_values WHERE income_id = ? AND month <= ? ORDER BY month DESC LIMIT 1'

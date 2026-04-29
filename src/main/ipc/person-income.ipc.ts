@@ -136,6 +136,10 @@ export function registerPersonIncomeHandlers(db: WrappedDatabase): void {
     repo.removeValueOverride(incomeId, month)
   })
 
+  ipcMain.handle(IPC_CHANNELS.PERSON_INCOME_LIST_MONTH_VALUES, (_, incomeId: number) => {
+    return repo.listValueOverrides(incomeId)
+  })
+
   ipcMain.handle(IPC_CHANNELS.PERSON_INCOME_SEARCH, (_, personId: number, query: string, filters?: { isRecurring?: boolean; categoryId?: number; tagId?: number }) => {
     const items = (repo.search(personId, query, filters) as any[]).map(i => {
       const mapped = mapIncome(i)

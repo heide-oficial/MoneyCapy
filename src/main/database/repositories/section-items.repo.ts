@@ -432,6 +432,12 @@ export class SectionItemsRepository {
     ).run(itemId, month)
   }
 
+  listValueOverrides(itemId: number): { month: string; value: number }[] {
+    return this.db.prepare(
+      'SELECT month, value FROM item_monthly_values WHERE item_id = ? ORDER BY month ASC'
+    ).all(itemId) as any[]
+  }
+
   getOverrideInfo(itemId: number, month: string): { value: number } | null {
     const row = this.db.prepare(
       'SELECT value FROM item_monthly_values WHERE item_id = ? AND month <= ? ORDER BY month DESC LIMIT 1'

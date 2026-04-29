@@ -340,6 +340,10 @@ export function registerSectionItemsHandlers(db: WrappedDatabase): void {
     repo.removeValueOverride(itemId, month)
   })
 
+  ipcMain.handle(IPC_CHANNELS.ITEMS_LIST_MONTH_VALUES, (_, itemId: number) => {
+    return repo.listValueOverrides(itemId)
+  })
+
   ipcMain.handle(IPC_CHANNELS.ITEMS_SET_MONTHLY_ACTIVE, (_, itemId: number, month: string, isActive: boolean | null) => {
     statusRepo.setMonthlyActive(itemId, month, isActive)
   })

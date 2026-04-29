@@ -32,6 +32,7 @@ const api = {
     setReceived: (incomeId: number, month: string, isReceived: boolean, receivedAt?: string) => ipcRenderer.invoke(IPC_CHANNELS.PERSON_INCOME_SET_RECEIVED, incomeId, month, isReceived, receivedAt),
     setMonthValue: (incomeId: number, month: string, value: number) => ipcRenderer.invoke(IPC_CHANNELS.PERSON_INCOME_SET_MONTH_VALUE, incomeId, month, value),
     removeMonthValue: (incomeId: number, month: string) => ipcRenderer.invoke(IPC_CHANNELS.PERSON_INCOME_REMOVE_MONTH_VALUE, incomeId, month),
+    listMonthValues: (incomeId: number) => ipcRenderer.invoke(IPC_CHANNELS.PERSON_INCOME_LIST_MONTH_VALUES, incomeId),
     search: (personId: number, query: string, filters?: { isRecurring?: boolean; categoryId?: number; tagId?: number }) =>
       ipcRenderer.invoke(IPC_CHANNELS.PERSON_INCOME_SEARCH, personId, query, filters),
     interrupt: (incomeId: number, month: string, pauseMonths?: number) =>
@@ -57,6 +58,8 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.ITEMS_SET_MONTH_VALUE, itemId, month, value),
     removeMonthValue: (itemId: number, month: string) =>
       ipcRenderer.invoke(IPC_CHANNELS.ITEMS_REMOVE_MONTH_VALUE, itemId, month),
+    listMonthValues: (itemId: number) =>
+      ipcRenderer.invoke(IPC_CHANNELS.ITEMS_LIST_MONTH_VALUES, itemId),
     setMonthlyActive: (itemId: number, month: string, isActive: boolean | null) =>
       ipcRenderer.invoke(IPC_CHANNELS.ITEMS_SET_MONTHLY_ACTIVE, itemId, month, isActive),
     search: (personId: number, query: string, filters?: { type?: string; categoryId?: number; storeId?: number; cardId?: number; tagId?: number; isPaid?: boolean; isActive?: boolean; bankAccountId?: number }) =>

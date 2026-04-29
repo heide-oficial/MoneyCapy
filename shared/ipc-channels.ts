@@ -29,6 +29,7 @@ export const IPC_CHANNELS = {
   PERSON_INCOME_SET_RECEIVED: 'person-income:set-received',
   PERSON_INCOME_SET_MONTH_VALUE: 'person-income:set-month-value',
   PERSON_INCOME_REMOVE_MONTH_VALUE: 'person-income:remove-month-value',
+  PERSON_INCOME_LIST_MONTH_VALUES: 'person-income:list-month-values',
   PERSON_INCOME_SEARCH: 'person-income:search',
   INCOME_INTERRUPT: 'income:interrupt',
   INCOME_REACTIVATE: 'income:reactivate',
@@ -47,6 +48,7 @@ export const IPC_CHANNELS = {
   ITEMS_UNDO_ANTICIPATION: 'items:undo-anticipation',
   ITEMS_SET_MONTH_VALUE: 'items:set-month-value',
   ITEMS_REMOVE_MONTH_VALUE: 'items:remove-month-value',
+  ITEMS_LIST_MONTH_VALUES: 'items:list-month-values',
   ITEMS_SET_MONTHLY_ACTIVE: 'items:set-monthly-active',
   ITEMS_SEARCH: 'items:search',
 
