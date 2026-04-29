@@ -119,7 +119,7 @@ export default function IncomePage() {
   const tagDropRef = useRef<HTMLDivElement>(null)
 
   // Month value edit modal
-  type IncomeSortMode = 'az' | 'za' | 'value-desc' | 'value-asc' | 'newest' | 'oldest' | 'received-first' | 'unreceived-first' | 'due-day-asc' | 'due-day-desc'
+  type IncomeSortMode = 'az' | 'za' | 'value-desc' | 'value-asc' | 'newest' | 'oldest' | 'due-day-asc' | 'due-day-desc'
   const [sortMode, setSortMode] = useState<IncomeSortMode>('az')
   const [showSortMenu, setShowSortMenu] = useState(false)
   const sortBtnRef = useRef<HTMLButtonElement>(null)
@@ -131,9 +131,6 @@ export default function IncomePage() {
   const [showValueEdit, setShowValueEdit] = useState(false)
   const [valueEditTarget, setValueEditTarget] = useState<Income | null>(null)
   const [monthValue, setMonthValue] = useState(0)
-  const [showReceivedDateEdit, setShowReceivedDateEdit] = useState(false)
-  const [receivedDateTarget, setReceivedDateTarget] = useState<Income | null>(null)
-  const [receivedDateValue, setReceivedDateValue] = useState('')
 
   // Tag creation modal
   const [showTagCreate, setShowTagCreate] = useState(false)
@@ -232,8 +229,6 @@ export default function IncomePage() {
       case 'value-asc': return a.effectiveValue - b.effectiveValue
       case 'newest': return (b.createdAt || '').localeCompare(a.createdAt || '')
       case 'oldest': return (a.createdAt || '').localeCompare(b.createdAt || '')
-      case 'received-first': return (b.isReceived ? 1 : 0) - (a.isReceived ? 1 : 0)
-      case 'unreceived-first': return (a.isReceived ? 1 : 0) - (b.isReceived ? 1 : 0)
       case 'due-day-asc': return (a.dueDay ?? 99) - (b.dueDay ?? 99)
       case 'due-day-desc': return (b.dueDay ?? 0) - (a.dueDay ?? 0)
       default: return 0
@@ -287,12 +282,6 @@ export default function IncomePage() {
     setShowValueEdit(true)
   }
 
-  const openReceivedDateEdit = (inc: Income) => {
-    setReceivedDateTarget(inc)
-    setReceivedDateValue(inc.receivedAt || new Date().toISOString().substring(0, 10))
-    setShowReceivedDateEdit(true)
-  }
-
   const handleSave = async () => {
     if (!form.description.trim()) { toast.error(t('common.descriptionRequired')); return }
     if (!form.startMonth) { toast.error(t('common.startMonthRequired')); return }
@@ -342,15 +331,6 @@ export default function IncomePage() {
 
   const toggleReceived = async (incomeId: number) => {
     await window.api.personIncome.toggleReceived(incomeId, month)
-    load()
-  }
-
-  const handleSaveReceivedDate = async () => {
-    if (!receivedDateTarget) return
-    await window.api.personIncome.setReceived(receivedDateTarget.id, month, true, receivedDateValue || undefined)
-    toast.success(t('income.receivedDateUpdated'))
-    setShowReceivedDateEdit(false)
-    setReceivedDateTarget(null)
     load()
   }
 
@@ -544,7 +524,7 @@ export default function IncomePage() {
           <div className="relative">
             <button ref={sortBtnRef} type="button" onClick={() => setShowSortMenu(f => !f)}
               className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border border-input hover:bg-accent transition-colors">
-              {{ 'az': t('sort.azAsc'), 'za': t('sort.azDesc'), 'value-desc': t('sort.valueDesc'), 'value-asc': t('sort.valueAsc'), 'newest': t('sort.newest'), 'oldest': t('sort.oldest'), 'received-first': t('sort.paidFirst'), 'unreceived-first': t('sort.unpaidFirst'), 'due-day-asc': t('sort.dueDayAsc'), 'due-day-desc': t('sort.dueDayDesc') }[sortMode]}
+              {{ 'az': t('sort.azAsc'), 'za': t('sort.azDesc'), 'value-desc': t('sort.valueDesc'), 'value-asc': t('sort.valueAsc'), 'newest': t('sort.newest'), 'oldest': t('sort.oldest'), 'due-day-asc': t('sort.dueDayAsc'), 'due-day-desc': t('sort.dueDayDesc') }[sortMode]}
               <ChevronDown size={12} className="text-muted-foreground" />
             </button>
             {showSortMenu && (
@@ -556,8 +536,6 @@ export default function IncomePage() {
                   { key: 'value-asc', label: t('sort.valueAsc') },
                   { key: 'newest', label: t('sort.newest') },
                   { key: 'oldest', label: t('sort.oldest') },
-                  { key: 'received-first', label: t('sort.paidFirst') },
-                  { key: 'unreceived-first', label: t('sort.unpaidFirst') },
                   { key: 'due-day-asc', label: t('sort.dueDayAsc') },
                   { key: 'due-day-desc', label: t('sort.dueDayDesc') }
                 ]}
@@ -584,7 +562,6 @@ export default function IncomePage() {
             const kebabItems: any[] = [
               { label: t('income.editIncome'), icon: Pencil, onClick: () => openEdit(inc) },
               { label: t('items.editValueThisMonth'), icon: DollarSign, onClick: () => openValueEdit(inc) },
-              { label: t('income.changeReceivedDate'), icon: CalendarClock, onClick: () => openReceivedDateEdit(inc) },
             ]
             if (inc.isReceived) {
               kebabItems.push({ label: t('items.undoReceipt'), icon: CheckCircle, onClick: () => toggleReceived(inc.id) })
@@ -788,11 +765,29 @@ export default function IncomePage() {
                 {/* Seção: Período */}
                 <div className="space-y-2">
                   <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('itemsForm.period')}</h4>
-                  <div className="rounded-lg border border-border bg-card p-4">
+                  <div className="rounded-lg border border-border bg-card p-4 space-y-3">
                     <div className="grid grid-cols-2 gap-3">
                       <DatePicker mode="month" label={t('income.startMonth')} value={form.startMonth} onChange={v => setForm({ ...form, startMonth: v })} />
                       <DatePicker mode="month" label={t('income.endMonth')} value={form.endMonth} onChange={v => setForm({ ...form, endMonth: v })} />
                     </div>
+                    <div className="flex rounded-lg border border-input p-0.5 bg-muted/30">
+                      <button type="button" onClick={() => setForm({ ...form, isReceived: false, receivedAt: '' })}
+                        className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
+                          !form.isReceived ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                        }`}>
+                        {t('items.markNotReceived')}
+                      </button>
+                      <button type="button" onClick={() => setForm({ ...form, isReceived: true, receivedAt: form.receivedAt || new Date().toISOString().substring(0, 10) })}
+                        className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
+                          form.isReceived ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                        }`}>
+                        {t('items.received')}
+                      </button>
+                    </div>
+                    {form.isReceived && (
+                      <DatePicker mode="date" label={t('income.receivedDate')} value={form.receivedAt}
+                        onChange={v => setForm({ ...form, receivedAt: v })} />
+                    )}
                   </div>
                 </div>
 
@@ -886,33 +881,6 @@ export default function IncomePage() {
                       rows={2} placeholder={t('itemsForm.notesPlaceholder')} />
                   </div>
                 </div>
-
-                {/* Seção: Status */}
-                <div className="space-y-2">
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('itemsForm.status')}</h4>
-                  <div className="rounded-lg border border-border bg-card p-4">
-                    <div className="flex rounded-lg border border-input p-0.5 bg-muted/30">
-                      <button type="button" onClick={() => setForm({ ...form, isReceived: false, receivedAt: '' })}
-                        className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
-                          !form.isReceived ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                        }`}>
-                        {t('items.markNotReceived')}
-                      </button>
-                      <button type="button" onClick={() => setForm({ ...form, isReceived: true, receivedAt: form.receivedAt || new Date().toISOString().substring(0, 10) })}
-                        className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
-                          form.isReceived ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                        }`}>
-                        {t('items.received')}
-                      </button>
-                    </div>
-                    {form.isReceived && (
-                      <div className="mt-3">
-                        <DatePicker mode="date" label={t('income.receivedDate')} value={form.receivedAt}
-                          onChange={v => setForm({ ...form, receivedAt: v })} />
-                      </div>
-                    )}
-                  </div>
-                </div>
               </div>
             )}
 
@@ -950,21 +918,6 @@ export default function IncomePage() {
           </div>
         </div>
       </Modal>
-
-      <Modal open={showReceivedDateEdit} onClose={() => setShowReceivedDateEdit(false)} title={t('income.changeReceivedDate')}>
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            {t('income.changeReceivedDateDesc', { name: receivedDateTarget?.description || '' })}
-          </p>
-          <DatePicker mode="date" label={t('income.receivedDate')} value={receivedDateValue}
-            onChange={setReceivedDateValue} />
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setShowReceivedDateEdit(false)}>{t('common.cancel')}</Button>
-            <Button onClick={handleSaveReceivedDate}>{t('common.save')}</Button>
-          </div>
-        </div>
-      </Modal>
-
 
       {/* Tag creation modal */}
       <Modal open={showTagCreate} onClose={() => setShowTagCreate(false)} title={t('itemsForm.newTagModal')} maxWidth="max-w-sm">
