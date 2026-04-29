@@ -456,7 +456,7 @@ export function ItemsForm({
         {/* Seção: Período */}
         <div className="space-y-2">
           <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('itemsForm.period')}</h4>
-          <div className="rounded-lg border border-border bg-card p-4">
+          <div className="rounded-lg border border-border bg-card p-4 space-y-3">
             {form.type === 'common' && (
               <DatePicker mode="month" label={form.cardId && form.paymentMethod === 'credit' ? t('itemsForm.billingMonth') : t('itemsForm.referenceMonth')} value={form.startMonth} onChange={v => setForm({ ...form, startMonth: v })} />
             )}
@@ -468,6 +468,24 @@ export function ItemsForm({
                 <DatePicker mode="month" label={t('itemsForm.startMonth')} value={form.startMonth} onChange={v => setForm({ ...form, startMonth: v })} />
                 <DatePicker mode="month" label={t('itemsForm.endMonth')} value={form.endMonth} onChange={v => setForm({ ...form, endMonth: v })} />
               </div>
+            )}
+            <div className="flex rounded-lg border border-input p-0.5 bg-muted/30">
+              <button type="button" onClick={() => setForm({ ...form, isPaid: false, paidAt: '' })}
+                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
+                  !form.isPaid ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                }`}>
+                {t('itemsForm.unpaid')}
+              </button>
+              <button type="button" onClick={() => setForm({ ...form, isPaid: true, paidAt: form.paidAt || new Date().toISOString().substring(0, 10) })}
+                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
+                  form.isPaid ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                }`}>
+                {t('itemsForm.paid')}
+              </button>
+            </div>
+            {form.isPaid && (
+              <DatePicker mode="date" label={t('itemsForm.paymentDate')} value={form.paidAt}
+                onChange={v => setForm({ ...form, paidAt: v })} />
             )}
           </div>
         </div>
@@ -833,33 +851,6 @@ export function ItemsForm({
           <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })}
             className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             rows={2} placeholder={t('itemsForm.notesPlaceholder')} />
-        </div>
-      </div>
-
-      {/* Seção: Status */}
-      <div className="space-y-2">
-        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('itemsForm.status')}</h4>
-        <div className="rounded-lg border border-border bg-card p-4">
-          <div className="flex rounded-lg border border-input p-0.5 bg-muted/30">
-            <button type="button" onClick={() => setForm({ ...form, isPaid: false, paidAt: '' })}
-              className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
-                !form.isPaid ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-              }`}>
-              {t('itemsForm.unpaid')}
-            </button>
-            <button type="button" onClick={() => setForm({ ...form, isPaid: true, paidAt: form.paidAt || new Date().toISOString().substring(0, 10) })}
-              className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
-                form.isPaid ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-              }`}>
-              {t('itemsForm.paid')}
-            </button>
-          </div>
-          {form.isPaid && (
-            <div className="mt-3">
-              <DatePicker mode="date" label={t('itemsForm.paymentDate')} value={form.paidAt}
-                onChange={v => setForm({ ...form, paidAt: v })} />
-            </div>
-          )}
         </div>
       </div>
     </div>
