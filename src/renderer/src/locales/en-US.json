@@ -909,7 +909,9 @@
     "availDesc": "Most available limit",
     "availAsc": "Least available limit",
     "dueDayAsc": "Nearest due day",
-    "dueDayDesc": "Farthest due day"
+    "dueDayDesc": "Farthest due day",
+    "billingDayNearest": "Nearest billing day",
+    "billingDayFarthest": "Farthest billing day"
   },
   "filters": {
     "filters": "Filters",

@@ -7,6 +7,7 @@ export type ItemSortMode =
   | 'installments-desc' | 'installments-asc'
   | 'newest' | 'oldest'
   | 'due-day-asc' | 'due-day-desc'
+  | 'billing-day-nearest' | 'billing-day-farthest'
 
 export const ITEM_SORT_OPTIONS: { key: ItemSortMode; label: string }[] = [
   { key: 'az', label: 'Alfabetica crescente' },
@@ -20,7 +21,9 @@ export const ITEM_SORT_OPTIONS: { key: ItemSortMode; label: string }[] = [
   { key: 'installments-desc', label: 'Mais parcelas restantes' },
   { key: 'installments-asc', label: 'Menos parcelas restantes' },
   { key: 'due-day-asc', label: 'Dia de vencimento mais proximo' },
-  { key: 'due-day-desc', label: 'Dia de vencimento mais distante' }
+  { key: 'due-day-desc', label: 'Dia de vencimento mais distante' },
+  { key: 'billing-day-nearest', label: 'Dia de cobranca mais proximo' },
+  { key: 'billing-day-farthest', label: 'Dia de cobranca mais distante' }
 ]
 
 export const SORT_LABEL_MAP: Record<ItemSortMode, string> = Object.fromEntries(
@@ -40,7 +43,9 @@ export function getItemSortOptions(t: (key: string) => string): { key: ItemSortM
     { key: 'installments-desc', label: t('sort.installmentsDesc') },
     { key: 'installments-asc', label: t('sort.installmentsAsc') },
     { key: 'due-day-asc', label: t('sort.dueDayAsc') },
-    { key: 'due-day-desc', label: t('sort.dueDayDesc') }
+    { key: 'due-day-desc', label: t('sort.dueDayDesc') },
+    { key: 'billing-day-nearest', label: t('sort.billingDayNearest') },
+    { key: 'billing-day-farthest', label: t('sort.billingDayFarthest') }
   ]
 }
 
@@ -82,6 +87,17 @@ function getDueSortValue(item: SectionItem, month?: string, farthest = false): n
   while (dueMonth > 12) { dueYear += 1; dueMonth -= 12 }
   while (dueMonth < 1) { dueYear -= 1; dueMonth += 12 }
   return new Date(dueYear, dueMonth - 1, dueDay).getTime()
+}
+
+function getBillingSortValue(item: SectionItem, month?: string): number | null {
+  if (item.billingDay == null) return null
+  if (!month) return item.billingDay
+  const [year, monthNumber] = month.split('-').map(Number)
+  let billingMonth = monthNumber + (item.billingDayMonthOffset || 0)
+  let billingYear = year
+  while (billingMonth > 12) { billingYear += 1; billingMonth -= 12 }
+  while (billingMonth < 1) { billingYear -= 1; billingMonth += 12 }
+  return new Date(billingYear, billingMonth - 1, item.billingDay).getTime()
 }
 
 function getRemainingInstallments(item: SectionItem): number | null {
@@ -126,6 +142,8 @@ export function sortItems<T extends SectionItem>(
       case 'oldest': return (a.createdAt || '').localeCompare(b.createdAt || '')
       case 'due-day-asc': return compareNullableNumber(getDueSortValue(a, month), getDueSortValue(b, month), 'asc')
       case 'due-day-desc': return compareNullableNumber(getDueSortValue(a, month, true), getDueSortValue(b, month, true), 'desc')
+      case 'billing-day-nearest': return compareNullableNumber(getBillingSortValue(a, month), getBillingSortValue(b, month), 'asc')
+      case 'billing-day-farthest': return compareNullableNumber(getBillingSortValue(a, month), getBillingSortValue(b, month), 'desc')
       default: return 0
     }
   })

@@ -909,7 +909,9 @@
     "availDesc": "Mais limite disponível",
     "availAsc": "Menos limite disponível",
     "dueDayAsc": "Dia de vencimento mais próximo",
-    "dueDayDesc": "Dia de vencimento mais distante"
+    "dueDayDesc": "Dia de vencimento mais distante",
+    "billingDayNearest": "Dia de cobrança mais próximo",
+    "billingDayFarthest": "Dia de cobrança mais distante"
   },
   "filters": {
     "filters": "Filtros",
