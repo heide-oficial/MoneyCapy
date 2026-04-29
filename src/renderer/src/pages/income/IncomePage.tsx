@@ -964,29 +964,45 @@ export default function IncomePage() {
                   </div>
                 )}
                 {editing.isRecurring && (
-                  <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-                    {editing.interruptions && editing.interruptions.length > 0 ? (
-                      editing.interruptions.map(int => (
-                        <div key={int.id} className="flex items-center justify-between gap-3 text-sm">
-                          <span>
-                            {int.resumeMonth
-                              ? t('itemsForm.pausedAt', { startMonth: fmtMonth(int.endMonth), resumeMonth: fmtMonth(int.resumeMonth) })
-                              : t('itemsForm.interruptedPermanently', { endMonth: fmtMonth(int.endMonth) })}
-                          </span>
-                          <Button size="sm" variant="outline" onClick={() => { handleReactivate(int.id); setShowForm(false) }}>
-                            <Undo2 size={12} /> {t('common.undo')}
-                          </Button>
+                  <>
+                    <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">{t('itemsForm.interruptionStatus')}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {editing.interruptions?.some(i => !i.resumeMonth) ? t('itemsForm.interruptionBlocked') : t('itemsForm.interruptionAvailable')}
+                          </p>
                         </div>
-                      ))
-                    ) : (
-                      <p className="text-sm text-muted-foreground">{t('itemsForm.noInterruptions')}</p>
-                    )}
-                    {!(editing.interruptions?.some(i => !i.resumeMonth)) && (
-                      <Button size="sm" variant="outline" onClick={() => { setShowForm(false); setInterruptMode('temporary'); setInterruptMonths('2'); setTimeout(() => setInterruptItem(editing), 50) }}>
-                        <X size={14} /> {t('itemsForm.interrupt')}
-                      </Button>
-                    )}
-                  </div>
+                        {!(editing.interruptions?.some(i => !i.resumeMonth)) && (
+                          <Button size="sm" variant="outline" onClick={() => { setShowForm(false); setInterruptMode('temporary'); setInterruptMonths('2'); setTimeout(() => setInterruptItem(editing), 50) }}>
+                            <X size={14} /> {t('itemsForm.interrupt')}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('itemsForm.interruptionHistory')}</h4>
+                      <div className="rounded-lg border border-border bg-card p-3 space-y-2">
+                        {editing.interruptions && editing.interruptions.length > 0 ? (
+                          editing.interruptions.map(int => (
+                            <div key={int.id} className="flex items-center justify-between gap-3 rounded-md border border-border/60 bg-muted/20 px-3 py-2 text-sm">
+                              <span>
+                                {int.resumeMonth
+                                  ? t('itemsForm.pausedAt', { startMonth: fmtMonth(int.endMonth), resumeMonth: fmtMonth(int.resumeMonth) })
+                                  : t('itemsForm.interruptedPermanently', { endMonth: fmtMonth(int.endMonth) })}
+                              </span>
+                              <Button size="sm" variant="ghost" onClick={() => { handleReactivate(int.id); setShowForm(false) }}>
+                                <Undo2 size={12} /> {t('common.undo')}
+                              </Button>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-sm text-muted-foreground">{t('itemsForm.noInterruptions')}</p>
+                        )}
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
             )}
