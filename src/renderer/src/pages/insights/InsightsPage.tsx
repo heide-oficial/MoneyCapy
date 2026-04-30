@@ -5,6 +5,7 @@ import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Toggle } from '../../components/ui/Toggle'
 import { SectionLayout } from '../../components/layout/SectionLayout'
+import { CurrencySelector } from '../../components/ui/CurrencyMonthNavigator'
 import { useActivePerson } from '../../contexts/ActivePersonContext'
 import { useStartCountingMonth } from '../../contexts/StartCountingMonthContext'
 import { useColorSettings } from '../../contexts/ColorSettingsContext'
@@ -223,6 +224,7 @@ export default function InsightsPage() {
     <SectionLayout
       icon={BarChart3}
       title={t('insights.title')}
+      monthNav={<CurrencySelector />}
       controls={
         <>
           <InsightsToolbar
