@@ -1,5 +1,5 @@
 import { CSSProperties, ReactNode } from 'react'
-import { type LucideIcon } from 'lucide-react'
+import { ArrowDown, ArrowUp, type LucideIcon } from 'lucide-react'
 import { Card } from '../ui/Card'
 
 export interface StatItem {
@@ -23,8 +23,34 @@ export interface SectionLayoutProps {
 
 function IconBadge({ icon: Icon }: { icon: LucideIcon }) {
   return (
-    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 shrink-0">
-      <Icon size={20} className="text-primary" />
+    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 shrink-0">
+      <Icon size={24} className="text-primary" />
+    </div>
+  )
+}
+
+function StatCard({ stat, index }: { stat: StatItem; index: number }) {
+  const tone = typeof stat.style?.color === 'string' ? stat.style.color : undefined
+  const TrendIcon = index === 0 ? ArrowDown : ArrowUp
+
+  return (
+    <div className="min-w-[210px] rounded-lg border border-border/80 bg-background/25 px-4 py-2.5 shadow-sm">
+      <div className="flex items-center gap-3">
+        <div
+          className="flex h-8 w-8 items-center justify-center rounded-full border"
+          style={tone ? { color: tone, borderColor: `${tone}80`, backgroundColor: `${tone}14` } : undefined}
+        >
+          <TrendIcon size={18} />
+        </div>
+        <div className="min-w-0">
+          <p className={`truncate text-base font-bold tabular-nums leading-tight ${stat.className || ''}`} style={stat.style}>
+            {stat.value}
+          </p>
+          <p className="truncate text-xs text-muted-foreground mt-0.5">
+            {stat.label}
+          </p>
+        </div>
+      </div>
     </div>
   )
 }
@@ -72,35 +98,45 @@ export function SectionLayout({
   return (
     <div className="space-y-6">
       {/* Header Card */}
-      <Card className="p-4">
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-          <div className="min-w-0">
-            <div className="flex items-center gap-3">
-            <IconBadge icon={Icon} />
-            <div className="min-w-0 flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl font-bold">{title}</h1>
-              {breadcrumbs}
-            </div>
-          </div>
-            {hasStats && (
-              <div className="mt-2 ml-12 flex items-baseline gap-x-3 gap-y-1 flex-wrap">
-                {stats![0] && (
-                  <span className={`text-base font-semibold tabular-nums leading-tight ${stats![0].className || ''}`} style={stats![0].style}>
-                    {stats![0].value}
-                  </span>
-                )}
-                {stats![1] && (
-                  <span className="text-xs text-muted-foreground">
-                    {stats![1].value}
-                  </span>
-                )}
+      <Card className="p-0 overflow-hidden">
+        <div className="flex min-h-[86px] flex-col xl:flex-row xl:items-stretch">
+          <div className="flex min-w-0 flex-1 flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center">
+            <div className="flex min-w-[210px] items-center gap-4 shrink-0">
+              <IconBadge icon={Icon} />
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-xl font-bold leading-tight">{title}</h1>
+                  {breadcrumbs}
+                </div>
               </div>
+            </div>
+
+            {hasStats && (
+              <>
+                <div className="hidden h-12 w-px bg-border lg:block" />
+                <div className="flex min-w-0 flex-wrap items-center gap-3">
+                  {stats!.slice(0, 3).map((stat, index) => (
+                    <StatCard key={index} stat={stat} index={index} />
+                  ))}
+                </div>
+              </>
             )}
           </div>
-          <div className="flex items-center gap-2 justify-start lg:justify-end flex-wrap shrink-0">
-            {monthNav}
-            {actionButton}
-          </div>
+
+          {(monthNav || actionButton) && (
+            <div className="flex shrink-0 items-stretch border-t border-border xl:border-l xl:border-t-0">
+              {monthNav && (
+                <div className="flex items-center px-5 py-4">
+                  {monthNav}
+                </div>
+              )}
+              {actionButton && (
+                <div className="flex items-stretch border-l border-border [&>button]:h-auto [&>button]:min-w-[104px] [&>button]:rounded-none [&>button]:px-5 [&>button]:text-sm [&>button]:flex-col [&>button]:gap-1 [&>button]:whitespace-normal [&>button]:leading-tight">
+                  {actionButton}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </Card>
 
