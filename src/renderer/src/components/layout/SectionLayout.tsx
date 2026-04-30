@@ -71,41 +71,43 @@ export function SectionLayout({
   /* ═══ FULL PAGE VARIANT ═══ */
   return (
     <div className="space-y-6">
-      {/* Hero Card */}
-      <Card className="p-5 relative">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3 shrink-0">
+      {/* Header Card */}
+      <Card className="p-4">
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+          <div className="min-w-0">
+            <div className="flex items-center gap-3">
             <IconBadge icon={Icon} />
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="min-w-0 flex items-center gap-2 flex-wrap">
               <h1 className="text-xl font-bold">{title}</h1>
               {breadcrumbs}
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+            {hasStats && (
+              <div className="mt-2 ml-12 flex items-baseline gap-x-3 gap-y-1 flex-wrap">
+                {stats![0] && (
+                  <span className={`text-base font-semibold tabular-nums leading-tight ${stats![0].className || ''}`} style={stats![0].style}>
+                    {stats![0].value}
+                  </span>
+                )}
+                {stats![1] && (
+                  <span className="text-xs text-muted-foreground">
+                    {stats![1].value}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2 justify-start lg:justify-end flex-wrap shrink-0">
             {monthNav}
             {actionButton}
           </div>
         </div>
-        {hasStats && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            {stats![0] && (
-              <p className={`text-lg font-bold tabular-nums leading-tight pointer-events-auto ${stats![0].className || ''}`} style={stats![0].style}>
-                {stats![0].value}
-              </p>
-            )}
-            {stats![1] && (
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {stats![1].value}
-              </p>
-            )}
-          </div>
-        )}
       </Card>
 
       {/* Toolbar Card */}
       {hasControls && (
         <Card className="p-2">
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-wrap">
             {controls}
           </div>
         </Card>
