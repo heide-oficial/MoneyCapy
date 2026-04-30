@@ -335,25 +335,24 @@ export default function SubcategoriesPage() {
     return sum + item.value * rate
   }, 0)
   const incomeTotal = allFilteredIncomes.reduce((sum, income) => sum + income.effectiveValue * (income.exchangeRateSnapshot || 1), 0)
-  const hasActiveFilters =
-    filterCategoryKeys.length > 0 || filterSubcategoryKeys.length > 0 || filterCardKeys.length > 0 ||
-    filterBankKeys.length > 0 || filterStoreKeys.length > 0 || hideEmpty ||
-    filterActive !== 'all' || filterPaid !== 'all' || filterPayMethod !== 'all' || filterItemType !== 'all'
+  const paidCount = allFilteredItems.filter(item => item.isPaid).length
+  const receivedCount = allFilteredIncomes.filter(income => income.isReceived).length
+  const expenseStat = {
+    label: `${allFilteredItems.length === 1 ? t('items.itemCount', { count: allFilteredItems.length }) : t('items.itemCountPlural', { count: allFilteredItems.length })} · ${t('items.unpaidCount', { count: allFilteredItems.length - paidCount })}`,
+    value: formatDisplayCurrency(expenseTotal),
+    style: gastosStyle('subcategories', 'hero')
+  }
+  const incomeStat = {
+    label: `${allFilteredIncomes.length === 1 ? t('items.incomeCount', { count: allFilteredIncomes.length }) : t('items.incomeCountPlural', { count: allFilteredIncomes.length })} · ${t('items.unreceived', { count: allFilteredIncomes.length - receivedCount })}`,
+    value: formatDisplayCurrency(incomeTotal),
+    style: receitasStyle('subcategories', 'hero')
+  }
 
   const stats = viewMode === 'gastos'
-    ? [
-        { label: hasActiveFilters ? t('items.totalActiveFiltered') : t('items.totalActive'), value: formatDisplayCurrency(expenseTotal), style: gastosStyle('subcategories', 'hero') },
-        { label: t('items.title'), value: `${allFilteredItems.length} ${t('items.title').toLowerCase()}` }
-      ]
+    ? [expenseStat]
     : viewMode === 'receitas'
-      ? [
-          { label: hasActiveFilters ? t('items.totalIncomeFiltered') : t('items.totalIncome'), value: formatDisplayCurrency(incomeTotal), style: receitasStyle('subcategories', 'hero') },
-          { label: t('income.title'), value: `${allFilteredIncomes.length} ${t('income.title').toLowerCase()}` }
-        ]
-      : [
-          { label: hasActiveFilters ? t('items.totalFiltered') : t('items.total'), value: <><span style={gastosStyle('subcategories', 'hero')}>{formatDisplayCurrency(expenseTotal)} {t('items.expensesLabel')}</span> · <span style={receitasStyle('subcategories', 'hero')}>{formatDisplayCurrency(incomeTotal)} {t('items.incomeLabel')}</span></> },
-          { label: t('items.summaryLabel'), value: `${allFilteredItems.length} ${t('items.expensesLabel')} · ${allFilteredIncomes.length} ${t('items.incomeLabel')}` }
-        ]
+      ? [incomeStat]
+      : [expenseStat, incomeStat]
 
   const categoryFilterItems = [
     { id: 'none', name: t('categories.noCategory'), color: '#6b7280' },

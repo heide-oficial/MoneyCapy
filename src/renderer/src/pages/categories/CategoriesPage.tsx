@@ -372,8 +372,6 @@ export default function CategoriesPage() {
   const bankFilterItems = [{ id: 'none', name: t('filters.noAccount'), color: '#6b7280' }, ...bankAccounts.map(a => ({ id: String(a.id), name: a.name, color: '#3b82f6' }))]
   const storeFilterItems = [{ id: 'none', name: t('filters.noStore'), color: '#6b7280' }, ...stores.map(s => ({ id: String(s.id), name: s.name, color: '#6366f1' }))]
 
-  const hasActiveFilters = filterActive !== 'all' || filterPaid !== 'all' || filterPayMethod !== 'all' || filterItemType !== 'all' || filterCategoryKeys.length > 0 || filterSubcategoryKeys.length > 0 || filterCardKeys.length > 0 || filterBankKeys.length > 0 || filterStoreKeys.length > 0 || hideEmpty
-
   // Tile helpers
   const computeInstallmentValue = (item: SectionItem) => {
     const hasSplits = item.cardSplits && item.cardSplits.length > 0
@@ -406,25 +404,26 @@ export default function CategoriesPage() {
   const grandTotalIncomes = computeIncomeTotal(allFilteredIncomes)
   const paidCount = allFilteredItems.filter(i => i.isPaid).length
   const receivedCount = allFilteredIncomes.filter(i => i.isReceived).length
+  const expenseStat = {
+    label: `${allFilteredItems.length === 1 ? t('items.itemCount', { count: allFilteredItems.length }) : t('items.itemCountPlural', { count: allFilteredItems.length })} · ${t('items.unpaidCount', { count: allFilteredItems.length - paidCount })}`,
+    value: formatDisplayCurrency(grandTotalItems),
+    style: gastosStyle('categories', 'hero')
+  }
+  const incomeStat = {
+    label: `${allFilteredIncomes.length === 1 ? t('items.incomeCount', { count: allFilteredIncomes.length }) : t('items.incomeCountPlural', { count: allFilteredIncomes.length })} · ${t('items.unreceived', { count: allFilteredIncomes.length - receivedCount })}`,
+    value: formatDisplayCurrency(grandTotalIncomes),
+    style: receitasStyle('categories', 'hero')
+  }
 
   // Dynamic stats based on viewMode
   const stats = (() => {
     if (viewMode === 'gastos') {
-      return [
-        { label: hasActiveFilters ? t('items.totalActiveFiltered') : t('items.totalActive'), value: formatDisplayCurrency(grandTotalItems), style: gastosStyle('categories', 'hero') },
-        { label: t('items.title'), value: `${allFilteredItems.length === 1 ? t('items.itemCount', { count: allFilteredItems.length }) : t('items.itemCountPlural', { count: allFilteredItems.length })} · ${t('items.unpaidCount', { count: allFilteredItems.length - paidCount })}` }
-      ]
+      return [expenseStat]
     }
     if (viewMode === 'receitas') {
-      return [
-        { label: hasActiveFilters ? t('items.totalIncomeFiltered') : t('items.totalIncome'), value: formatDisplayCurrency(grandTotalIncomes), style: receitasStyle('categories', 'hero') },
-        { label: t('income.title'), value: `${allFilteredIncomes.length === 1 ? t('items.incomeCount', { count: allFilteredIncomes.length }) : t('items.incomeCountPlural', { count: allFilteredIncomes.length })} · ${t('items.unreceived', { count: allFilteredIncomes.length - receivedCount })}` }
-      ]
+      return [incomeStat]
     }
-    return [
-      { label: hasActiveFilters ? t('items.totalFiltered') : t('items.total'), value: <><span style={gastosStyle('categories', 'hero')}>{formatDisplayCurrency(grandTotalItems)} {t('items.expensesLabel')}</span> · <span style={receitasStyle('categories', 'hero')}>{formatDisplayCurrency(grandTotalIncomes)} {t('items.incomeLabel')}</span></> },
-      { label: t('items.summaryLabel'), value: `${t('items.unpaidCount', { count: allFilteredItems.length - paidCount })} · ${t('items.unreceived', { count: allFilteredIncomes.length - receivedCount })}` }
-    ]
+    return [expenseStat, incomeStat]
   })()
 
   const buildMeta = (item: SectionItem) => {
