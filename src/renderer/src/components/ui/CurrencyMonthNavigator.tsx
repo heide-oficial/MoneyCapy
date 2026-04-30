@@ -15,7 +15,7 @@ export function CurrencySelector() {
     <select
       value={displayCurrency?.id ?? ''}
       onChange={event => setDisplayCurrencyId(Number(event.target.value))}
-      className="h-9 min-w-[92px] rounded-md border border-input bg-card px-3 text-sm font-medium text-foreground outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
+      className="h-8 min-w-[86px] rounded-md border border-input bg-card px-2.5 text-sm font-medium text-foreground outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
     >
       {currencies.map(currency => (
         <option key={currency.id} value={currency.id}>

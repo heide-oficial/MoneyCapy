@@ -19,18 +19,18 @@ export function MonthNavigator({ month, onChange }: MonthNavigatorProps) {
   const canGoPrev = !startCountingMonth || prevMonth >= startCountingMonth
 
   return (
-    <div className="inline-flex items-center gap-0.5 rounded-md border border-input bg-transparent h-9 px-1 w-[250px] justify-center">
+    <div className="inline-flex items-center gap-0.5 rounded-md border border-input bg-transparent h-8 px-1 w-[230px] justify-center">
       <button
         onClick={() => onChange(prevMonth)}
         disabled={!canGoPrev}
-        className={`flex items-center justify-center h-7 w-7 rounded transition-colors ${
+        className={`flex items-center justify-center h-6 w-6 rounded transition-colors ${
           !canGoPrev
             ? 'opacity-30 pointer-events-none'
             : 'hover:bg-accent text-muted-foreground hover:text-foreground'
         }`}
         title={t('monthNavigator.previousMonth')}
       >
-        <ChevronLeft size={16} />
+        <ChevronLeft size={15} />
       </button>
       <DatePicker
         mode="month"
@@ -39,26 +39,26 @@ export function MonthNavigator({ month, onChange }: MonthNavigatorProps) {
           if (startCountingMonth && v < startCountingMonth) return
           onChange(v)
         }}
-        className="border-0 shadow-none bg-transparent h-7 min-w-[110px] justify-center text-sm font-medium"
+        className="border-0 shadow-none bg-transparent h-6 min-w-[104px] justify-center text-sm font-medium"
       />
       <button
         onClick={() => onChange(getNextMonth(month))}
-        className="flex items-center justify-center h-7 w-7 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+        className="flex items-center justify-center h-6 w-6 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
         title={t('monthNavigator.nextMonth')}
       >
-        <ChevronRight size={16} />
+        <ChevronRight size={15} />
       </button>
       <button
         onClick={() => onChange(currentMonth)}
         disabled={isCurrentMonth}
-        className={`flex items-center justify-center h-7 w-7 rounded transition-colors ${
+        className={`flex items-center justify-center h-6 w-6 rounded transition-colors ${
           isCurrentMonth
             ? 'text-muted-foreground/30 cursor-not-allowed'
             : 'hover:bg-accent text-primary hover:text-primary/80'
         }`}
         title={t('monthNavigator.goToCurrentMonth')}
       >
-        <CalendarCheck size={14} />
+        <CalendarCheck size={13} />
       </button>
     </div>
   )
