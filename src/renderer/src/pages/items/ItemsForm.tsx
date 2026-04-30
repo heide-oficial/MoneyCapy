@@ -1042,8 +1042,8 @@ export function ItemsForm({
       <div className="space-y-2">
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('itemsForm.tabClassification')}</h4>
         <div className="rounded-lg border border-border bg-card p-4 space-y-4">
-          <div className="flex gap-1.5">
-            <div className="flex-1">
+          <div className="grid grid-cols-[minmax(0,1fr)_2.25rem] items-end gap-1.5">
+            <div>
               <Select
                 label={t('itemsForm.category')}
                 value={String(form.categoryId)}
@@ -1053,12 +1053,12 @@ export function ItemsForm({
               />
             </div>
             <button type="button" onClick={() => { setCatCreateName(''); setCatCreateColor(INLINE_COLORS[0]); setShowCatCreate(true) }}
-              className="mt-6 h-9 w-9 flex items-center justify-center rounded-md border border-input hover:bg-accent transition-colors shrink-0" title={t('itemsForm.createCategory')}>
+              className="h-9 w-9 flex items-center justify-center rounded-md border border-input hover:bg-accent transition-colors shrink-0" title={t('itemsForm.createCategory')}>
               <Plus size={14} />
             </button>
           </div>
-          <div className="flex gap-1.5">
-            <div className="flex-1">
+          <div className="grid grid-cols-[minmax(0,1fr)_2.25rem] items-end gap-1.5">
+            <div>
               <Select
                 label={t('itemsForm.subcategory')}
                 value={String(form.subcategoryId)}
@@ -1070,7 +1070,7 @@ export function ItemsForm({
             </div>
             <button type="button" onClick={() => { setSubcatCreateName(''); setSubcatCreateColor(INLINE_COLORS[0]); setShowSubcatCreate(true) }}
               disabled={!form.categoryId}
-              className="mt-6 h-9 w-9 flex items-center justify-center rounded-md border border-input hover:bg-accent transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed" title={t('subcategories.createSubcategory')}>
+              className="h-9 w-9 flex items-center justify-center rounded-md border border-input hover:bg-accent transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed" title={t('subcategories.createSubcategory')}>
               <Plus size={14} />
             </button>
           </div>
@@ -1219,7 +1219,7 @@ export function ItemsForm({
           <div className={`sticky bottom-0 -mt-6 h-6 z-10 pointer-events-none bg-gradient-to-t from-background to-transparent transition-opacity ${modalScrollFade.bottom ? 'opacity-100' : 'opacity-0'}`} />
         </div>
 
-        <div className="flex items-center justify-end gap-2 pt-3 border-t border-border shrink-0">
+        <div className="flex items-center justify-end gap-2 pt-3 shrink-0">
           <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
           <Button onClick={handleSave}>{editing ? t('common.save') : t('common.create')} <Check size={14} /></Button>
         </div>

@@ -1151,7 +1151,7 @@ export default function IncomePage() {
           </div>
 
           {/* Botões */}
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-border shrink-0">
+          <div className="flex items-center justify-end gap-2 pt-3 shrink-0">
             <Button variant="outline" onClick={() => setShowForm(false)}>{t('common.cancel')}</Button>
             <Button onClick={handleSave}>{editing ? t('common.save') : t('common.create')}</Button>
           </div>
