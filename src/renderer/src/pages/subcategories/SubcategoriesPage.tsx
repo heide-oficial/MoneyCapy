@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CheckCircle, ChevronDown, ChevronRight, Circle, Filter, HandCoins, ListTree, Pencil, Plus, Receipt, Tags, Trash2 } from 'lucide-react'
+import { CheckCircle, ChevronDown, ChevronRight, Circle, CreditCard, EyeOff, Filter, HandCoins, ListTree, Pencil, Plus, Receipt, Store, Tags, ToggleLeft, Trash2, Wallet, ChevronsUpDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
@@ -10,11 +10,12 @@ import { FilterGroup } from '../../components/ui/FilterGroup'
 import { Input } from '../../components/ui/Input'
 import { KebabMenu } from '../../components/ui/KebabMenu'
 import { Modal } from '../../components/ui/Modal'
-import { MonthNavigator } from '../../components/ui/MonthNavigator'
+import { CurrencyMonthNavigator } from '../../components/ui/CurrencyMonthNavigator'
 import { SearchInput } from '../../components/ui/SearchInput'
 import { SectionLayout } from '../../components/layout/SectionLayout'
 import { SimpleDropdown } from '../../components/ui/SimpleDropdown'
 import { useColumnsPicker } from '../../components/ui/ColumnsPickerDropdown'
+import { TileFieldsPickerButton } from '../../components/ui/TileFieldsPickerButton'
 import { formatCurrency } from '../../lib/currency'
 import { PRESET_COLORS } from '../../lib/constants'
 import { usePageMonth } from '../../contexts/DefaultMonthContext'
@@ -22,9 +23,11 @@ import { useActivePerson } from '../../contexts/ActivePersonContext'
 import { useColorMode } from '../../contexts/ColorModeContext'
 import { useColorSettings } from '../../contexts/ColorSettingsContext'
 import { useDimPaid } from '../../contexts/DimPaidContext'
+import { useDisplayCurrency } from '../../contexts/DisplayCurrencyContext'
 import { useTranslation } from '../../contexts/LanguageContext'
 import { useUndoableDelete } from '../../hooks/useUndoableDelete'
 import type { IncomeRecord, SectionItem } from '../../types/entities'
+import { type ItemSortMode, sortItems, getItemSortOptions, getSortLabelMap } from '../../hooks/useSortItems'
 
 type ViewMode = 'all' | 'gastos' | 'receitas'
 type Scope = 'expense' | 'income' | 'both'
@@ -43,6 +46,17 @@ interface Subcategory {
   categoryIds?: number[]
 }
 
+interface CardData {
+  id: number
+  name: string
+  bankAccountId: number | null
+}
+
+interface BankAccountData {
+  id: number
+  name: string
+}
+
 export default function SubcategoriesPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -51,18 +65,38 @@ export default function SubcategoriesPage() {
   const { resolveEntityColor } = useColorMode()
   const { gastosStyle, receitasStyle } = useColorSettings()
   const { dimPaid } = useDimPaid()
-  const { columns, gridClass, pickerButton } = useColumnsPicker('item-columns')
+  const { formatDisplayCurrency } = useDisplayCurrency()
+  const { gridClass, pickerButton } = useColumnsPicker('item-columns')
 
   const [categories, setCategories] = useState<Category[]>([])
   const [subcategories, setSubcategories] = useState<Subcategory[]>([])
   const [items, setItems] = useState<SectionItem[]>([])
   const [incomes, setIncomes] = useState<IncomeRecord[]>([])
+  const [cards, setCards] = useState<CardData[]>([])
+  const [bankAccounts, setBankAccounts] = useState<BankAccountData[]>([])
+  const [stores, setStores] = useState<{ id: number; name: string }[]>([])
   const [search, setSearch] = useState('')
   const [viewMode, setViewMode] = useState<ViewMode>('all')
   const [showViewMenu, setShowViewMenu] = useState(false)
   const viewBtnRef = useRef<HTMLButtonElement>(null)
   const viewDropRef = useRef<HTMLDivElement>(null)
+  const [filterItemType, setFilterItemType] = useState('all')
+  const [showItemTypeMenu, setShowItemTypeMenu] = useState(false)
+  const itemTypeBtnRef = useRef<HTMLButtonElement>(null)
+  const itemTypeDropRef = useRef<HTMLDivElement>(null)
 
+  const [filterActive, setFilterActive] = useState<'all' | 'active' | 'inactive'>('all')
+  const [showActiveMenu, setShowActiveMenu] = useState(false)
+  const activeBtnRef = useRef<HTMLButtonElement>(null)
+  const activeDropRef = useRef<HTMLDivElement>(null)
+  const [filterPaid, setFilterPaid] = useState<'all' | 'paid' | 'unpaid'>('all')
+  const [showPaidMenu, setShowPaidMenu] = useState(false)
+  const paidBtnRef = useRef<HTMLButtonElement>(null)
+  const paidDropRef = useRef<HTMLDivElement>(null)
+  const [filterPayMethod, setFilterPayMethod] = useState('all')
+  const [showPayMethodMenu, setShowPayMethodMenu] = useState(false)
+  const payMethodBtnRef = useRef<HTMLButtonElement>(null)
+  const payMethodDropRef = useRef<HTMLDivElement>(null)
   const [filterCategoryKeys, setFilterCategoryKeys] = useState<string[]>([])
   const [showCategoryFilter, setShowCategoryFilter] = useState(false)
   const categoryFilterRef = useRef<HTMLButtonElement>(null)
@@ -71,8 +105,24 @@ export default function SubcategoriesPage() {
   const [showSubcategoryFilter, setShowSubcategoryFilter] = useState(false)
   const subcategoryFilterRef = useRef<HTMLButtonElement>(null)
   const subcategoryDropRef = useRef<HTMLDivElement>(null)
+  const [filterCardKeys, setFilterCardKeys] = useState<string[]>([])
+  const [showCardFilter, setShowCardFilter] = useState(false)
+  const cardFilterRef = useRef<HTMLButtonElement>(null)
+  const cardDropRef = useRef<HTMLDivElement>(null)
+  const [filterBankKeys, setFilterBankKeys] = useState<string[]>([])
+  const [showBankFilter, setShowBankFilter] = useState(false)
+  const bankFilterRef = useRef<HTMLButtonElement>(null)
+  const bankDropRef = useRef<HTMLDivElement>(null)
+  const [filterStoreKeys, setFilterStoreKeys] = useState<string[]>([])
+  const [showStoreFilter, setShowStoreFilter] = useState(false)
+  const storeFilterRef = useRef<HTMLButtonElement>(null)
+  const storeDropRef = useRef<HTMLDivElement>(null)
   const [hideEmpty, setHideEmpty] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState<Set<number | 'none'>>(new Set())
+  const [sortMode, setSortMode] = useState<ItemSortMode>('az')
+  const [showSortMenu, setShowSortMenu] = useState(false)
+  const sortBtnRef = useRef<HTMLButtonElement>(null)
+  const sortDropRef = useRef<HTMLDivElement>(null)
 
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Subcategory | null>(null)
@@ -90,12 +140,18 @@ export default function SubcategoriesPage() {
     setSubcategories(subs)
     setCategories(cats)
     if (!activePerson) return
-    const [its, incs] = await Promise.all([
+    const [its, incs, cds, accs, strs] = await Promise.all([
       window.api.items.list(activePerson.id, month),
-      window.api.personIncome.listByMonth(activePerson.id, month)
+      window.api.personIncome.listByMonth(activePerson.id, month),
+      window.api.cards.list(activePerson.id, month),
+      window.api.bankAccounts.list(activePerson.id),
+      window.api.stores.list()
     ])
     setItems(its)
     setIncomes(incs)
+    setCards(cds)
+    setBankAccounts(accs)
+    setStores(strs)
   }
 
   useEffect(() => { loadData() }, [activePerson, month])
@@ -143,6 +199,11 @@ export default function SubcategoriesPage() {
   }
 
   const filterItem = (item: SectionItem) => {
+    if (filterActive === 'active' && !item.isActive) return false
+    if (filterActive === 'inactive' && item.isActive) return false
+    if (filterPaid === 'paid' && !item.isPaid) return false
+    if (filterPaid === 'unpaid' && item.isPaid) return false
+    if (filterItemType !== 'all' && viewMode === 'gastos' && item.type !== filterItemType) return false
     if (filterCategoryKeys.length > 0) {
       const none = filterCategoryKeys.includes('none')
       const ids = filterCategoryKeys.filter(id => id !== 'none')
@@ -153,10 +214,42 @@ export default function SubcategoriesPage() {
       const ids = filterSubcategoryKeys.filter(id => id !== 'none')
       if (!((none && !item.subcategoryId) || (item.subcategoryId && ids.includes(String(item.subcategoryId))))) return false
     }
+    if (filterCardKeys.length > 0) {
+      const none = filterCardKeys.includes('none')
+      const ids = filterCardKeys.filter(id => id !== 'none')
+      const directMatch = item.cardId && ids.includes(String(item.cardId))
+      const splitMatch = item.cardSplits?.some(split => ids.includes(String(split.cardId)))
+      const noneMatch = none && !item.cardId && (!item.cardSplits || item.cardSplits.length === 0)
+      if (!directMatch && !splitMatch && !noneMatch) return false
+    }
+    if (filterBankKeys.length > 0) {
+      const none = filterBankKeys.includes('none')
+      const ids = filterBankKeys.filter(id => id !== 'none')
+      const bankCardIds = new Set(cards.filter(card => card.bankAccountId && ids.includes(String(card.bankAccountId))).map(card => String(card.id)))
+      const directMatch = item.cardId && bankCardIds.has(String(item.cardId))
+      const splitMatch = item.cardSplits?.some(split => bankCardIds.has(String(split.cardId)))
+      const noneMatch = none && !item.cardId && (!item.cardSplits || item.cardSplits.length === 0)
+      if (!directMatch && !splitMatch && !noneMatch) return false
+    }
+    if (filterStoreKeys.length > 0) {
+      const none = filterStoreKeys.includes('none')
+      const ids = filterStoreKeys.filter(id => id !== 'none')
+      if (!((none && !item.storeId) || (item.storeId && ids.includes(String(item.storeId))))) return false
+    }
+    const splitPaymentMethods = item.cardSplits?.map(split => split.paymentMethod || split.cardType).filter(Boolean) || []
+    const hasAnyCard = !!item.cardId || splitPaymentMethods.length > 0
+    if (filterPayMethod === 'no-card' && hasAnyCard) return false
+    if (filterPayMethod === 'card-both' && !hasAnyCard) return false
+    if (filterPayMethod === 'credit' && item.paymentMethod !== 'credit' && !splitPaymentMethods.includes('credit')) return false
+    if (filterPayMethod === 'debit' && item.paymentMethod !== 'debit' && !splitPaymentMethods.includes('debit')) return false
     return true
   }
 
   const filterIncome = (income: IncomeRecord) => {
+    if (filterItemType !== 'all' && viewMode === 'receitas') {
+      if (filterItemType === 'recurring' && !income.isRecurring) return false
+      if (filterItemType === 'non-recurring' && income.isRecurring) return false
+    }
     if (filterCategoryKeys.length > 0) {
       const none = filterCategoryKeys.includes('none')
       const ids = filterCategoryKeys.filter(id => id !== 'none')
@@ -167,6 +260,11 @@ export default function SubcategoriesPage() {
       const ids = filterSubcategoryKeys.filter(id => id !== 'none')
       if (!((none && !income.subcategoryId) || (income.subcategoryId && ids.includes(String(income.subcategoryId))))) return false
     }
+    if (filterStoreKeys.length > 0) {
+      const none = filterStoreKeys.includes('none')
+      const ids = filterStoreKeys.filter(id => id !== 'none')
+      if (!((none && !income.storeId) || (income.storeId && ids.includes(String(income.storeId))))) return false
+    }
     return true
   }
 
@@ -174,7 +272,7 @@ export default function SubcategoriesPage() {
   const groups = (() => {
     const mapped = subcategories.map((subcat, index) => {
       const nameMatches = searchLower && subcat.name.toLowerCase().includes(searchLower)
-      const groupItems = viewMode === 'receitas' ? [] : items.filter(item => item.subcategoryId === subcat.id).filter(filterItem)
+      const groupItems = viewMode === 'receitas' ? [] : sortItems(items.filter(item => item.subcategoryId === subcat.id).filter(filterItem), sortMode, month)
       const groupIncomes = viewMode === 'gastos' ? [] : incomes.filter(income => income.subcategoryId === subcat.id).filter(filterIncome)
       return {
         key: subcat.id as number | 'none',
@@ -185,7 +283,7 @@ export default function SubcategoriesPage() {
         incomes: nameMatches || !searchLower ? groupIncomes : groupIncomes.filter(income => income.description.toLowerCase().includes(searchLower))
       }
     })
-    const noneItems = viewMode === 'receitas' ? [] : items.filter(item => !item.subcategoryId).filter(filterItem)
+    const noneItems = viewMode === 'receitas' ? [] : sortItems(items.filter(item => !item.subcategoryId).filter(filterItem), sortMode, month)
     const noneIncomes = viewMode === 'gastos' ? [] : incomes.filter(income => !income.subcategoryId).filter(filterIncome)
     mapped.push({
       key: 'none',
@@ -212,20 +310,23 @@ export default function SubcategoriesPage() {
     return sum + item.value * rate
   }, 0)
   const incomeTotal = allFilteredIncomes.reduce((sum, income) => sum + income.effectiveValue * (income.exchangeRateSnapshot || 1), 0)
-  const hasActiveFilters = filterCategoryKeys.length > 0 || filterSubcategoryKeys.length > 0 || hideEmpty
+  const hasActiveFilters =
+    filterCategoryKeys.length > 0 || filterSubcategoryKeys.length > 0 || filterCardKeys.length > 0 ||
+    filterBankKeys.length > 0 || filterStoreKeys.length > 0 || hideEmpty ||
+    filterActive !== 'all' || filterPaid !== 'all' || filterPayMethod !== 'all' || filterItemType !== 'all'
 
   const stats = viewMode === 'gastos'
     ? [
-        { label: hasActiveFilters ? t('items.totalActiveFiltered') : t('items.totalActive'), value: formatCurrency(expenseTotal), style: gastosStyle('subcategories', 'hero') },
+        { label: hasActiveFilters ? t('items.totalActiveFiltered') : t('items.totalActive'), value: formatDisplayCurrency(expenseTotal), style: gastosStyle('subcategories', 'hero') },
         { label: t('items.title'), value: `${allFilteredItems.length} ${t('items.title').toLowerCase()}` }
       ]
     : viewMode === 'receitas'
       ? [
-          { label: hasActiveFilters ? t('items.totalIncomeFiltered') : t('items.totalIncome'), value: formatCurrency(incomeTotal), style: receitasStyle('subcategories', 'hero') },
+          { label: hasActiveFilters ? t('items.totalIncomeFiltered') : t('items.totalIncome'), value: formatDisplayCurrency(incomeTotal), style: receitasStyle('subcategories', 'hero') },
           { label: t('income.title'), value: `${allFilteredIncomes.length} ${t('income.title').toLowerCase()}` }
         ]
       : [
-          { label: hasActiveFilters ? t('items.totalFiltered') : t('items.total'), value: <><span style={gastosStyle('subcategories', 'hero')}>{formatCurrency(expenseTotal)} {t('items.expensesLabel')}</span> · <span style={receitasStyle('subcategories', 'hero')}>{formatCurrency(incomeTotal)} {t('items.incomeLabel')}</span></> },
+          { label: hasActiveFilters ? t('items.totalFiltered') : t('items.total'), value: <><span style={gastosStyle('subcategories', 'hero')}>{formatDisplayCurrency(expenseTotal)} {t('items.expensesLabel')}</span> · <span style={receitasStyle('subcategories', 'hero')}>{formatDisplayCurrency(incomeTotal)} {t('items.incomeLabel')}</span></> },
           { label: t('items.summaryLabel'), value: `${allFilteredItems.length} ${t('items.expensesLabel')} · ${allFilteredIncomes.length} ${t('items.incomeLabel')}` }
         ]
 
@@ -236,6 +337,18 @@ export default function SubcategoriesPage() {
   const subcategoryFilterItems = [
     { id: 'none', name: t('itemsForm.noSubcategoryPlaceholder'), color: '#6b7280' },
     ...subcategories.map(subcat => ({ id: String(subcat.id), name: subcat.name, color: subcat.color }))
+  ]
+  const cardFilterItems = [
+    { id: 'none', name: t('filters.noCard'), color: '#6b7280' },
+    ...cards.map(card => ({ id: String(card.id), name: card.name, color: '#8b5cf6' }))
+  ]
+  const bankFilterItems = [
+    { id: 'none', name: t('filters.noAccount'), color: '#6b7280' },
+    ...bankAccounts.map(account => ({ id: String(account.id), name: account.name, color: '#3b82f6' }))
+  ]
+  const storeFilterItems = [
+    { id: 'none', name: t('filters.noStore'), color: '#6b7280' },
+    ...stores.map(store => ({ id: String(store.id), name: store.name, color: '#6366f1' }))
   ]
 
   const groupTotal = (group: typeof groups[number]) =>
@@ -267,7 +380,7 @@ export default function SubcategoriesPage() {
     <SectionLayout
       icon={ListTree}
       title={t('subcategories.title')}
-      monthNav={<MonthNavigator month={month} onChange={setMonth} />}
+      monthNav={<CurrencyMonthNavigator month={month} onChange={setMonth} />}
       actionButton={<Button size="sm" onClick={openCreate}><Plus size={16} /> {t('subcategories.createSubcategory')}</Button>}
       controls={
         <>
@@ -293,9 +406,54 @@ export default function SubcategoriesPage() {
               />
             )}
           </div>
+          {viewMode !== 'all' && (
+            <div className="relative">
+              <button ref={itemTypeBtnRef} type="button" onClick={() => setShowItemTypeMenu(v => !v)}
+                className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border border-input hover:bg-accent transition-colors">
+                {filterItemType === 'all'
+                  ? t('filters.allTypes')
+                  : viewMode === 'gastos'
+                    ? ({ common: t('filters.singles'), installment: t('filters.installments'), subscription: t('filters.recurring'), emprestimo: t('filters.loans') } as Record<string, string>)[filterItemType]
+                    : filterItemType === 'recurring' ? t('filters.recurringOnly') : t('filters.nonRecurringOnly')}
+                <ChevronDown size={12} className="text-muted-foreground" />
+              </button>
+              {showItemTypeMenu && (
+                <SimpleDropdown
+                  anchorRef={itemTypeBtnRef}
+                  dropRef={itemTypeDropRef}
+                  options={viewMode === 'gastos'
+                    ? [
+                        { key: 'all', label: t('filters.allTypes') },
+                        { key: 'common', label: t('filters.singles') },
+                        { key: 'installment', label: t('filters.installments') },
+                        { key: 'subscription', label: t('filters.recurring') },
+                        { key: 'emprestimo', label: t('filters.loans') }
+                      ]
+                    : [
+                        { key: 'all', label: t('filters.allTypes') },
+                        { key: 'recurring', label: t('filters.recurringOnly') },
+                        { key: 'non-recurring', label: t('filters.nonRecurringOnly') }
+                      ]}
+                  current={filterItemType}
+                  onChange={value => { setFilterItemType(value); setShowItemTypeMenu(false) }}
+                  onClose={() => setShowItemTypeMenu(false)}
+                />
+              )}
+            </div>
+          )}
           <FilterGroup
-            activeCount={(filterCategoryKeys.length > 0 ? 1 : 0) + (filterSubcategoryKeys.length > 0 ? 1 : 0) + (hideEmpty ? 1 : 0)}
-            onClear={() => { setFilterCategoryKeys([]); setFilterSubcategoryKeys([]); setHideEmpty(false) }}
+            activeCount={
+              (filterCategoryKeys.length > 0 ? 1 : 0) + (filterSubcategoryKeys.length > 0 ? 1 : 0) +
+              (filterBankKeys.length > 0 ? 1 : 0) + (filterCardKeys.length > 0 ? 1 : 0) +
+              (filterStoreKeys.length > 0 ? 1 : 0) + (hideEmpty ? 1 : 0) +
+              (filterActive !== 'all' ? 1 : 0) + (filterPaid !== 'all' ? 1 : 0) +
+              (filterPayMethod !== 'all' ? 1 : 0)
+            }
+            onClear={() => {
+              setFilterActive('all'); setFilterPaid('all'); setFilterPayMethod('all'); setFilterItemType('all')
+              setFilterCategoryKeys([]); setFilterSubcategoryKeys([]); setFilterCardKeys([]); setFilterBankKeys([]); setFilterStoreKeys([]); setHideEmpty(false)
+            }}
+            primaryCount={3}
           >
             <div className="relative">
               <button ref={categoryFilterRef} type="button" title={t('filters.category')}
@@ -325,14 +483,155 @@ export default function SubcategoriesPage() {
                   onToggle={id => setFilterSubcategoryKeys(values => values.includes(id) ? values.filter(value => value !== id) : [...values, id])} />
               )}
             </div>
+            <div className="relative">
+              <button ref={bankFilterRef} type="button" title={t('filters.accounts')}
+                onClick={() => { setShowBankFilter(v => !v); setShowCategoryFilter(false); setShowSubcategoryFilter(false); setShowCardFilter(false); setShowStoreFilter(false) }}
+                className={`inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border transition-colors ${filterBankKeys.length > 0 ? 'bg-primary text-primary-foreground border-primary' : 'bg-transparent text-foreground border-input hover:bg-accent'}`}>
+                <Wallet size={11} />
+                <span data-filter-label>{t('filters.accounts')}</span>
+                <ChevronDown size={12} className="text-muted-foreground" />
+              </button>
+              {showBankFilter && (
+                <FilterDropdown anchorRef={bankFilterRef} dropRef={bankDropRef} onClose={() => setShowBankFilter(false)}
+                  items={bankFilterItems} selected={filterBankKeys}
+                  onToggle={id => setFilterBankKeys(values => values.includes(id) ? values.filter(value => value !== id) : [...values, id])}
+                  emptyText={t('filters.noAccountRegistered')} />
+              )}
+            </div>
+            <div className="relative">
+              <button ref={cardFilterRef} type="button" title={t('filters.cards')}
+                onClick={() => { setShowCardFilter(v => !v); setShowCategoryFilter(false); setShowSubcategoryFilter(false); setShowBankFilter(false); setShowStoreFilter(false) }}
+                className={`inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border transition-colors ${filterCardKeys.length > 0 ? 'bg-primary text-primary-foreground border-primary' : 'bg-transparent text-foreground border-input hover:bg-accent'}`}>
+                <CreditCard size={11} />
+                <span data-filter-label>{t('filters.cards')}</span>
+                <ChevronDown size={12} className="text-muted-foreground" />
+              </button>
+              {showCardFilter && (
+                <FilterDropdown anchorRef={cardFilterRef} dropRef={cardDropRef} onClose={() => setShowCardFilter(false)}
+                  items={cardFilterItems} selected={filterCardKeys}
+                  onToggle={id => setFilterCardKeys(values => values.includes(id) ? values.filter(value => value !== id) : [...values, id])}
+                  emptyText={t('filters.noCardRegistered')} />
+              )}
+            </div>
+            <div className="relative">
+              <button ref={storeFilterRef} type="button" title={t('filters.stores')}
+                onClick={() => { setShowStoreFilter(v => !v); setShowCategoryFilter(false); setShowSubcategoryFilter(false); setShowBankFilter(false); setShowCardFilter(false) }}
+                className={`inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border transition-colors ${filterStoreKeys.length > 0 ? 'bg-primary text-primary-foreground border-primary' : 'bg-transparent text-foreground border-input hover:bg-accent'}`}>
+                <Store size={11} />
+                <span data-filter-label>{t('filters.stores')}</span>
+                <ChevronDown size={12} className="text-muted-foreground" />
+              </button>
+              {showStoreFilter && (
+                <FilterDropdown anchorRef={storeFilterRef} dropRef={storeDropRef} onClose={() => setShowStoreFilter(false)}
+                  items={storeFilterItems} selected={filterStoreKeys}
+                  onToggle={id => setFilterStoreKeys(values => values.includes(id) ? values.filter(value => value !== id) : [...values, id])}
+                  emptyText={t('filters.noStoreRegistered')} />
+              )}
+            </div>
             <button type="button" title={t('categories.hideEmpty')} onClick={() => setHideEmpty(v => !v)}
               className={`inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border transition-colors ${hideEmpty ? 'bg-primary text-primary-foreground border-primary' : 'bg-transparent text-foreground border-input hover:bg-accent'}`}>
-              <Filter size={11} />
+              <EyeOff size={11} />
               <span data-filter-label>{t('categories.hideEmpty')}</span>
             </button>
+            {viewMode !== 'receitas' && (
+              <>
+                <div className="relative">
+                  <button ref={activeBtnRef} type="button" title={t('common.active')}
+                    onClick={() => setShowActiveMenu(v => !v)}
+                    className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border border-input hover:bg-accent transition-colors">
+                    <ToggleLeft size={11} />
+                    <span data-filter-label>{filterActive === 'all' ? t('filters.activeAndInactive') : filterActive === 'active' ? t('filters.activeOnly') : t('filters.inactiveOnly')}</span>
+                    <ChevronDown size={12} className="text-muted-foreground" />
+                  </button>
+                  {showActiveMenu && (
+                    <SimpleDropdown anchorRef={activeBtnRef} dropRef={activeDropRef}
+                      options={[
+                        { key: 'all', label: t('filters.activeAndInactive') },
+                        { key: 'active', label: t('filters.activeOnly') },
+                        { key: 'inactive', label: t('filters.inactiveOnly') }
+                      ]}
+                      current={filterActive}
+                      onChange={value => { setFilterActive(value as 'all' | 'active' | 'inactive'); setShowActiveMenu(false) }}
+                      onClose={() => setShowActiveMenu(false)} />
+                  )}
+                </div>
+                <div className="relative">
+                  <button ref={paidBtnRef} type="button" title={t('filters.paidOnly')}
+                    onClick={() => setShowPaidMenu(v => !v)}
+                    className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border border-input hover:bg-accent transition-colors">
+                    <CheckCircle size={11} />
+                    <span data-filter-label>{filterPaid === 'all' ? t('filters.paidAndUnpaid') : filterPaid === 'paid' ? t('filters.paidOnly') : t('filters.unpaidOnly')}</span>
+                    <ChevronDown size={12} className="text-muted-foreground" />
+                  </button>
+                  {showPaidMenu && (
+                    <SimpleDropdown anchorRef={paidBtnRef} dropRef={paidDropRef}
+                      options={[
+                        { key: 'all', label: t('filters.paidAndUnpaid') },
+                        { key: 'paid', label: t('filters.paidOnly') },
+                        { key: 'unpaid', label: t('filters.unpaidOnly') }
+                      ]}
+                      current={filterPaid}
+                      onChange={value => { setFilterPaid(value as 'all' | 'paid' | 'unpaid'); setShowPaidMenu(false) }}
+                      onClose={() => setShowPaidMenu(false)} />
+                  )}
+                </div>
+                <div className="relative">
+                  <button ref={payMethodBtnRef} type="button" title={t('filters.paymentMethod')}
+                    onClick={() => setShowPayMethodMenu(v => !v)}
+                    className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border border-input hover:bg-accent transition-colors">
+                    <Wallet size={11} />
+                    <span data-filter-label>{{ 'all': t('filters.allPaymentMethods'), 'no-card': t('filters.noCardOnly'), 'card-both': t('filters.creditAndDebit'), 'credit': t('filters.creditCardOnly'), 'debit': t('filters.debitCardOnly') }[filterPayMethod]}</span>
+                    <ChevronDown size={12} className="text-muted-foreground" />
+                  </button>
+                  {showPayMethodMenu && (
+                    <SimpleDropdown anchorRef={payMethodBtnRef} dropRef={payMethodDropRef}
+                      options={[
+                        { key: 'all', label: t('filters.allPaymentMethods') },
+                        { key: 'no-card', label: t('filters.noCardOnly') },
+                        { key: 'card-both', label: t('filters.creditAndDebit') },
+                        { key: 'credit', label: t('filters.creditCardOnly') },
+                        { key: 'debit', label: t('filters.debitCardOnly') }
+                      ]}
+                      current={filterPayMethod}
+                      onChange={value => { setFilterPayMethod(value); setShowPayMethodMenu(false) }}
+                      onClose={() => setShowPayMethodMenu(false)} />
+                  )}
+                </div>
+              </>
+            )}
           </FilterGroup>
           <div className="h-6 w-px bg-border shrink-0 ml-auto" />
+          <button
+            type="button"
+            onClick={() => {
+              const keys = groups.map(group => group.key)
+              const allExpanded = keys.every(key => expandedGroups.has(key))
+              setExpandedGroups(allExpanded ? new Set() : new Set(keys))
+            }}
+            className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md hover:bg-accent transition-colors"
+            title={expandedGroups.size === groups.length ? t('settings.collapseAll') : t('settings.expandAll')}
+          >
+            <ChevronsUpDown size={14} />
+          </button>
           {pickerButton}
+          <TileFieldsPickerButton page="subcategories" />
+          <div className="relative">
+            <button ref={sortBtnRef} type="button" onClick={() => setShowSortMenu(v => !v)}
+              className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border border-input hover:bg-accent transition-colors">
+              {getSortLabelMap(t)[sortMode]}
+              <ChevronDown size={12} className="text-muted-foreground" />
+            </button>
+            {showSortMenu && (
+              <SimpleDropdown
+                anchorRef={sortBtnRef}
+                dropRef={sortDropRef}
+                options={getItemSortOptions(t)}
+                current={sortMode}
+                onChange={value => { setSortMode(value as ItemSortMode); setShowSortMenu(false) }}
+                onClose={() => setShowSortMenu(false)}
+              />
+            )}
+          </div>
         </>
       }
       stats={stats}
