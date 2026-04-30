@@ -8,7 +8,7 @@ import { Input } from '../../components/ui/Input'
 import { CurrencyInput } from '../../components/ui/CurrencyInput'
 import { Select } from '../../components/ui/Select'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
-import { MonthNavigator } from '../../components/ui/MonthNavigator'
+import { CurrencyMonthNavigator } from '../../components/ui/CurrencyMonthNavigator'
 import { SearchInput } from '../../components/ui/SearchInput'
 import { PasswordModal } from '../../components/ui/PasswordModal'
 import { KebabMenu } from '../../components/ui/KebabMenu'
@@ -21,6 +21,7 @@ import { useSession } from '../../contexts/SessionContext'
 import { useColorSettings } from '../../contexts/ColorSettingsContext'
 import { formatCurrency, formatCurrencyWith } from '../../lib/currency'
 import { useCurrencySettings } from '../../contexts/CurrencySettingsContext'
+import { useDisplayCurrency } from '../../contexts/DisplayCurrencyContext'
 import { getCurrentMonth } from '../../lib/date'
 import { useColumnsPicker } from '../../components/ui/ColumnsPickerDropdown'
 import { SimpleDropdown } from '../../components/ui/SimpleDropdown'
@@ -103,6 +104,7 @@ export default function CardsPage() {
   const { isUnlocked, hasPassword } = useSession()
   const { gastosStyle } = useColorSettings()
   const { currencies } = useCurrencySettings()
+  const { formatDisplayCurrency } = useDisplayCurrency()
   const cardSortLabels = CARD_SORT_LABELS_FN(t)
   const [cards, setCards] = useState<CardEnriched[]>([])
   const [accounts, setAccounts] = useState<BankAccountBasic[]>([])
@@ -417,7 +419,7 @@ export default function CardsPage() {
       icon={CreditCard}
       title={t('cards.title')}
       actionButton={<Button size="sm" onClick={openCreate}><Plus size={16} /> {t('cards.newCard')}</Button>}
-      monthNav={<MonthNavigator month={month} onChange={setMonth} />}
+      monthNav={<CurrencyMonthNavigator month={month} onChange={setMonth} />}
       controls={
         <>
           <SearchInput value={search} onChange={setSearch} />
@@ -479,8 +481,8 @@ export default function CardsPage() {
         </>
       }
       stats={[
-        { label: t('cards.totalToPay'), value: formatCurrency(totalExpense), style: gastosStyle('cards', 'hero') },
-        { label: t('cards.limits'), value: t('cards.limitsInfo', { used: formatCurrency(totalUsed), available: formatCurrency(totalAvailable), unlimitedCount: unlimitedCards.length }) }
+        { label: t('cards.totalToPay'), value: formatDisplayCurrency(totalExpense), style: gastosStyle('cards', 'hero') },
+        { label: t('cards.limits'), value: t('cards.limitsInfo', { used: formatDisplayCurrency(totalUsed), available: formatDisplayCurrency(totalAvailable), unlimitedCount: unlimitedCards.length }) }
       ]}
     >
       {cards.length === 0 ? (

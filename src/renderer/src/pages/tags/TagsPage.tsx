@@ -5,7 +5,7 @@ import { Button } from '../../components/ui/Button'
 import { Modal } from '../../components/ui/Modal'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
-import { MonthNavigator } from '../../components/ui/MonthNavigator'
+import { CurrencyMonthNavigator } from '../../components/ui/CurrencyMonthNavigator'
 import { SearchInput } from '../../components/ui/SearchInput'
 import { SectionLayout } from '../../components/layout/SectionLayout'
 import { FilterDropdown } from '../../components/ui/FilterDropdown'
@@ -28,6 +28,7 @@ import { useUndoableDelete } from '../../hooks/useUndoableDelete'
 import { useColorSettings } from '../../contexts/ColorSettingsContext'
 import { useColorMode } from '../../contexts/ColorModeContext'
 import { useDimPaid } from '../../contexts/DimPaidContext'
+import { useDisplayCurrency } from '../../contexts/DisplayCurrencyContext'
 import { KebabMenu } from '../../components/ui/KebabMenu'
 import { TileFieldsPickerButton } from '../../components/ui/TileFieldsPickerButton'
 import { FilterGroup } from '../../components/ui/FilterGroup'
@@ -53,6 +54,7 @@ export default function TagsPage() {
   const { gastosStyle, receitasStyle } = useColorSettings()
   const { colorMode, resolveEntityColor } = useColorMode()
   const { dimPaid } = useDimPaid()
+  const { formatDisplayCurrency } = useDisplayCurrency()
   const { gastosFields, receitasFields } = useTileFields('tags')
   const { fmtMonth, fmtDate } = useFormatDate()
   const { t } = useTranslation()
@@ -425,18 +427,18 @@ export default function TagsPage() {
   const stats = (() => {
     if (viewMode === 'gastos') {
       return [
-        { label: hasActiveFilters ? t('items.totalActiveFiltered') : t('items.totalActive'), value: formatCurrency(grandTotalItems), style: gastosStyle('tags', 'hero') },
+        { label: hasActiveFilters ? t('items.totalActiveFiltered') : t('items.totalActive'), value: formatDisplayCurrency(grandTotalItems), style: gastosStyle('tags', 'hero') },
         { label: t('items.title'), value: `${uniqueFilteredItems.length > 1 ? t('items.itemCountPlural', { count: uniqueFilteredItems.length }) : t('items.itemCount', { count: uniqueFilteredItems.length })} · ${t('items.unpaidCount', { count: uniqueFilteredItems.length - paidCount })}` }
       ]
     }
     if (viewMode === 'receitas') {
       return [
-        { label: hasActiveFilters ? t('items.totalIncomeFiltered') : t('items.totalIncome'), value: formatCurrency(grandTotalIncomes), style: receitasStyle('tags', 'hero') },
+        { label: hasActiveFilters ? t('items.totalIncomeFiltered') : t('items.totalIncome'), value: formatDisplayCurrency(grandTotalIncomes), style: receitasStyle('tags', 'hero') },
         { label: t('income.title'), value: `${uniqueFilteredIncomes.length > 1 ? t('items.incomeCountPlural', { count: uniqueFilteredIncomes.length }) : t('items.incomeCount', { count: uniqueFilteredIncomes.length })} · ${t('items.unreceived', { count: uniqueFilteredIncomes.length - receivedCount })}` }
       ]
     }
     return [
-      { label: hasActiveFilters ? t('items.totalFiltered') : t('items.total'), value: <><span style={gastosStyle('tags', 'hero')}>{formatCurrency(grandTotalItems)} {t('items.expensesLabel')}</span> · <span style={receitasStyle('tags', 'hero')}>{formatCurrency(grandTotalIncomes)} {t('items.incomeLabel')}</span></> },
+      { label: hasActiveFilters ? t('items.totalFiltered') : t('items.total'), value: <><span style={gastosStyle('tags', 'hero')}>{formatDisplayCurrency(grandTotalItems)} {t('items.expensesLabel')}</span> · <span style={receitasStyle('tags', 'hero')}>{formatDisplayCurrency(grandTotalIncomes)} {t('items.incomeLabel')}</span></> },
       { label: t('items.summaryLabel'), value: `${t('items.unpaidCount', { count: uniqueFilteredItems.length - paidCount })} · ${t('items.unreceived', { count: uniqueFilteredIncomes.length - receivedCount })}` }
     ]
   })()
@@ -745,7 +747,7 @@ export default function TagsPage() {
     <SectionLayout
       icon={Bookmark}
       title={t('tags.title')}
-      monthNav={<MonthNavigator month={month} onChange={setMonth} />}
+      monthNav={<CurrencyMonthNavigator month={month} onChange={setMonth} />}
       actionButton={<Button size="sm" onClick={openCreate}><Plus size={16} /> {t('tags.newTag')}</Button>}
       controls={
         <>
@@ -857,7 +859,7 @@ export default function TagsPage() {
                     ? 'bg-primary text-primary-foreground border-primary'
                     : 'bg-transparent text-foreground border-input hover:bg-accent'
                 }`}>
-                <Tags size={11} />
+                <Tag size={11} />
                 <span data-filter-label>{t('itemsForm.subcategory')}</span>
                 {filterSubcategoryKeys.length > 0 && (
                   <span className="bg-primary-foreground text-primary text-[10px] rounded-full h-4 min-w-[16px] flex items-center justify-center font-bold">{filterSubcategoryKeys.length}</span>

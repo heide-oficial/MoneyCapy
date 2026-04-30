@@ -4,7 +4,7 @@ import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors } from '
 import { Card } from '../../components/ui/Card'
 import { SectionLayout } from '../../components/layout/SectionLayout'
 import { Button } from '../../components/ui/Button'
-import { MonthNavigator } from '../../components/ui/MonthNavigator'
+import { CurrencyMonthNavigator } from '../../components/ui/CurrencyMonthNavigator'
 import { usePageMonth } from '../../contexts/DefaultMonthContext'
 import { ROUTES } from '../../lib/constants'
 import { useActivePerson } from '../../contexts/ActivePersonContext'
@@ -513,7 +513,7 @@ export default function Dashboard() {
       icon={House}
       title={t('dashboard.title')}
       breadcrumbs={personBadge}
-      monthNav={<MonthNavigator month={month} onChange={setMonth} />}
+      monthNav={<CurrencyMonthNavigator month={month} onChange={setMonth} />}
       actionButton={
         editMode ? (
           <Button size="sm" onClick={() => setEditMode(false)}>

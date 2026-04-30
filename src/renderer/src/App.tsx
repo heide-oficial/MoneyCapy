@@ -7,6 +7,7 @@ import { DateFormatProvider } from './contexts/DateFormatContext'
 import { DefaultMonthProvider } from './contexts/DefaultMonthContext'
 import { ColorSettingsProvider } from './contexts/ColorSettingsContext'
 import { CurrencySettingsProvider } from './contexts/CurrencySettingsContext'
+import { DisplayCurrencyProvider } from './contexts/DisplayCurrencyContext'
 import { StartCountingMonthProvider } from './contexts/StartCountingMonthContext'
 import { ToastPositionProvider, useToastPosition } from './contexts/ToastPositionContext'
 import { ColorModeProvider } from './contexts/ColorModeContext'
@@ -103,6 +104,7 @@ function App() {
       <DefaultMonthProvider>
       <ColorSettingsProvider>
       <CurrencySettingsProvider>
+      <DisplayCurrencyProvider>
       <ColorModeProvider>
       <BusinessDayProvider>
       <DimPaidProvider>
@@ -142,6 +144,7 @@ function App() {
       </DimPaidProvider>
       </BusinessDayProvider>
       </ColorModeProvider>
+      </DisplayCurrencyProvider>
       </CurrencySettingsProvider>
       </ColorSettingsProvider>
       </DefaultMonthProvider>

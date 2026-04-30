@@ -8,7 +8,7 @@ import { Input } from '../../components/ui/Input'
 import { CurrencyInput } from '../../components/ui/CurrencyInput'
 import { Select } from '../../components/ui/Select'
 import { SearchInput } from '../../components/ui/SearchInput'
-import { MonthNavigator } from '../../components/ui/MonthNavigator'
+import { CurrencyMonthNavigator } from '../../components/ui/CurrencyMonthNavigator'
 import { KebabMenu } from '../../components/ui/KebabMenu'
 import { SortableGrid } from '../../components/dnd/SortableGrid'
 import { SortableItem } from '../../components/dnd/SortableItem'
@@ -18,6 +18,7 @@ import { useActivePerson } from '../../contexts/ActivePersonContext'
 import { useColorSettings } from '../../contexts/ColorSettingsContext'
 import { formatCurrency, formatCurrencyWith } from '../../lib/currency'
 import { useCurrencySettings } from '../../contexts/CurrencySettingsContext'
+import { useDisplayCurrency } from '../../contexts/DisplayCurrencyContext'
 import { getCurrentMonth } from '../../lib/date'
 import { useColumnsPicker } from '../../components/ui/ColumnsPickerDropdown'
 import { SimpleDropdown } from '../../components/ui/SimpleDropdown'
@@ -105,6 +106,7 @@ export default function AccountsPage() {
   const { activePerson } = useActivePerson()
   const { receitasStyle } = useColorSettings()
   const { currencies } = useCurrencySettings()
+  const { formatDisplayCurrency } = useDisplayCurrency()
   const accountSortLabels = ACCOUNT_SORT_LABELS_FN(t)
   const [accounts, setAccounts] = useState<BankAccountEnriched[]>([])
   const { month, setMonth } = usePageMonth()
@@ -306,7 +308,7 @@ export default function AccountsPage() {
       icon={Landmark}
       title={t('accounts.title')}
       actionButton={<Button size="sm" onClick={openCreate}><Plus size={16} /> {t('accounts.newAccount')}</Button>}
-      monthNav={<MonthNavigator month={month} onChange={setMonth} />}
+      monthNav={<CurrencyMonthNavigator month={month} onChange={setMonth} />}
       controls={
         <>
           <SearchInput value={search} onChange={setSearch} />
@@ -384,7 +386,7 @@ export default function AccountsPage() {
         </>
       }
       stats={[
-        { label: t('accounts.totalBalance'), value: formatCurrency(totalBalance), style: receitasStyle('accounts', 'hero') },
+        { label: t('accounts.totalBalance'), value: formatDisplayCurrency(totalBalance), style: receitasStyle('accounts', 'hero') },
         { label: t('accounts.title'), value: t('accounts.registeredCount', { count: accounts.length }) }
       ]}
     >

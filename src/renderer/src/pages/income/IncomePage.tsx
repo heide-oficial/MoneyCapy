@@ -7,12 +7,12 @@ import { Input } from '../../components/ui/Input'
 import { CurrencyInput } from '../../components/ui/CurrencyInput'
 import { DatePicker } from '../../components/ui/DatePicker'
 import { Select } from '../../components/ui/Select'
-import { MonthNavigator } from '../../components/ui/MonthNavigator'
+import { CurrencyMonthNavigator } from '../../components/ui/CurrencyMonthNavigator'
 import { SearchInput } from '../../components/ui/SearchInput'
 import { KebabMenu } from '../../components/ui/KebabMenu'
 import { formatCurrency, formatCurrencyWith } from '../../lib/currency'
 import { CurrencyTooltip } from '../../components/ui/CurrencyTooltip'
-import { useCurrencySettings } from '../../contexts/CurrencySettingsContext'
+import { useDisplayCurrency } from '../../contexts/DisplayCurrencyContext'
 import { getCurrentMonth, useFormatDate } from '../../lib/date'
 import { usePageMonth } from '../../contexts/DefaultMonthContext'
 import { useActivePerson } from '../../contexts/ActivePersonContext'
@@ -83,12 +83,11 @@ export default function IncomePage() {
   const { businessDayConfig } = useBusinessDayConfig()
   const { dimPaid } = useDimPaid()
   const { receitasFields } = useTileFields('income')
-  const { currencies, baseCurrency } = useCurrencySettings()
+  const { formatDisplayCurrency } = useDisplayCurrency()
   const { gridClass, pickerButton } = useColumnsPicker('income-columns')
   const { month, setMonth } = usePageMonth()
   const [incomes, setIncomes] = useState<Income[]>([])
   const [showCsvExport, setShowCsvExport] = useState(false)
-  const [displayCurrencyId, setDisplayCurrencyId] = useState<number | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Income | null>(null)
   const [form, setForm] = useState({
@@ -251,11 +250,6 @@ export default function IncomePage() {
   })
 
   const total = filteredIncomes.reduce((s, i) => s + i.effectiveValue * (i.exchangeRateSnapshot || 1.0), 0)
-  const displayCurrency = currencies.find(c => c.id === displayCurrencyId) || baseCurrency
-  const formatDisplayTotal = (value: number) =>
-    displayCurrency && displayCurrency.exchangeRate > 0
-      ? formatCurrencyWith(value / displayCurrency.exchangeRate, displayCurrency.symbol)
-      : formatCurrency(value)
   const receivedCount = filteredIncomes.filter(i => i.isReceived).length
 
   const sortedIncomes = [...filteredIncomes].sort((a, b) => {
@@ -546,20 +540,7 @@ export default function IncomePage() {
     <SectionLayout
       icon={HandCoins}
       title={t('income.title')}
-      monthNav={
-        <div className="flex items-center gap-2">
-          {currencies.length > 1 && (
-            <Select
-              small
-              className="w-[92px]"
-              value={displayCurrency?.id || ''}
-              onChange={e => setDisplayCurrencyId(Number(e.target.value))}
-              options={currencies.map(c => ({ value: c.id, label: c.code }))}
-            />
-          )}
-          <MonthNavigator month={month} onChange={setMonth} />
-        </div>
-      }
+      monthNav={<CurrencyMonthNavigator month={month} onChange={setMonth} />}
       actionButton={<Button size="sm" onClick={openCreate}><Plus size={16} /> {t('income.newIncome')}</Button>}
       controls={
         <>
@@ -714,7 +695,7 @@ export default function IncomePage() {
       stats={[
         {
           label: t('items.total'),
-          value: formatDisplayTotal(total),
+          value: formatDisplayCurrency(total),
           style: receitasStyle('income', 'hero')
         },
         { label: t('income.title'), value: `${filteredIncomes.length} total · ${receivedCount} ${t('items.received').toLowerCase()}` }
@@ -1098,8 +1079,8 @@ export default function IncomePage() {
                       options={incomeCategories.map(c => ({ value: c.id, label: c.name }))}
                       placeholder={t('itemsForm.noCategoryPlaceholder')}
                     />
-                    <div className="flex gap-1.5">
-                      <div className="flex-1">
+                    <div className="grid grid-cols-[minmax(0,1fr)_2.25rem] items-end gap-1.5">
+                      <div>
                         <Select
                           label={t('itemsForm.subcategory')}
                           value={String(form.subcategoryId)}
@@ -1111,7 +1092,7 @@ export default function IncomePage() {
                       </div>
                       <button type="button" onClick={() => { setSubcatCreateName(''); setSubcatCreateColor(PRESET_COLORS[0]); setShowSubcatCreate(true) }}
                         disabled={!form.categoryId}
-                        className="mt-6 h-9 w-9 flex items-center justify-center rounded-md border border-input hover:bg-accent transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed" title={t('subcategories.createSubcategory')}>
+                        className="h-9 w-9 flex items-center justify-center rounded-md border border-input hover:bg-accent transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed" title={t('subcategories.createSubcategory')}>
                         <Plus size={14} />
                       </button>
                     </div>
