@@ -20,6 +20,8 @@ interface ItemsTileProps {
   item: SectionItem
   month: string
   columns: number
+  fieldsPage?: string
+  styleScope?: string
   gastosStyle: (category: string, type: string) => React.CSSProperties
   onEdit: (item: SectionItem) => void
   onToggleActive: (item: SectionItem) => void
@@ -32,7 +34,7 @@ interface ItemsTileProps {
 }
 
 export function ItemsTile({
-  item, month, columns, gastosStyle,
+  item, month, columns, fieldsPage = 'items', styleScope = 'items', gastosStyle,
   onEdit, onToggleActive, onTogglePaid, onDelete,
   onEditValue, onReactivate, onInterrupt, onViewInterruptions
 }: ItemsTileProps) {
@@ -40,7 +42,7 @@ export function ItemsTile({
   const { fmtDate, fmtMonth } = useFormatDate()
   const { businessDayConfig } = useBusinessDayConfig()
   const { dimPaid } = useDimPaid()
-  const { gastosFields } = useTileFields('items')
+  const { gastosFields } = useTileFields(fieldsPage)
   const [mYear, mMonth] = month.split('-').map(Number)
 
   const hasSplits = item.cardSplits && item.cardSplits.length > 0
@@ -273,12 +275,12 @@ export function ItemsTile({
           <div className="flex items-baseline gap-2 mb-1 flex-wrap">
             {isForeign ? (
               <CurrencyTooltip label={fmtBase(installmentValue)}>
-                <span className="text-2xl font-bold tabular-nums" style={gastosStyle('items', 'itens')}>
+                <span className="text-2xl font-bold tabular-nums" style={gastosStyle(styleScope, 'itens')}>
                   {fmtVal(installmentValue)}
                 </span>
               </CurrencyTooltip>
             ) : (
-              <span className="text-2xl font-bold tabular-nums" style={gastosStyle('items', 'itens')}>
+              <span className="text-2xl font-bold tabular-nums" style={gastosStyle(styleScope, 'itens')}>
                 {fmtVal(installmentValue)}
               </span>
             )}

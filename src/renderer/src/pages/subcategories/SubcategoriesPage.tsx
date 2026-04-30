@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CheckCircle, ChevronDown, ChevronRight, Circle, CreditCard, EyeOff, Filter, HandCoins, ListTree, Pencil, Plus, Receipt, Store, Tags, ToggleLeft, Trash2, Wallet, ChevronsUpDown } from 'lucide-react'
+import { CheckCircle, ChevronDown, ChevronRight, Circle, CircleDot, CreditCard, EyeOff, Filter, HandCoins, ListTree, Pencil, Plus, Receipt, Repeat, Store, Tags, ToggleLeft, Trash2, Wallet, ChevronsUpDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
@@ -26,8 +26,11 @@ import { useDimPaid } from '../../contexts/DimPaidContext'
 import { useDisplayCurrency } from '../../contexts/DisplayCurrencyContext'
 import { useTranslation } from '../../contexts/LanguageContext'
 import { useUndoableDelete } from '../../hooks/useUndoableDelete'
+import { useTileFields } from '../../contexts/TileFieldsContext'
 import type { IncomeRecord, SectionItem } from '../../types/entities'
 import { type ItemSortMode, sortItems, getItemSortOptions, getSortLabelMap } from '../../hooks/useSortItems'
+import { ItemsTile } from '../items/ItemsTile'
+import { useFormatDate } from '../../lib/date'
 
 type ViewMode = 'all' | 'gastos' | 'receitas'
 type Scope = 'expense' | 'income' | 'both'
@@ -66,7 +69,9 @@ export default function SubcategoriesPage() {
   const { gastosStyle, receitasStyle } = useColorSettings()
   const { dimPaid } = useDimPaid()
   const { formatDisplayCurrency } = useDisplayCurrency()
-  const { gridClass, pickerButton } = useColumnsPicker('item-columns')
+  const { columns, gridClass, pickerButton } = useColumnsPicker('item-columns')
+  const { receitasFields } = useTileFields('subcategories')
+  const { fmtDate } = useFormatDate()
 
   const [categories, setCategories] = useState<Category[]>([])
   const [subcategories, setSubcategories] = useState<Subcategory[]>([])
@@ -193,6 +198,26 @@ export default function SubcategoriesPage() {
     onDelete: async (id) => { await window.api.subcategories.delete(id); loadData() },
     toastLabel: t('subcategories.subcategoryDeleted')
   })
+
+  const { requestDelete: requestDeleteItem, isPending: isItemDeletePending } = useUndoableDelete({
+    onDelete: async (id) => { await window.api.items.delete(id); loadData() },
+    toastLabel: t('items.itemDeleted')
+  })
+
+  const toggleItemPaid = async (itemId: number) => {
+    await window.api.items.togglePaid(itemId, month)
+    loadData()
+  }
+
+  const toggleItemActive = async (item: SectionItem) => {
+    await window.api.items.toggleActive(item.id)
+    loadData()
+  }
+
+  const toggleReceived = async (incomeId: number) => {
+    await window.api.personIncome.toggleReceived(incomeId, month)
+    loadData()
+  }
 
   const toggleCategory = (categoryId: number) => {
     setCategoryIds(ids => ids.includes(categoryId) ? ids.filter(id => id !== categoryId) : [...ids, categoryId])
@@ -364,6 +389,86 @@ export default function SubcategoriesPage() {
     if (value === 'expense') return t('categories.scopeExpense')
     if (value === 'income') return t('categories.scopeIncome')
     return t('categories.scopeBoth')
+  }
+
+  const renderIncomeTile = (income: IncomeRecord) => {
+    const metaItems: { icon: any; text: string }[] = []
+    if (receitasFields.type) {
+      metaItems.push({ icon: income.isRecurring ? Repeat : CircleDot, text: income.isRecurring ? t('income.recurring') : t('income.nonRecurring') })
+    }
+    if (receitasFields.dueDay && income.dueDay) {
+      metaItems.push({ icon: CreditCard, text: `${t('tileFields.receivingDay')}: ${income.dueDay}` })
+    }
+
+    return (
+      <Card
+        key={`income-${income.id}`}
+        className={`group relative overflow-hidden transition-all flex flex-col ${income.isReceived && dimPaid ? 'opacity-50 hover:opacity-100' : 'hover:shadow-md'}`}
+      >
+        {dimPaid && income.isReceived && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-card/50 backdrop-blur-[1px]">
+            <button
+              onClick={() => toggleReceived(income.id)}
+              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold shadow-md hover:bg-primary/90 transition-colors"
+            >
+              {t('items.undoReceipt')}
+            </button>
+          </div>
+        )}
+
+        <div className="flex items-center gap-2.5 px-4 py-2.5 border-b border-border/50 overflow-hidden">
+          <button onClick={() => toggleReceived(income.id)} className="shrink-0" title={income.isReceived ? t('items.markNotReceived') : t('items.markReceived')}>
+            {income.isReceived
+              ? <CheckCircle size={18} className="text-primary" />
+              : <Circle size={18} className="text-muted-foreground/40 hover:text-primary transition-colors" />}
+          </button>
+          <Wallet size={14} className="text-primary/60 shrink-0" />
+          <p className="text-base font-bold truncate flex-1 min-w-0">
+            {income.description}
+            {income.categoryName && (
+              <span className="text-[11px] font-normal text-muted-foreground ml-1.5"> - {income.categoryName}{income.subcategoryName ? `/${income.subcategoryName}` : ''}</span>
+            )}
+          </p>
+          {income.tags && income.tags.length > 0 && (
+            <div className="flex items-center gap-1 overflow-hidden">
+              {income.tags.map(tag => (
+                <span key={tag.id} className="text-[11px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap" style={{ backgroundColor: `${tag.color}20`, color: tag.color }}>{tag.name}</span>
+              ))}
+            </div>
+          )}
+          {income.isReceived && (
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0" style={{ backgroundColor: 'color-mix(in srgb, #22c55e 15%, transparent)', borderWidth: '1px', borderColor: 'color-mix(in srgb, #22c55e 30%, transparent)' }}>
+              <CheckCircle size={11} style={{ color: '#22c55e' }} />
+              <span className="text-[10px] font-semibold" style={{ color: '#22c55e' }}>{income.receivedAt ? t('items.receivedAt', { date: fmtDate(income.receivedAt) }) : t('items.received')}</span>
+            </span>
+          )}
+          <KebabMenu size={16} items={[
+            { label: t('common.edit'), icon: Pencil, onClick: () => navigate('/income', { state: { editIncomeId: income.id } }) }
+          ]} />
+        </div>
+
+        <div className="flex-1 p-4">
+          <div className="flex items-baseline gap-2 mb-1">
+            <span className="text-2xl font-bold tabular-nums" style={receitasStyle('subcategories', 'itens')}>
+              {formatCurrency(income.effectiveValue * (income.exchangeRateSnapshot || 1))}
+            </span>
+          </div>
+          {metaItems.length > 0 && (
+            <div className="flex items-center gap-2.5 flex-wrap">
+              {metaItems.map((meta, index) => {
+                const MetaIcon = meta.icon
+                return (
+                  <span key={index} className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                    <MetaIcon size={10} className="shrink-0 opacity-60" />
+                    {meta.text}
+                  </span>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </Card>
+    )
   }
 
   if (!activePerson) {
@@ -683,26 +788,26 @@ export default function SubcategoriesPage() {
                 </Card>
                 {expanded && (group.items.length > 0 || group.incomes.length > 0) && (
                   <div className={`grid ${gridClass} gap-3 mt-2`}>
-                    {group.items.map(item => (
-                      <Card key={`item-${item.id}`} className={`p-4 ${item.isPaid && dimPaid ? 'opacity-50' : ''}`}>
-                        <div className="flex items-center gap-2">
-                          {item.isPaid ? <CheckCircle size={16} className="text-primary" /> : <Circle size={16} className="text-muted-foreground/50" />}
-                          <p className="text-sm font-semibold truncate flex-1">{item.description} - {item.categoryName || t('categories.noCategory')}/{item.subcategoryName || t('itemsForm.noSubcategoryPlaceholder')}</p>
-                          <Button variant="ghost" size="sm" onClick={() => navigate('/items', { state: { editItemId: item.id } })}><Pencil size={14} /></Button>
-                        </div>
-                        <p className="mt-2 text-lg font-bold tabular-nums" style={gastosStyle('subcategories', 'itens')}>{formatCurrency(item.value * (item.exchangeRateSnapshot || 1))}</p>
-                      </Card>
+                    {group.items.filter(item => !isItemDeletePending(item.id)).map(item => (
+                      <ItemsTile
+                        key={`item-${item.id}`}
+                        item={item}
+                        month={month}
+                        columns={columns}
+                        fieldsPage="subcategories"
+                        styleScope="subcategories"
+                        gastosStyle={gastosStyle}
+                        onEdit={nextItem => navigate('/items', { state: { editItemId: nextItem.id } })}
+                        onToggleActive={toggleItemActive}
+                        onTogglePaid={toggleItemPaid}
+                        onDelete={id => requestDeleteItem(id)}
+                        onEditValue={nextItem => navigate('/items', { state: { editItemId: nextItem.id, initialTab: 'valores' } })}
+                        onReactivate={() => loadData()}
+                        onInterrupt={nextItem => navigate('/items', { state: { editItemId: nextItem.id, initialTab: 'interrupcoes' } })}
+                        onViewInterruptions={nextItem => navigate('/items', { state: { editItemId: nextItem.id, initialTab: 'interrupcoes' } })}
+                      />
                     ))}
-                    {group.incomes.map(income => (
-                      <Card key={`income-${income.id}`} className={`p-4 ${income.isReceived && dimPaid ? 'opacity-50' : ''}`}>
-                        <div className="flex items-center gap-2">
-                          {income.isReceived ? <CheckCircle size={16} className="text-primary" /> : <Circle size={16} className="text-muted-foreground/50" />}
-                          <p className="text-sm font-semibold truncate flex-1">{income.description} - {income.categoryName || t('categories.noCategory')}/{income.subcategoryName || t('itemsForm.noSubcategoryPlaceholder')}</p>
-                          <Button variant="ghost" size="sm" onClick={() => navigate('/income', { state: { editIncomeId: income.id } })}><Pencil size={14} /></Button>
-                        </div>
-                        <p className="mt-2 text-lg font-bold tabular-nums" style={receitasStyle('subcategories', 'itens')}>{formatCurrency(income.effectiveValue * (income.exchangeRateSnapshot || 1))}</p>
-                      </Card>
-                    ))}
+                    {group.incomes.map(income => renderIncomeTile(income))}
                   </div>
                 )}
               </div>
