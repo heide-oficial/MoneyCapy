@@ -482,21 +482,8 @@ export default function CardsPage() {
       }
       stats={[
         { label: t('cards.totalToPay'), value: formatDisplayCurrency(totalExpense), style: gastosStyle('cards', 'hero') },
-        {
-          label: '',
-          value: (
-            <span className="flex min-w-0 items-start gap-3">
-              <span className="min-w-0">
-                <span className="block truncate">{formatDisplayCurrency(totalUsed)}</span>
-                <span className="block truncate text-[11px] font-medium text-muted-foreground">{t('cards.limitUsed')}</span>
-              </span>
-              <span className="min-w-0">
-                <span className="block truncate">{formatDisplayCurrency(totalAvailable)}</span>
-                <span className="block truncate text-[11px] font-medium text-muted-foreground">{t('cards.limitRemaining')}</span>
-              </span>
-            </span>
-          )
-        }
+        { label: t('cards.limitUsed'), value: formatDisplayCurrency(totalUsed) },
+        { label: t('cards.limitRemaining'), value: formatDisplayCurrency(totalAvailable) }
       ]}
     >
       {cards.length === 0 ? (
