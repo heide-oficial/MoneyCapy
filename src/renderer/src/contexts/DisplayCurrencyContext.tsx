@@ -4,6 +4,7 @@ import { useCurrencySettings, type Currency } from './CurrencySettingsContext'
 
 interface DisplayCurrencyContextType {
   currencies: Currency[]
+  baseCurrency: Currency | null
   displayCurrency: Currency | null
   setDisplayCurrencyId: (id: number) => void
   formatDisplayCurrency: (value: number) => string
@@ -44,7 +45,7 @@ export function DisplayCurrencyProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <DisplayCurrencyContext.Provider value={{ currencies, displayCurrency, setDisplayCurrencyId, formatDisplayCurrency }}>
+    <DisplayCurrencyContext.Provider value={{ currencies, baseCurrency, displayCurrency, setDisplayCurrencyId, formatDisplayCurrency }}>
       {children}
     </DisplayCurrencyContext.Provider>
   )

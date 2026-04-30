@@ -83,7 +83,7 @@ export default function IncomePage() {
   const { businessDayConfig } = useBusinessDayConfig()
   const { dimPaid } = useDimPaid()
   const { receitasFields } = useTileFields('income')
-  const { formatDisplayCurrency } = useDisplayCurrency()
+  const { currencies, baseCurrency, formatDisplayCurrency } = useDisplayCurrency()
   const { gridClass, pickerButton } = useColumnsPicker('income-columns')
   const { month, setMonth } = usePageMonth()
   const [incomes, setIncomes] = useState<Income[]>([])
