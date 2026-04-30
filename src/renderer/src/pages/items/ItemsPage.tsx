@@ -396,8 +396,6 @@ export default function ItemsPage() {
     { id: 'notes', label: t('csvExport.columns.notes'), value: i => i.notes || '' }
   ]
 
-  const hasActiveFilters = filterCategories.length > 0 || filterSubcategories.length > 0 || filterTags.length > 0 || filterCards.length > 0 || filterBankAccounts.length > 0 || filterStores.length > 0 || filterActive !== 'all' || filterPaid !== 'all' || filterPayMethod !== 'all'
-
   const showParcelasTab = form.type === 'installment' || form.type === 'emprestimo'
 
   const openCreate = () => {
@@ -1041,11 +1039,10 @@ export default function ItemsPage() {
       }
       stats={[
         {
-          label: hasActiveFilters ? t('items.totalActiveFiltered') : t('items.totalActive'),
+          label: `${t(filteredAndSortedItems.length === 1 ? 'items.itemCount' : 'items.itemCountPlural', { count: filteredAndSortedItems.length })} · ${t('items.unpaidCount', { count: filteredAndSortedItems.filter(i => !i.isPaid).length })}`,
           value: formatDisplayCurrency(total),
           style: gastosStyle('items', 'hero')
-        },
-        { label: t('items.title'), value: `${t(filteredAndSortedItems.length === 1 ? 'items.itemCount' : 'items.itemCountPlural', { count: filteredAndSortedItems.length })} · ${t('items.unpaidCount', { count: filteredAndSortedItems.filter(i => !i.isPaid).length })}` }
+        }
       ]}
     >
       {/* ─── Items list ─── */}

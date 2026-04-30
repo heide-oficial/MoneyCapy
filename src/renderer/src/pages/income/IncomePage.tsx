@@ -251,6 +251,7 @@ export default function IncomePage() {
 
   const total = filteredIncomes.reduce((s, i) => s + i.effectiveValue * (i.exchangeRateSnapshot || 1.0), 0)
   const receivedCount = filteredIncomes.filter(i => i.isReceived).length
+  const unreceivedCount = filteredIncomes.length - receivedCount
 
   const sortedIncomes = [...filteredIncomes].sort((a, b) => {
     switch (sortMode) {
@@ -694,11 +695,10 @@ export default function IncomePage() {
       }
       stats={[
         {
-          label: t('items.total'),
+          label: `${filteredIncomes.length === 1 ? t('items.incomeCount', { count: filteredIncomes.length }) : t('items.incomeCountPlural', { count: filteredIncomes.length })} · ${t('items.unreceived', { count: unreceivedCount })}`,
           value: formatDisplayCurrency(total),
           style: receitasStyle('income', 'hero')
-        },
-        { label: t('income.title'), value: `${filteredIncomes.length} total · ${receivedCount} ${t('items.received').toLowerCase()}` }
+        }
       ]}
     >
       {/* Income tiles */}
