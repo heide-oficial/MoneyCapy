@@ -1,3 +1,4 @@
+import { useState, type CSSProperties, type MouseEvent } from 'react'
 import { formatCurrency, formatCurrencyWith } from '../../lib/currency'
 import { useFormatDate } from '../../lib/date'
 import { getItemCardLabels, formatCardLabel } from '../../lib/card-utils'
@@ -7,13 +8,12 @@ import { useDimPaid } from '../../contexts/DimPaidContext'
 import { useTileFields } from '../../contexts/TileFieldsContext'
 import { useTranslation } from '../../contexts/LanguageContext'
 import {
-  Pencil, CheckCircle, Circle, Trash2, ToggleRight, ToggleLeft,
+  CheckCircle, Circle, Trash2, ToggleRight, ToggleLeft,
   CircleDot, Layers, Repeat, Landmark, CalendarClock, CreditCard,
-  Store, Tag, Wallet, DollarSign, X
+  Store, Wallet, DollarSign, X, Info, Settings, ChevronDown
 } from 'lucide-react'
 import { Card } from '../../components/ui/Card'
 import { CurrencyTooltip } from '../../components/ui/CurrencyTooltip'
-import { KebabMenu } from '../../components/ui/KebabMenu'
 import type { SectionItem } from '../../types/entities'
 
 interface ItemsTileProps {
@@ -22,7 +22,7 @@ interface ItemsTileProps {
   columns: number
   fieldsPage?: string
   styleScope?: string
-  gastosStyle: (category: string, type: string) => React.CSSProperties
+  gastosStyle: (category: string, type: string) => CSSProperties
   onEdit: (item: SectionItem) => void
   onToggleActive: (item: SectionItem) => void
   onTogglePaid: (itemId: number) => void
@@ -31,6 +31,21 @@ interface ItemsTileProps {
   onReactivate: (interruptionId: number) => void
   onInterrupt: (item: SectionItem) => void
   onViewInterruptions: (item: SectionItem) => void
+}
+
+interface ChipItem {
+  icon: any
+  text: string
+}
+
+function previousMonth(month: string) {
+  const [year, monthNumber] = month.split('-').map(Number)
+  const date = new Date(year, monthNumber - 2, 1)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+}
+
+function stop(event: MouseEvent) {
+  event.stopPropagation()
 }
 
 export function ItemsTile({
@@ -43,79 +58,98 @@ export function ItemsTile({
   const { businessDayConfig } = useBusinessDayConfig()
   const { dimPaid } = useDimPaid()
   const { gastosFields } = useTileFields(fieldsPage)
+  const [expanded, setExpanded] = useState(false)
+  const [infoOpen, setInfoOpen] = useState(false)
   const [mYear, mMonth] = month.split('-').map(Number)
 
   const hasSplits = item.cardSplits && item.cardSplits.length > 0
   const isForeign = !!(item.currencySymbol && item.exchangeRateSnapshot && item.exchangeRateSnapshot !== 1.0)
   const sym = item.currencySymbol || ''
   const snap = item.exchangeRateSnapshot || 1.0
-  const fmtVal = (v: number) => isForeign ? formatCurrencyWith(v, sym) : formatCurrency(v)
-  const fmtBase = (v: number) => formatCurrency(v * snap)
-  let installmentValue: number
+  const fmtVal = (value: number) => isForeign ? formatCurrencyWith(value, sym) : formatCurrency(value)
+  const fmtBase = (value: number) => formatCurrency(value * snap)
+  const isInstallment = Boolean((item.type === 'installment' || item.type === 'emprestimo') && item.totalInstallments && item.currentInstallment)
+
+  let monthValue: number
   if (hasSplits) {
-    installmentValue = item.cardSplits!.reduce((acc, sp) => {
-      const monthly = Math.round((sp.value / sp.totalInstallments) * 100) / 100
-      if ((sp.anticipatedThisMonth || 0) > 0 && sp.discountedTotalThisMonth != null) {
-        return acc + monthly + sp.discountedTotalThisMonth
+    monthValue = item.cardSplits!.reduce((acc, split) => {
+      const monthly = Math.round((split.value / split.totalInstallments) * 100) / 100
+      if ((split.anticipatedThisMonth || 0) > 0 && split.discountedTotalThisMonth != null) {
+        return acc + monthly + split.discountedTotalThisMonth
       }
-      return acc + monthly * (1 + (sp.anticipatedThisMonth || 0))
+      return acc + monthly * (1 + (split.anticipatedThisMonth || 0))
     }, 0)
-  } else if ((item.type === 'installment' || item.type === 'emprestimo') && item.totalInstallments) {
+  } else if (isInstallment && item.totalInstallments) {
     const monthly = Math.round((item.value / item.totalInstallments) * 100) / 100
     if ((item.anticipatedThisMonth || 0) > 0 && item.discountedTotalThisMonth != null) {
-      installmentValue = monthly + item.discountedTotalThisMonth
+      monthValue = monthly + item.discountedTotalThisMonth
     } else if ((item.anticipatedThisMonth || 0) > 0) {
-      installmentValue = monthly * (1 + item.anticipatedThisMonth!)
+      monthValue = monthly * (1 + item.anticipatedThisMonth)
     } else {
-      installmentValue = monthly
+      monthValue = monthly
     }
   } else {
-    installmentValue = item.type === 'subscription' ? (item.effectiveValue ?? item.value) : item.value
+    monthValue = item.type === 'subscription' ? (item.effectiveValue ?? item.value) : item.value
   }
 
-  const metaItems: { icon: any; text: string }[] = []
   const typeIcon = item.type === 'emprestimo' ? Landmark : item.type === 'installment' ? Layers : item.type === 'subscription' ? Repeat : CircleDot
   const typeText = item.type === 'emprestimo' ? t('itemTypes.emprestimo') : item.type === 'installment' ? t('itemTypes.installment') : item.type === 'subscription' ? t('itemTypes.subscription') : t('itemTypes.common')
-  if (gastosFields.type) metaItems.push({ icon: typeIcon, text: typeText })
-  if (gastosFields.billingDay) {
-    const billingDayText = formatDayLabelResolved(item.billingDay ?? null, item.billingDayType || null, t('items.billingDayLabel'), mYear, mMonth, businessDayConfig, undefined, item.billingDayMonthOffset || 0)
-    if (billingDayText) metaItems.push({ icon: CalendarClock, text: billingDayText })
-  }
-  if (gastosFields.dueDay) {
+  const categoryLabel = item.categoryName ? `${item.categoryName}${item.subcategoryName ? `/${item.subcategoryName}` : ''}` : t('items.noCategoryDefined')
+
+  const cardLabels = getItemCardLabels(item)
+  const paymentMethods = new Set<string>()
+  if (item.paymentMethod) paymentMethods.add(item.paymentMethod)
+  if (item.cardType) paymentMethods.add(item.cardType)
+  item.cardSplits?.forEach(split => {
+    if (split.paymentMethod) paymentMethods.add(split.paymentMethod)
+    else if (split.cardType) paymentMethods.add(split.cardType)
+  })
+  const methodLabel = Array.from(paymentMethods)
+    .map(method => method === 'credit' ? t('cardTypes.credit') : method === 'debit' ? t('cardTypes.debit') : method === 'both' ? t('cardTypes.both') : method)
+    .join(', ')
+
+  const billingDayText = formatDayLabelResolved(item.billingDay ?? null, item.billingDayType || null, t('items.billingDayLabel'), mYear, mMonth, businessDayConfig, undefined, item.billingDayMonthOffset || 0)
+  const dueDayText = (() => {
+    if (!item.dueDay && !(item.dueDayType === 'card_due' && item.cardDueDays?.length)) return ''
     const dueOffset = item.dueDayMonthOffset || 0
-    let dueDayText: string
     if (item.dueDayType === 'card_due' && item.cardDueDays && item.cardDueDays.length > 0) {
       let dueMonth = mMonth + dueOffset
       if (dueMonth > 12) dueMonth -= 12
       const mm = String(dueMonth).padStart(2, '0')
       const uniqueDays = [...new Set(item.cardDueDays)]
-      dueDayText = t('items.dueDayText', { label: t('items.dueDayLabel'), day: uniqueDays.map(d => `${String(d).padStart(2, '0')}/${mm}`).join(` ${t('insights.andConjunction')} `) }) + ` (${t('dayPicker.cardDueDay')})`
-    } else {
-      dueDayText = formatDayLabelResolved(item.dueDay, item.dueDayType || null, t('items.dueDayLabel'), mYear, mMonth, businessDayConfig, undefined, dueOffset)
+      return t('items.dueDayText', { label: t('items.dueDayLabel'), day: uniqueDays.map(day => `${String(day).padStart(2, '0')}/${mm}`).join(` ${t('insights.andConjunction')} `) }) + ` (${t('dayPicker.cardDueDay')})`
     }
-    if (dueDayText) metaItems.push({ icon: CalendarClock, text: dueDayText })
-  }
-  if (gastosFields.card) {
-    const cardLabels = getItemCardLabels(item)
-    if (cardLabels.length > 0) {
-      for (const label of cardLabels) metaItems.push({ icon: CreditCard, text: label })
-    } else {
-      metaItems.push({ icon: Wallet, text: t('items.noCard') })
-    }
-  }
-  if (gastosFields.store && item.storeName) metaItems.push({ icon: Store, text: item.storeName })
-  if (gastosFields.interestRate && item.interestRate && item.interestRate > 0) metaItems.push({ icon: Landmark, text: t('items.interestRate', { rate: item.interestRate }) })
-  if (item.type === 'emprestimo' && item.baseValue && item.baseValue > 0) metaItems.push({ icon: DollarSign, text: t('items.baseValue', { value: fmtVal(item.baseValue) }) })
+    return formatDayLabelResolved(item.dueDay, item.dueDayType || null, t('items.dueDayLabel'), mYear, mMonth, businessDayConfig, undefined, dueOffset)
+  })()
 
-  const isInstallment = (item.type === 'installment' || item.type === 'emprestimo') && item.totalInstallments && item.currentInstallment
+  const chips: ChipItem[] = []
+  if (gastosFields.type) chips.push({ icon: typeIcon, text: typeText })
+  if (gastosFields.billingDay && billingDayText) chips.push({ icon: CalendarClock, text: billingDayText })
+  if (gastosFields.dueDay && dueDayText) chips.push({ icon: CalendarClock, text: dueDayText })
+  if (gastosFields.store && item.storeName) chips.push({ icon: Store, text: item.storeName })
+  if (gastosFields.card) {
+    chips.push({
+      icon: cardLabels.length > 0 ? CreditCard : Wallet,
+      text: cardLabels.length > 1 ? t('items.cardCount', { count: cardLabels.length }) : (cardLabels[0] || t('items.noCard'))
+    })
+  }
+  if (methodLabel) chips.push({ icon: CreditCard, text: methodLabel })
+  if (gastosFields.interestRate && item.interestRate && item.interestRate > 0) chips.push({ icon: Landmark, text: t('items.interestRate', { rate: item.interestRate }) })
+  if (item.type === 'emprestimo' && item.baseValue && item.baseValue > 0) chips.push({ icon: DollarSign, text: t('items.baseValue', { value: fmtVal(item.baseValue) }) })
+
   const installmentCards: { name: string; current: number; total: number; monthly: number; anticipated: number }[] = []
   if (isInstallment) {
     if (hasSplits && item.type !== 'emprestimo') {
-      for (const sp of item.cardSplits!) {
-        const cur = sp.currentInstallment || Math.min(item.currentInstallment!, sp.totalInstallments)
-        const anticipated = sp.anticipatedThisMonth || 0
-        const spLabel = sp.cardName ? formatCardLabel(sp.cardName, sp.cardType, sp.paymentMethod) : t('items.cardFallback', { id: String(sp.cardId) })
-        installmentCards.push({ name: spLabel, current: cur, total: sp.totalInstallments, monthly: sp.value / sp.totalInstallments, anticipated })
+      for (const split of item.cardSplits!) {
+        const current = split.currentInstallment || Math.min(item.currentInstallment!, split.totalInstallments)
+        const splitLabel = split.cardName ? formatCardLabel(split.cardName, split.cardType, split.paymentMethod) : t('items.cardFallback', { id: String(split.cardId) })
+        installmentCards.push({
+          name: splitLabel,
+          current,
+          total: split.totalInstallments,
+          monthly: split.value / split.totalInstallments,
+          anticipated: split.anticipatedThisMonth || 0
+        })
       }
     } else {
       installmentCards.push({
@@ -128,208 +162,232 @@ export function ItemsTile({
     }
   }
 
-  const kebabItems = () => {
-    const base: any[] = [
-      { label: t('common.edit'), icon: Pencil, onClick: () => onEdit(item) },
-      { label: item.isActive ? t('common.deactivate') : t('common.activate'), icon: item.isActive ? ToggleRight : ToggleLeft, onClick: () => onToggleActive(item) }
-    ]
-    if (item.isPaid) {
-      base.push({ label: t('items.undoPayment'), icon: CheckCircle, onClick: () => onTogglePaid(item.id) })
-    }
-    if (item.type === 'subscription') {
-      base.push({ label: t('items.editValueThisMonth'), icon: DollarSign, onClick: () => onEditValue(item) })
-    }
-    if ((item.type === 'installment' || item.type === 'emprestimo' || item.type === 'subscription') && item.interruptions && item.interruptions.length > 0) {
-      base.push({ label: t('items.viewInterruptions'), icon: Repeat, onClick: () => onViewInterruptions(item) })
-    }
-    if ((item.type === 'installment' || item.type === 'emprestimo' || item.type === 'subscription') && !(item.interruptions?.some(i => !i.resumeMonth))) {
-      base.push({ label: t('items.interrupt'), icon: X, onClick: () => onInterrupt(item) })
-    }
-    base.push({ label: t('common.delete'), icon: Trash2, onClick: () => onDelete(item.id), destructive: true })
-    return base
-  }
+  const activeInterruption = item.interruptions?.find(interruption => {
+    if (interruption.resumeMonth) return month >= interruption.endMonth && month < interruption.resumeMonth
+    return month >= interruption.endMonth
+  })
+  const interruptionSummary = activeInterruption
+    ? activeInterruption.resumeMonth
+      ? t('items.interruptionRange', { start: fmtMonth(activeInterruption.endMonth), end: fmtMonth(previousMonth(activeInterruption.resumeMonth)) })
+      : t('items.interruptedPermanentlySince', { start: fmtMonth(activeInterruption.endMonth) })
+    : t('items.notInterrupted')
 
-  const renderMeta = (items: { icon: any; text: string }[], iconSize = 10, textClass = 'text-[11px] text-muted-foreground') => (
-    <div className="flex items-center gap-2.5 flex-wrap">
-      {items.map((m, i) => {
-        const MIcon = m.icon
-        return (
-          <span key={i} className={`inline-flex items-center gap-1 ${textClass}`}>
-            <MIcon size={iconSize} className="shrink-0 opacity-60" />
-            {m.text}
-          </span>
-        )
-      })}
-    </div>
-  )
-
-  const paidCheckbox = (size = 16) => (
-    <button onClick={() => onTogglePaid(item.id)} className="shrink-0" title={item.isPaid ? t('items.markUnpaid') : t('items.markPaid')}>
-      {item.isPaid
-        ? <CheckCircle size={size} className="text-primary" />
-        : <Circle size={size} className="text-muted-foreground/40 hover:text-primary transition-colors" />}
-    </button>
-  )
+  const tagsSummary = item.tags && item.tags.length > 0 ? item.tags.map(tag => tag.name).join(', ') : t('items.noTags')
+  const statusSummary = item.isPaid
+    ? (item.paidAt ? t('items.paidAt', { date: fmtDate(item.paidAt) }) : t('items.paid'))
+    : t('items.notPaidYet')
 
   const totalAnticipatedThisMonth = hasSplits
-    ? item.cardSplits!.reduce((sum, sp) => sum + (sp.anticipatedThisMonth || 0), 0)
+    ? item.cardSplits!.reduce((sum, split) => sum + (split.anticipatedThisMonth || 0), 0)
     : (item.anticipatedThisMonth || 0)
+
+  const togglePaid = (event: MouseEvent) => {
+    stop(event)
+    onTogglePaid(item.id)
+  }
+
+  const openEdit = (event: MouseEvent) => {
+    stop(event)
+    onEdit(item)
+  }
+
+  const actionClick = (event: MouseEvent, action: () => void) => {
+    stop(event)
+    action()
+  }
+
+  const renderValue = (value: number) => (
+    isForeign ? (
+      <CurrencyTooltip label={fmtBase(value)}>
+        <span className="text-2xl font-bold tabular-nums sm:text-3xl" style={gastosStyle(styleScope, 'itens')}>
+          {fmtVal(value)}
+        </span>
+      </CurrencyTooltip>
+    ) : (
+      <span className="text-2xl font-bold tabular-nums sm:text-3xl" style={gastosStyle(styleScope, 'itens')}>
+        {fmtVal(value)}
+      </span>
+    )
+  )
 
   return (
     <Card
-      className={`group relative overflow-hidden transition-all flex flex-col ${!item.isActive && dimPaid ? 'opacity-50 hover:opacity-100' : ''} ${item.isPaid && dimPaid ? 'opacity-50 hover:opacity-100' : item.isActive || !dimPaid ? 'hover:shadow-md' : ''}`}
+      tabIndex={0}
+      onClick={() => setExpanded(value => !value)}
+      onKeyDown={event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          setExpanded(value => !value)
+        }
+      }}
+      className={`group relative overflow-visible transition-all cursor-pointer ${!item.isActive && dimPaid ? 'opacity-60 hover:opacity-100' : ''} ${item.isPaid && dimPaid ? 'opacity-60 hover:opacity-100' : 'hover:shadow-md'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
     >
-      {/* Inactive stripes */}
       {!item.isActive && (
-        <div className="absolute inset-0 z-[1] pointer-events-none select-none" style={{ backgroundImage: 'repeating-linear-gradient(135deg, transparent, transparent 8px, hsl(var(--muted)) 8px, hsl(var(--muted)) 9px)', opacity: 0.3 }} />
-      )}
-      {/* Hover: edit + undo paid buttons */}
-      {dimPaid && item.isPaid && item.isActive && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity bg-card/50 backdrop-blur-[1px]">
-          <button
-            onClick={() => onEdit(item)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent text-foreground text-sm font-semibold shadow-md hover:bg-accent/80 transition-colors"
-          >
-            <Pencil size={14} /> {t('common.edit')}
-          </button>
-          <button
-            onClick={() => onTogglePaid(item.id)}
-            className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold shadow-md hover:bg-primary/90 transition-colors"
-          >
-            {t('items.undoPayment')}
-          </button>
-        </div>
-      )}
-      {/* Hover: edit + activate buttons (inactive items) */}
-      {dimPaid && !item.isActive && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity bg-card/50 backdrop-blur-[1px]">
-          <button
-            onClick={() => onEdit(item)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent text-foreground text-sm font-semibold shadow-md hover:bg-accent/80 transition-colors"
-          >
-            <Pencil size={14} /> {t('common.edit')}
-          </button>
-          <button
-            onClick={() => onToggleActive(item)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold shadow-md hover:bg-primary/90 transition-colors"
-          >
-            <ToggleRight size={14} /> {t('common.activate')}
-          </button>
-        </div>
+        <div className="absolute inset-0 z-[1] pointer-events-none select-none rounded-lg" style={{ backgroundImage: 'repeating-linear-gradient(135deg, transparent, transparent 8px, hsl(var(--muted)) 8px, hsl(var(--muted)) 9px)', opacity: 0.3 }} />
       )}
 
-      {/* Top bar: checkbox + title + category + tags + kebab */}
-      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/50 overflow-hidden">
-        {paidCheckbox(18)}
-        <p className="text-base font-bold truncate flex-1 min-w-0">
-          {item.description}
-          {item.categoryName && (
-            <span className="text-[11px] font-normal text-muted-foreground ml-1.5"> - {item.categoryName}{item.subcategoryName ? `/${item.subcategoryName}` : ''}</span>
-          )}
-        </p>
-        {totalAnticipatedThisMonth > 0 && (
-          <span className="text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap bg-primary/15 text-primary border border-primary/30">{t('items.anticipatedInstallments', { count: totalAnticipatedThisMonth })}</span>
-        )}
-        {item.interruptions && item.interruptions.length > 0 && (() => {
-          const activeInt = item.interruptions.find(i => {
-            if (i.resumeMonth) {
-              return month >= i.endMonth && month < i.resumeMonth
-            }
-            return month >= i.endMonth
-          })
-          const lastVisibleInt = !activeInt ? item.interruptions.find(i => i.endMonth === month) : null
-          const displayInt = activeInt || lastVisibleInt
-          if (!displayInt) return null
-          return (
-            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap bg-yellow-500/15 text-yellow-500 border border-yellow-500/30">
-              {displayInt.resumeMonth ? t('items.pausedUntil', { month: fmtMonth(displayInt.resumeMonth) }) : t('items.interrupted')}
-            </span>
-          )
-        })()}
-        {item.tags && item.tags.length > 0 && (
-          <div className="flex items-center gap-1 overflow-hidden">
-            {item.tags.map(tag => (
-              <span key={tag.id} className="text-[11px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap" style={{ backgroundColor: `${tag.color}20`, color: tag.color }}>{tag.name}</span>
-            ))}
-          </div>
-        )}
-        {item.isPaid && (
-          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0" style={{ backgroundColor: 'color-mix(in srgb, #22c55e 15%, transparent)', borderWidth: '1px', borderColor: 'color-mix(in srgb, #22c55e 30%, transparent)' }}>
-            <CheckCircle size={11} style={{ color: '#22c55e' }} />
-            <span className="text-[10px] font-semibold" style={{ color: '#22c55e' }}>{item.paidAt ? t('items.paidAt', { date: fmtDate(item.paidAt) }) : t('items.paid')}</span>
-          </span>
-        )}
-        {!item.isActive && (
-          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted-foreground/10 border border-muted-foreground/20 whitespace-nowrap shrink-0">
-            <ToggleLeft size={11} className="text-muted-foreground" />
-            <span className="text-[10px] font-semibold text-muted-foreground">{t('common.disabled')}</span>
-          </span>
-        )}
-        <KebabMenu items={kebabItems()} size={16} />
-      </div>
+      <div className="relative z-[2] flex items-stretch gap-3 p-3 sm:p-4">
+        <button
+          type="button"
+          onClick={togglePaid}
+          className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-accent"
+          title={item.isPaid ? t('items.markUnpaid') : t('items.markPaid')}
+        >
+          {item.isPaid
+            ? <CheckCircle size={24} className="text-primary" />
+            : <Circle size={24} className="text-muted-foreground/60 group-hover:text-primary" />}
+        </button>
 
-      {/* Body: info left + installment cards right */}
-      <div className="flex gap-3 flex-1 min-h-0 p-4">
-        {/* Left column: value, meta */}
-        <div className="flex-1 min-w-0 flex flex-col">
-          <div className="flex items-baseline gap-2 mb-1 flex-wrap">
-            {isForeign ? (
-              <CurrencyTooltip label={fmtBase(installmentValue)}>
-                <span className="text-2xl font-bold tabular-nums" style={gastosStyle(styleScope, 'itens')}>
-                  {fmtVal(installmentValue)}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h3 className="truncate text-lg font-bold leading-tight text-foreground sm:text-xl">
+                {item.description}
+              </h3>
+              <p className="mt-1 truncate text-sm text-muted-foreground">
+                {categoryLabel}
+              </p>
+            </div>
+
+            <div className="flex shrink-0 items-start gap-3 text-right">
+              <div>
+                <div className="leading-none">{renderValue(monthValue)}</div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {isInstallment ? t('items.ofTotal', { value: fmtVal(item.value) }) : t('items.total')}
+                </p>
+              </div>
+              <div className="flex flex-col items-center gap-1 border-l border-border pl-2">
+                <span className="relative">
+                  <button
+                    type="button"
+                    onMouseEnter={() => setInfoOpen(true)}
+                    onMouseLeave={() => setInfoOpen(false)}
+                    onFocus={() => setInfoOpen(true)}
+                    onBlur={() => setInfoOpen(false)}
+                    onClick={event => {
+                      stop(event)
+                      setInfoOpen(value => !value)
+                    }}
+                    className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    title={t('items.cardInfo')}
+                  >
+                    <Info size={16} />
+                  </button>
+                  {infoOpen && (
+                    <span className="absolute right-0 top-full z-50 mt-2 w-64 rounded-lg border border-border bg-card p-3 text-left text-xs text-card-foreground shadow-xl">
+                      <span className="block font-semibold text-foreground">{t('items.cardInfo')}</span>
+                      <span className="mt-2 block text-muted-foreground">{t('itemsForm.tags')}: <span className="text-foreground">{tagsSummary}</span></span>
+                      <span className="mt-1 block text-muted-foreground">{t('itemsForm.status')}: <span className="text-foreground">{statusSummary}</span></span>
+                      <span className="mt-1 block text-muted-foreground">{t('items.interruptions')}: <span className="text-foreground">{interruptionSummary}</span></span>
+                    </span>
+                  )}
                 </span>
-              </CurrencyTooltip>
-            ) : (
-              <span className="text-2xl font-bold tabular-nums" style={gastosStyle(styleScope, 'itens')}>
-                {fmtVal(installmentValue)}
+                <button
+                  type="button"
+                  onClick={openEdit}
+                  className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  title={t('common.edit')}
+                >
+                  <Settings size={16} />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-3 flex items-center gap-2 overflow-hidden">
+            {totalAnticipatedThisMonth > 0 && (
+              <span className="rounded-full border border-primary/30 bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary">
+                {t('items.anticipatedInstallments', { count: totalAnticipatedThisMonth })}
               </span>
             )}
-            {isInstallment && (
-              isForeign ? (
-                <CurrencyTooltip label={fmtBase(item.value)}>
-                  <span className="text-xs text-muted-foreground">{t('items.ofTotal', { value: fmtVal(item.value) })}</span>
-                </CurrencyTooltip>
-              ) : (
-                <span className="text-xs text-muted-foreground">{t('items.ofTotal', { value: fmtVal(item.value) })}</span>
-              )
+            {activeInterruption && (
+              <span className="rounded-full border border-yellow-500/30 bg-yellow-500/15 px-2 py-0.5 text-[10px] font-bold text-yellow-500">
+                {activeInterruption.resumeMonth ? t('items.pausedUntil', { month: fmtMonth(activeInterruption.resumeMonth) }) : t('items.interrupted')}
+              </span>
+            )}
+            {!item.isActive && (
+              <span className="rounded-full border border-muted-foreground/20 bg-muted-foreground/10 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                {t('common.disabled')}
+              </span>
             )}
           </div>
-          {metaItems.length > 0 && (
-            <div className="mb-1">{renderMeta(metaItems)}</div>
-          )}
         </div>
+      </div>
 
-        {/* Right column: installment cards */}
-        {gastosFields.installments && isInstallment && item.isActive && installmentCards.length > 0 && (
-          <div className="flex gap-1.5 shrink-0 items-start">
-            {installmentCards.map((card, i) => {
-              const done = card.current >= card.total
-              return columns >= 3 ? (
-                <div key={i} className="rounded-md border border-border/60 px-2 py-1.5 bg-muted/20 text-center">
-                  <p className="text-[10px] text-muted-foreground truncate max-w-[80px]">{card.name}</p>
-                  <span className={`text-xs font-bold tabular-nums ${done ? 'text-green-500' : 'text-foreground/70'}`}>{card.current}/{card.total}{card.anticipated > 0 && <span className="text-primary"> (+{card.anticipated})</span>}</span>
-                </div>
-              ) : (
-                <div key={i} className="rounded-lg border border-border/60 px-3 py-2 w-[150px] bg-muted/20">
-                  <p className="text-[11px] font-semibold truncate">{card.name}</p>
-                  <div className="flex items-center justify-between mt-1">
-                    <span className={`text-xs font-bold tabular-nums ${done ? 'text-green-500' : 'text-foreground/70'}`}>{card.current}/{card.total}{card.anticipated > 0 && <span className="text-primary"> (+{card.anticipated})</span>}</span>
-                    {isForeign ? (
-                      <CurrencyTooltip label={`${fmtBase(card.monthly)}${t('itemsForm.perMonth')}`}>
-                        <span className="text-[11px] text-muted-foreground tabular-nums">{fmtVal(card.monthly)}{t('itemsForm.perMonth')}</span>
-                      </CurrencyTooltip>
-                    ) : (
-                      <span className="text-[11px] text-muted-foreground tabular-nums">{fmtVal(card.monthly)}{t('itemsForm.perMonth')}</span>
-                    )}
+      {expanded && (
+        <div className="relative z-[2] border-t border-border px-4 pb-4 pt-3">
+          {chips.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {chips.map((chip, index) => {
+                const Icon = chip.icon
+                return (
+                  <span key={index} className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/20 px-3 py-1.5 text-xs text-muted-foreground">
+                    <Icon size={13} className="shrink-0 opacity-70" />
+                    {chip.text}
+                  </span>
+                )
+              })}
+            </div>
+          )}
+
+          {gastosFields.installments && isInstallment && item.isActive && installmentCards.length > 0 && (
+            <div className="mt-4 overflow-hidden rounded-lg border border-border/70 bg-background/20">
+              {installmentCards.map(card => {
+                const done = card.current >= card.total
+                const progress = Math.min((card.current / card.total) * 100, 100)
+                return (
+                  <div key={card.name} className="grid gap-3 border-b border-border/60 px-3 py-3 last:border-b-0 sm:grid-cols-[minmax(0,1.2fr)_120px_130px_minmax(120px,1fr)] sm:items-center">
+                    <p className="truncate text-sm font-semibold">{card.name}</p>
+                    <span className={`text-sm font-bold tabular-nums ${done ? 'text-green-500' : 'text-foreground/80'}`}>
+                      {card.current}/{card.total} {t('items.installments').toLowerCase()}
+                      {card.anticipated > 0 && <span className="text-primary"> (+{card.anticipated})</span>}
+                    </span>
+                    <span className="text-sm text-muted-foreground tabular-nums">
+                      {fmtVal(card.monthly)}{t('itemsForm.perMonth')}
+                    </span>
+                    <div className="h-2 rounded-full bg-muted">
+                      <div className={`h-full rounded-full ${done ? 'bg-green-500' : 'bg-primary'}`} style={{ width: `${progress}%` }} />
+                    </div>
                   </div>
-                  <div className="h-1.5 rounded-full bg-muted overflow-hidden mt-1.5">
-                    <div className={`h-full rounded-full transition-all ${done ? 'bg-green-500' : 'bg-primary'}`} style={{ width: `${Math.min((card.current / card.total) * 100, 100)}%` }} />
-                  </div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
+          )}
+
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {item.type === 'subscription' && (
+              <button type="button" onClick={event => actionClick(event, () => onEditValue(item))} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium hover:bg-accent">
+                <DollarSign size={13} /> {t('items.editValueThisMonth')}
+              </button>
+            )}
+            {(item.type === 'installment' || item.type === 'emprestimo' || item.type === 'subscription') && item.interruptions && item.interruptions.length > 0 && (
+              <button type="button" onClick={event => actionClick(event, () => onViewInterruptions(item))} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium hover:bg-accent">
+                <Repeat size={13} /> {t('items.viewInterruptions')}
+              </button>
+            )}
+            {activeInterruption && (
+              <button type="button" onClick={event => actionClick(event, () => onReactivate(activeInterruption.id))} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium hover:bg-accent">
+                <ToggleRight size={13} /> {t('common.activate')}
+              </button>
+            )}
+            {(item.type === 'installment' || item.type === 'emprestimo' || item.type === 'subscription') && !(item.interruptions?.some(interruption => !interruption.resumeMonth)) && (
+              <button type="button" onClick={event => actionClick(event, () => onInterrupt(item))} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium hover:bg-accent">
+                <X size={13} /> {t('items.interrupt')}
+              </button>
+            )}
+            <button type="button" onClick={event => actionClick(event, () => onToggleActive(item))} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium hover:bg-accent">
+              {item.isActive ? <ToggleLeft size={13} /> : <ToggleRight size={13} />}
+              {item.isActive ? t('common.deactivate') : t('common.activate')}
+            </button>
+            <button type="button" onClick={event => actionClick(event, () => onDelete(item.id))} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-destructive/40 px-3 text-xs font-medium text-destructive hover:bg-destructive/10">
+              <Trash2 size={13} /> {t('common.delete')}
+            </button>
           </div>
-        )}
+        </div>
+      )}
+
+      <div className="pointer-events-none absolute bottom-2 right-2 text-muted-foreground/50">
+        <ChevronDown size={16} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} />
       </div>
     </Card>
   )
