@@ -30,6 +30,7 @@ import { useTileFields } from '../../contexts/TileFieldsContext'
 import type { IncomeRecord, SectionItem } from '../../types/entities'
 import { type ItemSortMode, sortItems, getItemSortOptions, getSortLabelMap } from '../../hooks/useSortItems'
 import { ItemsTile } from '../items/ItemsTile'
+import { IncomeTile } from '../income/IncomeTile'
 import { useFormatDate } from '../../lib/date'
 
 type ViewMode = 'all' | 'gastos' | 'receitas'
@@ -204,6 +205,11 @@ export default function SubcategoriesPage() {
     toastLabel: t('items.itemDeleted')
   })
 
+  const { requestDelete: requestDeleteIncome, isPending: isIncomeDeletePending } = useUndoableDelete({
+    onDelete: async (id) => { await window.api.personIncome.delete(id); loadData() },
+    toastLabel: t('income.incomeDeleted')
+  })
+
   const toggleItemPaid = async (itemId: number) => {
     await window.api.items.togglePaid(itemId, month)
     loadData()
@@ -216,6 +222,18 @@ export default function SubcategoriesPage() {
 
   const toggleReceived = async (incomeId: number) => {
     await window.api.personIncome.toggleReceived(incomeId, month)
+    loadData()
+  }
+
+  const reactivateItem = async (interruptionId: number) => {
+    await window.api.items.reactivate(interruptionId)
+    toast.success(t('items.interruptionUndone'))
+    loadData()
+  }
+
+  const reactivateIncome = async (interruptionId: number) => {
+    await window.api.personIncome.reactivate(interruptionId)
+    toast.success(t('items.interruptionUndone'))
     loadData()
   }
 
@@ -469,6 +487,23 @@ export default function SubcategoriesPage() {
       </Card>
     )
   }
+
+  const renderExpandableIncomeTile = (income: IncomeRecord) => (
+    <IncomeTile
+      key={`income-${income.id}`}
+      income={income}
+      month={month}
+      fieldsPage="subcategories"
+      styleScope="subcategories"
+      receitasStyle={receitasStyle}
+      onEdit={nextIncome => navigate('/income', { state: { editIncomeId: nextIncome.id } })}
+      onToggleReceived={toggleReceived}
+      onDelete={id => requestDeleteIncome(id)}
+      onEditValue={nextIncome => navigate('/income', { state: { editIncomeId: nextIncome.id, initialTab: 'valores' } })}
+      onInterrupt={nextIncome => navigate('/income', { state: { editIncomeId: nextIncome.id, initialTab: 'interrupcoes' } })}
+      onReactivate={reactivateIncome}
+    />
+  )
 
   if (!activePerson) {
     return (
@@ -801,12 +836,12 @@ export default function SubcategoriesPage() {
                         onTogglePaid={toggleItemPaid}
                         onDelete={id => requestDeleteItem(id)}
                         onEditValue={nextItem => navigate('/items', { state: { editItemId: nextItem.id, initialTab: 'valores' } })}
-                        onReactivate={() => loadData()}
+                        onReactivate={reactivateItem}
                         onInterrupt={nextItem => navigate('/items', { state: { editItemId: nextItem.id, initialTab: 'interrupcoes' } })}
                         onViewInterruptions={nextItem => navigate('/items', { state: { editItemId: nextItem.id, initialTab: 'interrupcoes' } })}
                       />
                     ))}
-                    {group.incomes.map(income => renderIncomeTile(income))}
+                    {group.incomes.filter(income => !isIncomeDeletePending(income.id)).map(income => renderExpandableIncomeTile(income))}
                   </div>
                 )}
               </div>

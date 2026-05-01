@@ -34,6 +34,8 @@ import { TileFieldsPickerButton } from '../../components/ui/TileFieldsPickerButt
 import { FilterGroup } from '../../components/ui/FilterGroup'
 import { useTileFields } from '../../contexts/TileFieldsContext'
 import { useTranslation } from '../../contexts/LanguageContext'
+import { ItemsTile } from '../items/ItemsTile'
+import { IncomeTile } from '../income/IncomeTile'
 
 /* ─── Types ─── */
 import type { TagData, SectionItem, IncomeRecord } from '../../types/entities'
@@ -184,6 +186,11 @@ export default function StoresPage() {
     toastLabel: t('items.itemDeleted')
   })
 
+  const { requestDelete: requestDeleteIncome, isPending: isIncomeDeletePending } = useUndoableDelete({
+    onDelete: async (id) => { await window.api.personIncome.delete(id); loadData() },
+    toastLabel: t('income.incomeDeleted')
+  })
+
   const [deactivateItem, setDeactivateItem] = useState<SectionItem | null>(null)
 
   const toggleActive = async (itemId: number) => {
@@ -224,6 +231,18 @@ export default function StoresPage() {
 
   const toggleReceived = async (incomeId: number) => {
     await window.api.personIncome.toggleReceived(incomeId, month)
+    loadData()
+  }
+
+  const reactivateItem = async (interruptionId: number) => {
+    await window.api.items.reactivate(interruptionId)
+    toast.success(t('items.interruptionUndone'))
+    loadData()
+  }
+
+  const reactivateIncome = async (interruptionId: number) => {
+    await window.api.personIncome.reactivate(interruptionId)
+    toast.success(t('items.interruptionUndone'))
     loadData()
   }
 
@@ -679,6 +698,43 @@ export default function StoresPage() {
     )
   }
 
+  const renderExpandableItemTile = (item: SectionItem) => (
+    <ItemsTile
+      key={`item-${item.id}`}
+      item={item}
+      month={month}
+      columns={columns}
+      fieldsPage="stores"
+      styleScope="stores"
+      gastosStyle={gastosStyle}
+      onEdit={nextItem => navigate('/items', { state: { editItemId: nextItem.id } })}
+      onToggleActive={handleToggleActive}
+      onTogglePaid={togglePaid}
+      onDelete={id => requestDeleteItem(id)}
+      onEditValue={nextItem => navigate('/items', { state: { editItemId: nextItem.id, initialTab: 'valores' } })}
+      onReactivate={reactivateItem}
+      onInterrupt={nextItem => navigate('/items', { state: { editItemId: nextItem.id, initialTab: 'interrupcoes' } })}
+      onViewInterruptions={nextItem => navigate('/items', { state: { editItemId: nextItem.id, initialTab: 'interrupcoes' } })}
+    />
+  )
+
+  const renderExpandableIncomeTile = (inc: IncomeRecord) => (
+    <IncomeTile
+      key={`income-${inc.id}`}
+      income={inc}
+      month={month}
+      fieldsPage="stores"
+      styleScope="stores"
+      receitasStyle={receitasStyle}
+      onEdit={nextIncome => navigate('/income', { state: { editIncomeId: nextIncome.id } })}
+      onToggleReceived={toggleReceived}
+      onDelete={id => requestDeleteIncome(id)}
+      onEditValue={nextIncome => navigate('/income', { state: { editIncomeId: nextIncome.id, initialTab: 'valores' } })}
+      onInterrupt={nextIncome => navigate('/income', { state: { editIncomeId: nextIncome.id, initialTab: 'interrupcoes' } })}
+      onReactivate={reactivateIncome}
+    />
+  )
+
   // Group heading counts
   const groupCountLabel = (group: typeof groups[number]) => {
     const ic = group.items.length
@@ -1067,8 +1123,8 @@ export default function StoresPage() {
                 {/* Group content */}
                 {isExpanded && hasContent && (
                   <div className={`grid ${gridClass} gap-3 mt-2`}>
-                    {group.items.filter(item => !isItemDeletePending(item.id)).map(item => renderTile(item))}
-                    {group.incomes.map(inc => renderIncomeTile(inc))}
+                    {group.items.filter(item => !isItemDeletePending(item.id)).map(item => renderExpandableItemTile(item))}
+                    {group.incomes.filter(inc => !isIncomeDeletePending(inc.id)).map(inc => renderExpandableIncomeTile(inc))}
                   </div>
                 )}
               </div>

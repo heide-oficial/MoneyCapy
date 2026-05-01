@@ -62,6 +62,8 @@ interface Income {
 }
 
 type RecurringFilter = 'all' | 'recurring' | 'non-recurring'
+type IncomeModalTab = 'detalhes' | 'valores' | 'interrupcoes' | 'classificacao' | 'observacoes'
+const INCOME_MODAL_TABS: IncomeModalTab[] = ['detalhes', 'valores', 'interrupcoes', 'classificacao', 'observacoes']
 
 interface MonthlyValueOverride {
   month: string
@@ -132,7 +134,7 @@ export default function IncomePage() {
   const sortBtnRef = useRef<HTMLButtonElement>(null)
   const sortDropRef = useRef<HTMLDivElement>(null)
 
-  const [incomeTab, setIncomeTab] = useState<'detalhes' | 'valores' | 'interrupcoes' | 'classificacao' | 'observacoes'>('detalhes')
+  const [incomeTab, setIncomeTab] = useState<IncomeModalTab>('detalhes')
   const [modalScrollFade, setModalScrollFade] = useState({ top: false, bottom: false })
   const modalScrollRef = useRef<HTMLDivElement>(null)
   const [showValueEdit, setShowValueEdit] = useState(false)
@@ -278,12 +280,14 @@ export default function IncomePage() {
 
   const openCreate = () => {
     setEditing(null)
+    setIncomeTab('detalhes')
     setForm({ description: '', value: 0, isRecurring: false, startMonth: month, endMonth: '', categoryId: '', subcategoryId: '', tagIds: [], isReceived: false, receivedAt: '', dueDay: '', dueDayType: '', notes: '', storeId: '', currencyId: '', exchangeRateSnapshot: 1.0 })
     setShowForm(true)
   }
 
-  const openEdit = (inc: Income) => {
+  const openEdit = (inc: Income, initialTab?: IncomeModalTab) => {
     setEditing(inc)
+    setIncomeTab(initialTab || 'detalhes')
     setForm({
       description: inc.description, value: inc.value,
       isRecurring: inc.isRecurring, startMonth: inc.startMonth,
@@ -300,6 +304,21 @@ export default function IncomePage() {
     })
     setShowForm(true)
   }
+
+  const pendingEditIdRaw = (location.state as any)?.editIncomeId
+  const pendingEditId = pendingEditIdRaw ? Number(pendingEditIdRaw) : undefined
+  const pendingInitialTab = (location.state as any)?.initialTab as string | undefined
+
+  useEffect(() => {
+    if (!pendingEditId || incomes.length === 0) return
+    const income = incomes.find(inc => inc.id === pendingEditId)
+    if (!income) return
+    const initialTab = INCOME_MODAL_TABS.includes(pendingInitialTab as IncomeModalTab)
+      ? pendingInitialTab as IncomeModalTab
+      : undefined
+    openEdit(income, initialTab)
+    navigate(location.pathname, { replace: true, state: {} })
+  }, [pendingEditId, pendingInitialTab, incomes])
 
   const openValueEdit = (inc: Income) => {
     setValueEditTarget(inc)

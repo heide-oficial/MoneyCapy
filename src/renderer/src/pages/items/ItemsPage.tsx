@@ -239,6 +239,8 @@ export default function ItemsPage() {
 
   // Handle tab/edit from external navigation
   const pendingEditId = (location.state as any)?.editItemId as number | undefined
+  const pendingInitialTab = (location.state as any)?.initialTab as string | undefined
+  const itemModalTabs: ModalTab[] = ['detalhes', 'valores', 'parcelas', 'interrupcoes', 'classificacao', 'observacoes']
 
   useEffect(() => {
     const stateTab = (location.state as any)?.tab as string | undefined
@@ -492,11 +494,14 @@ export default function ItemsPage() {
     if (pendingEditId && items.length > 0) {
       const item = items.find(i => i.id === pendingEditId)
       if (item) {
-        openEdit(item)
+        const initialTab = itemModalTabs.includes(pendingInitialTab as ModalTab)
+          ? pendingInitialTab as ModalTab
+          : undefined
+        openEdit(item, initialTab)
         navigate(location.pathname, { replace: true, state: {} })
       }
     }
-  }, [pendingEditId, items])
+  }, [pendingEditId, pendingInitialTab, items])
 
   const doSave = async () => {
     let totalInstallments: number | null = null
