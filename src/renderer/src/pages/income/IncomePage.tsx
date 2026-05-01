@@ -9,9 +9,7 @@ import { DatePicker } from '../../components/ui/DatePicker'
 import { Select } from '../../components/ui/Select'
 import { CurrencyMonthNavigator } from '../../components/ui/CurrencyMonthNavigator'
 import { SearchInput } from '../../components/ui/SearchInput'
-import { KebabMenu } from '../../components/ui/KebabMenu'
 import { formatCurrency, formatCurrencyWith } from '../../lib/currency'
-import { CurrencyTooltip } from '../../components/ui/CurrencyTooltip'
 import { useDisplayCurrency } from '../../contexts/DisplayCurrencyContext'
 import { getCurrentMonth, useFormatDate } from '../../lib/date'
 import { usePageMonth } from '../../contexts/DefaultMonthContext'
@@ -27,12 +25,8 @@ import {
   ChevronDown, CalendarClock, Filter, Palette, X, Undo2, Tags, Bookmark, Download
 } from 'lucide-react'
 import { DayPicker } from '../../components/ui/DayPicker'
-import { formatDayLabelResolved } from '../../../../../shared/day-utils'
-import { useBusinessDayConfig } from '../../contexts/BusinessDayContext'
-import { useDimPaid } from '../../contexts/DimPaidContext'
 import { TileFieldsPickerButton } from '../../components/ui/TileFieldsPickerButton'
 import { CsvExportModal, type CsvColumn } from '../../components/ui/CsvExportModal'
-import { useTileFields } from '../../contexts/TileFieldsContext'
 import { ROUTES } from '../../lib/constants'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -40,6 +34,7 @@ import { useUndoableDelete } from '../../hooks/useUndoableDelete'
 import { ColorPicker } from '../../components/ui/ColorPicker'
 import { useTranslation } from '../../contexts/LanguageContext'
 import { createNoteBlock, formatNoteBlockDate, parseNoteBlocks, serializeNoteBlocks } from '../../lib/note-blocks'
+import { IncomeTile } from './IncomeTile'
 
 import type { TagData, ItemInterruption } from '../../types/entities'
 
@@ -80,9 +75,6 @@ export default function IncomePage() {
   const { activePerson } = useActivePerson()
   const { receitasStyle } = useColorSettings()
   const { fmtMonth, fmtDate } = useFormatDate()
-  const { businessDayConfig } = useBusinessDayConfig()
-  const { dimPaid } = useDimPaid()
-  const { receitasFields } = useTileFields('income')
   const { currencies, baseCurrency, formatDisplayCurrency } = useDisplayCurrency()
   const { gridClass, pickerButton } = useColumnsPicker('income-columns')
   const { month, setMonth } = usePageMonth()
@@ -710,130 +702,20 @@ export default function IncomePage() {
         </Card>
       ) : (
         <div className={`grid ${gridClass} gap-4`}>
-          {sortedIncomes.map(inc => {
-            const kebabItems: any[] = [
-              { label: t('income.editIncome'), icon: Pencil, onClick: () => openEdit(inc) },
-            ]
-            if (inc.isRecurring) {
-              kebabItems.push({ label: t('items.editValueThisMonth'), icon: DollarSign, onClick: () => openValueEdit(inc) })
-            }
-            if (inc.isReceived) {
-              kebabItems.push({ label: t('items.undoReceipt'), icon: CheckCircle, onClick: () => toggleReceived(inc.id) })
-            }
-            if (inc.isRecurring && inc.interruptions && inc.interruptions.length > 0) {
-              kebabItems.push({ label: t('items.viewInterruptions'), icon: Repeat, onClick: () => openEdit(inc) })
-            }
-            if (inc.isRecurring && !(inc.interruptions?.some(i => !i.resumeMonth))) {
-              kebabItems.push({ label: t('items.interrupt'), icon: X, onClick: () => { setInterruptMode('temporary'); setInterruptMonths('2'); setInterruptItem(inc) } })
-            }
-            kebabItems.push({ label: t('common.delete'), icon: Trash2, onClick: () => requestDelete(inc.id), destructive: true })
-
-            const [mY, mM] = month.split('-').map(Number)
-            const metaItems: { icon: any; text: string }[] = []
-            if (receitasFields.type) metaItems.push({ icon: inc.isRecurring ? Repeat : CircleDot, text: inc.isRecurring ? t('income.recurring') : t('income.nonRecurring') })
-            if (receitasFields.dueDay) {
-              const dueDayText = formatDayLabelResolved(inc.dueDay ?? null, inc.dueDayType || null, t('income.receivingDay'), mY, mM, businessDayConfig)
-              if (dueDayText) metaItems.push({ icon: CalendarClock, text: dueDayText })
-            }
-
-            return (
-              <Card
-                key={inc.id}
-                className={`group relative overflow-hidden transition-all flex flex-col ${inc.isReceived && dimPaid ? 'opacity-50 hover:opacity-100' : 'hover:shadow-md'}`}
-              >
-                {/* Hover: undo received */}
-                {dimPaid && inc.isReceived && (
-                  <div className="absolute inset-0 z-20 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity bg-card/50 backdrop-blur-[1px]">
-                    <button
-                      onClick={() => openEdit(inc)}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent text-foreground text-sm font-semibold shadow-md hover:bg-accent/80 transition-colors"
-                    >
-                      <Pencil size={14} /> {t('common.edit')}
-                    </button>
-                    <button
-                      onClick={() => toggleReceived(inc.id)}
-                      className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold shadow-md hover:bg-primary/90 transition-colors"
-                    >
-                      {t('items.undoReceipt')}
-                    </button>
-                  </div>
-                )}
-
-                {/* Top bar */}
-                <div className="flex items-center gap-2.5 px-4 py-2.5 border-b border-border/50">
-                  <button onClick={() => toggleReceived(inc.id)} className="shrink-0" title={inc.isReceived ? t('items.markNotReceived') : t('items.markReceived')}>
-                    {inc.isReceived
-                      ? <CheckCircle size={18} className="text-primary" />
-                      : <Circle size={18} className="text-muted-foreground/40 hover:text-primary transition-colors" />}
-                  </button>
-                  <p className="text-base font-bold truncate flex-1 min-w-0">
-                    {inc.description}
-                    {inc.categoryName && (
-                      <span className="text-[11px] font-normal text-muted-foreground ml-1.5"> - {inc.categoryName}{inc.subcategoryName ? `/${inc.subcategoryName}` : ''}</span>
-                    )}
-                  </p>
-                  {inc.tags && inc.tags.length > 0 && (
-                    <div className="flex items-center gap-1 overflow-hidden">
-                      {inc.tags.map(tag => (
-                        <span key={tag.id} className="text-[11px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap" style={{ backgroundColor: `${tag.color}20`, color: tag.color }}>{tag.name}</span>
-                      ))}
-                    </div>
-                  )}
-                  {inc.interruptions && inc.interruptions.length > 0 && (() => {
-                    const activeInt = inc.interruptions.find(i => {
-                      if (i.resumeMonth) {
-                        return month >= i.endMonth && month < i.resumeMonth
-                      }
-                      return month >= i.endMonth
-                    })
-                    const lastVisibleInt = !activeInt ? inc.interruptions.find(i => i.endMonth === month) : null
-                    const displayInt = activeInt || lastVisibleInt
-                    if (!displayInt) return null
-                    return (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap bg-yellow-500/15 text-yellow-500 border border-yellow-500/30">
-                        {displayInt.resumeMonth ? t('items.pausedUntil', { month: fmtMonth(displayInt.resumeMonth) }) : t('items.interrupted')}
-                      </span>
-                    )
-                  })()}
-                  {inc.isReceived && (
-                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0" style={{ backgroundColor: 'color-mix(in srgb, #22c55e 15%, transparent)', borderWidth: '1px', borderColor: 'color-mix(in srgb, #22c55e 30%, transparent)' }}>
-                      <CheckCircle size={11} style={{ color: '#22c55e' }} />
-                      <span className="text-[10px] font-semibold" style={{ color: '#22c55e' }}>{inc.receivedAt ? t('items.receivedAt', { date: fmtDate(inc.receivedAt) }) : t('items.received')}</span>
-                    </span>
-                  )}
-                  <KebabMenu items={kebabItems} size={16} />
-                </div>
-
-                {/* Body */}
-                <div className="flex-1 p-4">
-                  <div className="flex items-baseline gap-2 mb-1">
-                    {inc.currencySymbol && inc.exchangeRateSnapshot && inc.exchangeRateSnapshot !== 1.0 ? (
-                      <CurrencyTooltip label={formatCurrency(inc.effectiveValue * (inc.exchangeRateSnapshot || 1.0))}>
-                        <span className="text-2xl font-bold tabular-nums" style={receitasStyle('income', 'itens')}>
-                          {formatCurrencyWith(inc.effectiveValue, inc.currencySymbol)}
-                        </span>
-                      </CurrencyTooltip>
-                    ) : (
-                      <span className="text-2xl font-bold tabular-nums" style={receitasStyle('income', 'itens')}>
-                        {formatCurrency(inc.effectiveValue)}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2.5 flex-wrap">
-                    {metaItems.map((m, i) => {
-                      const MIcon = m.icon
-                      return (
-                        <span key={i} className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                          <MIcon size={10} className="shrink-0 opacity-60" />
-                          {m.text}
-                        </span>
-                      )
-                    })}
-                  </div>
-                </div>
-              </Card>
-            )
-          })}
+          {sortedIncomes.map(inc => (
+            <IncomeTile
+              key={inc.id}
+              income={inc}
+              month={month}
+              receitasStyle={receitasStyle}
+              onEdit={openEdit}
+              onToggleReceived={toggleReceived}
+              onDelete={id => requestDelete(id)}
+              onEditValue={openValueEdit}
+              onInterrupt={nextIncome => { setInterruptMode('temporary'); setInterruptMonths('2'); setInterruptItem(nextIncome) }}
+              onReactivate={handleReactivate}
+            />
+          ))}
         </div>
       )}
 
