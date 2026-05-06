@@ -793,6 +793,12 @@ export default function StoresPage() {
         <>
           <SearchInput value={search} onChange={setSearch} />
 
+          <button type="button" title={t('categories.hideEmpty')} onClick={() => setHideEmpty(v => !v)}
+            className={`inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border transition-colors ${hideEmpty ? 'bg-primary text-primary-foreground border-primary' : 'bg-transparent text-foreground border-input hover:bg-accent'}`}>
+            <EyeOff size={11} />
+            <span data-filter-label>{t('categories.hideEmpty')}</span>
+          </button>
+
           <FilterGroup
             activeCount={
               (viewMode !== 'all' ? 1 : 0) + (filterItemType !== 'all' ? 1 : 0) +
@@ -804,12 +810,11 @@ export default function StoresPage() {
             onClear={() => { setViewMode('all'); setFilterActive('all'); setFilterPaid('all'); setFilterPayMethod('all'); setFilterItemType('all'); setFilterCategoryKeys([]); setFilterSubcategoryKeys([]); setFilterCardKeys([]); setFilterBankKeys([]); setHideEmpty(false) }}
             primaryCount={3}
           >
-            <div className="relative space-y-1">
-              <span className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t('filters.item')}</span>
+            <div className="relative">
               <button ref={viewBtnRef} type="button"
                 onClick={() => setShowViewMenu(f => !f)}
                 className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border border-input hover:bg-accent transition-colors">
-                {viewMode === 'all' ? t('filters.expensesAndIncome') : viewMode === 'gastos' ? t('filters.expenses') : t('filters.income')}
+                <span data-filter-label>{t('tileFields.type')}</span>
                 <ChevronDown size={12} className="text-muted-foreground" />
               </button>
               {showViewMenu && (
@@ -829,17 +834,11 @@ export default function StoresPage() {
             </div>
 
             {viewMode !== 'all' && (
-              <div className="relative space-y-1">
-                <span className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  {viewMode === 'gastos' ? t('filters.expenseType') : t('filters.incomeType')}
-                </span>
+              <div className="relative">
                 <button ref={itemTypeBtnRef} type="button"
                   onClick={() => setShowItemTypeMenu(f => !f)}
                   className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border border-input hover:bg-accent transition-colors">
-                  {viewMode === 'gastos'
-                    ? { 'all': t('filters.allTypes'), 'common': t('filters.singles'), 'installment': t('filters.installments'), 'subscription': t('filters.recurring'), 'emprestimo': t('filters.loans') }[filterItemType] || t('filters.allTypes')
-                    : { 'all': t('filters.allTypes'), 'recurring': t('filters.recurringOnly'), 'non-recurring': t('filters.nonRecurringOnly') }[filterItemType] || t('filters.allTypes')
-                  }
+                  <span data-filter-label>{viewMode === 'gastos' ? t('filters.expenseType') : t('filters.incomeType')}</span>
                   <ChevronDown size={12} className="text-muted-foreground" />
                 </button>
                 {showItemTypeMenu && (
@@ -1060,12 +1059,6 @@ export default function StoresPage() {
           </FilterGroup>
 
 
-
-          <button type="button" title={t('categories.hideEmpty')} onClick={() => setHideEmpty(v => !v)}
-            className={`inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border transition-colors ${hideEmpty ? 'bg-primary text-primary-foreground border-primary' : 'bg-transparent text-foreground border-input hover:bg-accent'}`}>
-            <EyeOff size={11} />
-            <span data-filter-label>{t('categories.hideEmpty')}</span>
-          </button>
 
           <div className="h-6 w-px bg-border shrink-0 ml-auto" />
 

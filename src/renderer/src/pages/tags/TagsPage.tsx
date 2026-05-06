@@ -826,76 +826,80 @@ export default function TagsPage() {
         <>
           <SearchInput value={search} onChange={setSearch} />
 
-          {/* View mode filter */}
-          <div className="relative">
-            <button ref={viewBtnRef} type="button"
-              onClick={() => setShowViewMenu(f => !f)}
-              className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border border-input hover:bg-accent transition-colors">
-              {viewMode === 'all' ? t('filters.expensesAndIncome') : viewMode === 'gastos' ? t('filters.expenses') : t('filters.income')}
-              <ChevronDown size={12} className="text-muted-foreground" />
-            </button>
-            {showViewMenu && (
-              <SimpleDropdown
-                anchorRef={viewBtnRef}
-                dropRef={viewDropRef}
-                options={[
-                  { key: 'all', label: t('filters.expensesAndIncome') },
-                  { key: 'gastos', label: t('filters.expenses') },
-                  { key: 'receitas', label: t('filters.income') }
-                ]}
-                current={viewMode}
-                onChange={v => { setViewMode(v as ViewMode); setFilterItemType('all'); setShowViewMenu(false) }}
-                onClose={() => setShowViewMenu(false)}
-              />
-            )}
-          </div>
+          <button type="button" title={t('categories.hideEmpty')} onClick={() => setHideEmpty(v => !v)}
+            className={`inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border transition-colors ${hideEmpty ? 'bg-primary text-primary-foreground border-primary' : 'bg-transparent text-foreground border-input hover:bg-accent'}`}>
+            <EyeOff size={11} />
+            <span data-filter-label>{t('categories.hideEmpty')}</span>
+          </button>
 
-          {viewMode !== 'all' && (
-            <div className="relative">
-              <button ref={itemTypeBtnRef} type="button"
-                onClick={() => setShowItemTypeMenu(f => !f)}
-                className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border border-input hover:bg-accent transition-colors">
-                {viewMode === 'gastos'
-                  ? { 'all': t('filters.allTypes'), 'common': t('filters.singles'), 'installment': t('filters.installments'), 'subscription': t('filters.recurring'), 'emprestimo': t('filters.loans') }[filterItemType] || t('filters.allTypes')
-                  : { 'all': t('filters.allTypes'), 'recurring': t('filters.recurringOnly'), 'non-recurring': t('filters.nonRecurringOnly') }[filterItemType] || t('filters.allTypes')
-                }
-                <ChevronDown size={12} className="text-muted-foreground" />
-              </button>
-              {showItemTypeMenu && (
-                <SimpleDropdown
-                  anchorRef={itemTypeBtnRef}
-                  dropRef={itemTypeDropRef}
-                  options={viewMode === 'gastos'
-                    ? [
-                        { key: 'all', label: t('filters.allTypes') },
-                        { key: 'common', label: t('filters.singles') },
-                        { key: 'installment', label: t('filters.installments') },
-                        { key: 'subscription', label: t('filters.recurring') },
-                        { key: 'emprestimo', label: t('filters.loans') }
-                      ]
-                    : [
-                        { key: 'all', label: t('filters.allTypes') },
-                        { key: 'recurring', label: t('filters.recurringOnly') },
-                        { key: 'non-recurring', label: t('filters.nonRecurringOnly') }
-                      ]
-                  }
-                  current={filterItemType}
-                  onChange={v => { setFilterItemType(v); setShowItemTypeMenu(false) }}
-                  onClose={() => setShowItemTypeMenu(false)}
-                />
-              )}
-            </div>
-          )}
           <FilterGroup
             activeCount={
+              (viewMode !== 'all' ? 1 : 0) + (filterItemType !== 'all' ? 1 : 0) +
               (filterTagKeys.length > 0 ? 1 : 0) + (filterSubcategoryKeys.length > 0 ? 1 : 0) + (filterBankKeys.length > 0 ? 1 : 0) +
               (filterCardKeys.length > 0 ? 1 : 0) + (filterStoreKeys.length > 0 ? 1 : 0) +
               (filterActive !== 'all' ? 1 : 0) +
               (filterPaid !== 'all' ? 1 : 0) + (filterPayMethod !== 'all' ? 1 : 0)
             }
-            onClear={() => { setFilterActive('all'); setFilterPaid('all'); setFilterPayMethod('all'); setFilterItemType('all'); setFilterTagKeys([]); setFilterSubcategoryKeys([]); setFilterCardKeys([]); setFilterBankKeys([]); setFilterStoreKeys([]); setHideEmpty(false) }}
+            onClear={() => { setViewMode('all'); setFilterActive('all'); setFilterPaid('all'); setFilterPayMethod('all'); setFilterItemType('all'); setFilterTagKeys([]); setFilterSubcategoryKeys([]); setFilterCardKeys([]); setFilterBankKeys([]); setFilterStoreKeys([]); setHideEmpty(false) }}
             primaryCount={3}
           >
+            <div className="relative">
+              <button ref={viewBtnRef} type="button"
+                onClick={() => setShowViewMenu(f => !f)}
+                className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border border-input hover:bg-accent transition-colors">
+                <span data-filter-label>{t('tileFields.type')}</span>
+                <ChevronDown size={12} className="text-muted-foreground" />
+              </button>
+              {showViewMenu && (
+                <SimpleDropdown
+                  anchorRef={viewBtnRef}
+                  dropRef={viewDropRef}
+                  options={[
+                    { key: 'all', label: t('filters.expensesAndIncome') },
+                    { key: 'gastos', label: t('filters.expenses') },
+                    { key: 'receitas', label: t('filters.income') }
+                  ]}
+                  current={viewMode}
+                  onChange={v => { setViewMode(v as ViewMode); setFilterItemType('all'); setShowViewMenu(false) }}
+                  onClose={() => setShowViewMenu(false)}
+                />
+              )}
+            </div>
+
+            {viewMode !== 'all' && (
+              <div className="relative">
+                <button ref={itemTypeBtnRef} type="button"
+                  onClick={() => setShowItemTypeMenu(f => !f)}
+                  className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border border-input hover:bg-accent transition-colors">
+                  <span data-filter-label>{viewMode === 'gastos' ? t('filters.expenseType') : t('filters.incomeType')}</span>
+                  <ChevronDown size={12} className="text-muted-foreground" />
+                </button>
+                {showItemTypeMenu && (
+                  <SimpleDropdown
+                    anchorRef={itemTypeBtnRef}
+                    dropRef={itemTypeDropRef}
+                    options={viewMode === 'gastos'
+                      ? [
+                          { key: 'all', label: t('filters.allTypes') },
+                          { key: 'common', label: t('filters.singles') },
+                          { key: 'installment', label: t('filters.installments') },
+                          { key: 'subscription', label: t('filters.recurring') },
+                          { key: 'emprestimo', label: t('filters.loans') }
+                        ]
+                      : [
+                          { key: 'all', label: t('filters.allTypes') },
+                          { key: 'recurring', label: t('filters.recurringOnly') },
+                          { key: 'non-recurring', label: t('filters.nonRecurringOnly') }
+                        ]
+                    }
+                    current={filterItemType}
+                    onChange={v => { setFilterItemType(v); setShowItemTypeMenu(false) }}
+                    onClose={() => setShowItemTypeMenu(false)}
+                  />
+                )}
+              </div>
+            )}
+
             <div className="relative">
               <button ref={tagFilterRef} type="button" title={t('tags.title')}
                 onClick={() => { setShowTagFilter(f => !f); setShowCardFilter(false); setShowBankFilter(false); setShowStoreFilter(false) }}
@@ -1116,12 +1120,6 @@ export default function TagsPage() {
           </FilterGroup>
 
 
-
-          <button type="button" title={t('categories.hideEmpty')} onClick={() => setHideEmpty(v => !v)}
-            className={`inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border transition-colors ${hideEmpty ? 'bg-primary text-primary-foreground border-primary' : 'bg-transparent text-foreground border-input hover:bg-accent'}`}>
-            <EyeOff size={11} />
-            <span data-filter-label>{t('categories.hideEmpty')}</span>
-          </button>
 
           <div className="h-6 w-px bg-border shrink-0 ml-auto" />
 
