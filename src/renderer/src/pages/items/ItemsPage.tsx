@@ -15,7 +15,7 @@ import { getActiveInterruption } from '../../lib/interruptions'
 import { usePageMonth } from '../../contexts/DefaultMonthContext'
 import {
   Plus, ChevronDown, Check, Filter, Receipt, Download,
-  Tags, Bookmark, Wallet, CreditCard, Store, ToggleLeft, CheckCircle as CheckCircleIcon
+  Tags, Bookmark, Wallet, CreditCard, Store, ToggleLeft, CheckCircle as CheckCircleIcon, Layers
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useActivePerson } from '../../contexts/ActivePersonContext'
@@ -36,6 +36,8 @@ import { ItemsForm, defaultForm, type ItemForm, type CardMode, type FormSplit, t
 import { ItemsTile } from './ItemsTile'
 
 type ItemTab = 'all' | 'common' | 'installment' | 'subscription' | 'emprestimo'
+type ExpenseTypeFilter = 'common' | 'installment' | 'subscription' | 'emprestimo'
+const EXPENSE_TYPE_FILTERS: ExpenseTypeFilter[] = ['common', 'installment', 'subscription', 'emprestimo']
 
 function getItemTabs(t: (key: string) => string): { key: ItemTab; label: string; typeFilter?: string }[] {
   return [
@@ -126,8 +128,7 @@ export default function ItemsPage() {
     if (stateTab && ITEM_TABS.some(t => t.key === stateTab)) return stateTab as ItemTab
     return 'all'
   })
-  const tabConfig = ITEM_TABS.find(t => t.key === activeTab)!
-  const typeFilter = tabConfig.typeFilter
+  const typeFilter = undefined
 
   const [items, setItems] = useState<SectionItem[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -156,6 +157,12 @@ export default function ItemsPage() {
 
   // Filters & Sort
   const [filterCategories, setFilterCategories] = useState<number[]>([])
+  const [filterItemTypes, setFilterItemTypes] = useState<ExpenseTypeFilter[]>(() => {
+    const stateTab = (location.state as any)?.tab as ItemTab | undefined
+    return stateTab && stateTab !== 'all' && EXPENSE_TYPE_FILTERS.includes(stateTab as ExpenseTypeFilter)
+      ? [stateTab as ExpenseTypeFilter]
+      : [...EXPENSE_TYPE_FILTERS]
+  })
   const [filterSubcategories, setFilterSubcategories] = useState<number[]>([])
   const [filterTags, setFilterTags] = useState<number[]>([])
   const [filterCards, setFilterCards] = useState<number[]>(() => {
@@ -191,6 +198,9 @@ export default function ItemsPage() {
   const cardDropRef = useRef<HTMLDivElement>(null)
   const bankDropRef = useRef<HTMLDivElement>(null)
   const storeDropRef = useRef<HTMLDivElement>(null)
+  const typeFilterRef = useRef<HTMLButtonElement>(null)
+  const typeFilterDropRef = useRef<HTMLDivElement>(null)
+  const [showTypeFilter, setShowTypeFilter] = useState(false)
   const [sortMode, setSortMode] = useState<ItemSortMode>('az')
   const [showSortMenu, setShowSortMenu] = useState(false)
   const sortBtnRef = useRef<HTMLButtonElement>(null)
@@ -247,6 +257,7 @@ export default function ItemsPage() {
     const stateTab = (location.state as any)?.tab as string | undefined
     if (stateTab && ITEM_TABS.some(t => t.key === stateTab)) {
       setActiveTab(stateTab as ItemTab)
+      if (stateTab !== 'all' && EXPENSE_TYPE_FILTERS.includes(stateTab as ExpenseTypeFilter)) setFilterItemTypes([stateTab as ExpenseTypeFilter])
     }
   }, [location.state])
 
@@ -294,6 +305,7 @@ export default function ItemsPage() {
   const filteredAndSortedItems = (() => {
     let result = items.filter(item => {
       if (isDeletePending(item.id)) return false
+      if (!filterItemTypes.includes(item.type as ExpenseTypeFilter)) return false
       if (filterActive === 'active' && !item.isActive) return false
       if (filterActive === 'inactive' && item.isActive) return false
       if (filterCategories.length > 0) {
@@ -418,7 +430,7 @@ export default function ItemsPage() {
   const openCreate = () => {
     setEditing(null)
     setFormInitialTab(undefined)
-    const type = typeFilter || 'common'
+    const type = filterItemTypes.length === 1 ? filterItemTypes[0] : 'common'
     setForm({
       ...defaultForm,
       type,
@@ -752,42 +764,49 @@ export default function ItemsPage() {
       controls={
         <>
           <SearchInput value={search} onChange={setSearch} />
-          {/* Tab selector */}
-          <div className="relative">
-            <button
-              ref={tabBtnRef}
-              type="button"
-              onClick={() => setShowTabMenu(f => !f)}
-              className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border border-input hover:bg-accent transition-colors"
-            >
-              {ITEM_TABS.find(t => t.key === activeTab)?.label}
-              <ChevronDown size={12} className="text-muted-foreground" />
-            </button>
-            {showTabMenu && createPortal(
-              <TabDropdown
-                anchorRef={tabBtnRef}
-                dropRef={tabDropRef}
-                current={activeTab}
-                onChange={v => { setActiveTab(v); setShowTabMenu(false) }}
-                onClose={() => setShowTabMenu(false)}
-                tabs={ITEM_TABS}
-              />,
-              document.body
-            )}
-          </div>
-
-          <div className="h-6 w-px bg-border shrink-0" />
-
           <FilterGroup
             activeCount={
-              (filterCategories.length > 0 ? 1 : 0) + (filterSubcategories.length > 0 ? 1 : 0) + (filterTags.length > 0 ? 1 : 0) +
+              (filterItemTypes.length < EXPENSE_TYPE_FILTERS.length ? 1 : 0) + (filterCategories.length > 0 ? 1 : 0) + (filterSubcategories.length > 0 ? 1 : 0) + (filterTags.length > 0 ? 1 : 0) +
               (filterBankAccounts.length > 0 ? 1 : 0) + (filterCards.length > 0 ? 1 : 0) +
               (filterStores.length > 0 ? 1 : 0) + (filterActive !== 'all' ? 1 : 0) +
               (filterPaid !== 'all' ? 1 : 0) + (filterPayMethod !== 'all' ? 1 : 0)
             }
-            onClear={() => { setFilterCategories([]); setFilterSubcategories([]); setFilterTags([]); setFilterCards([]); setFilterBankAccounts([]); setFilterStores([]); setFilterActive('all'); setFilterPaid('all'); setFilterPayMethod('all'); setSearchParams({}) }}
+            onClear={() => { setFilterItemTypes([...EXPENSE_TYPE_FILTERS]); setFilterCategories([]); setFilterSubcategories([]); setFilterTags([]); setFilterCards([]); setFilterBankAccounts([]); setFilterStores([]); setFilterActive('all'); setFilterPaid('all'); setFilterPayMethod('all'); setSearchParams({}) }}
             primaryCount={3}
           >
+            <div className="relative">
+              <button ref={typeFilterRef} type="button" title={t('tileFields.type')}
+                onClick={() => { setShowTypeFilter(f => !f); setShowCatFilter(false); setShowSubcatFilter(false); setShowTagFilter(false); setShowCardFilter(false); setShowBankFilter(false); setShowStoreFilter(false) }}
+                className={`inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border transition-colors ${
+                  filterItemTypes.length < EXPENSE_TYPE_FILTERS.length
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-transparent text-foreground border-input hover:bg-accent'
+                }`}>
+                <Layers size={11} />
+                <span data-filter-label>{t('tileFields.type')}</span>
+                {filterItemTypes.length < EXPENSE_TYPE_FILTERS.length && (
+                  <span className="bg-primary-foreground text-primary text-[10px] rounded-full h-4 min-w-[16px] flex items-center justify-center font-bold">{filterItemTypes.length}</span>
+                )}
+                <ChevronDown size={12} className="text-muted-foreground" />
+              </button>
+              {showTypeFilter && (
+                <FilterDropdown
+                  anchorRef={typeFilterRef}
+                  dropRef={typeFilterDropRef}
+                  onClose={() => setShowTypeFilter(false)}
+                  items={[
+                    { id: 'common', name: t('filters.singles'), color: '#6b7280' },
+                    { id: 'installment', name: t('filters.installments'), color: '#8b5cf6' },
+                    { id: 'subscription', name: t('filters.recurring'), color: '#22c55e' },
+                    { id: 'emprestimo', name: t('filters.loans'), color: '#f97316' }
+                  ]}
+                  selected={filterItemTypes}
+                  onToggle={id => setFilterItemTypes(current => current.includes(id) ? (current.length === 1 ? current : current.filter(type => type !== id)) : [...current, id])}
+                  searchable={false}
+                />
+              )}
+            </div>
+
             <div className="relative">
               <button ref={catFilterRef} type="button" title={t('filters.category')}
                 onClick={() => { setShowCatFilter(f => !f); setShowSubcatFilter(false); setShowTagFilter(false); setShowCardFilter(false); setShowBankFilter(false) }}
@@ -1113,7 +1132,7 @@ export default function ItemsPage() {
         onClose={() => setShowForm(false)}
         editing={editing}
         month={month}
-        typeFilter={typeFilter}
+        typeFilter={filterItemTypes.length === 1 ? filterItemTypes[0] : undefined}
         form={form}
         setForm={setForm}
         categories={categories}

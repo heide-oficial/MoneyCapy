@@ -21,7 +21,7 @@ import { SimpleDropdown } from '../../components/ui/SimpleDropdown'
 import { FilterDropdown } from '../../components/ui/FilterDropdown'
 import { FilterGroup } from '../../components/ui/FilterGroup'
 import {
-  HandCoins, Plus, Pencil, Trash2, Repeat, Users,
+  HandCoins, Plus, Pencil, Trash2, Repeat, Users, Layers,
   CheckCircle, Circle, CircleDot, DollarSign,
   ChevronDown, CalendarClock, Filter, Palette, X, Undo2, Tags, Bookmark, Download
 } from 'lucide-react'
@@ -62,7 +62,8 @@ interface Income {
   createdAt?: string
 }
 
-type RecurringFilter = 'all' | 'recurring' | 'non-recurring'
+type RecurringFilter = 'recurring' | 'non-recurring'
+const INCOME_TYPE_FILTERS: RecurringFilter[] = ['recurring', 'non-recurring']
 type IncomeModalTab = 'detalhes' | 'valores' | 'interrupcoes' | 'classificacao' | 'observacoes'
 const INCOME_MODAL_TABS: IncomeModalTab[] = ['detalhes', 'valores', 'interrupcoes', 'classificacao', 'observacoes']
 
@@ -96,9 +97,9 @@ export default function IncomePage() {
   })
 
   const [search, setSearch] = useState('')
-  const [recurringFilter, setRecurringFilter] = useState<RecurringFilter>(() => {
+  const [recurringFilter, setRecurringFilter] = useState<RecurringFilter[]>(() => {
     const rf = (location.state as any)?.recurringFilter as string | undefined
-    return (rf === 'recurring' || rf === 'non-recurring') ? rf : 'all'
+    return (rf === 'recurring' || rf === 'non-recurring') ? [rf] : [...INCOME_TYPE_FILTERS]
   })
   const [showRecurringMenu, setShowRecurringMenu] = useState(false)
   const recurringBtnRef = useRef<HTMLButtonElement>(null)
@@ -214,6 +215,7 @@ export default function IncomePage() {
       window.history.replaceState({}, '')
     }
     if (state.recurringFilter) {
+      if (state.recurringFilter === 'recurring' || state.recurringFilter === 'non-recurring') setRecurringFilter([state.recurringFilter])
       window.history.replaceState({}, '')
     }
   }, [location.state, categories])
@@ -227,8 +229,7 @@ export default function IncomePage() {
   const filteredIncomes = incomes.filter(inc => {
     if (isDeletePending(inc.id)) return false
     if (search && !inc.description.toLowerCase().includes(search.toLowerCase())) return false
-    if (recurringFilter === 'recurring' && !inc.isRecurring) return false
-    if (recurringFilter === 'non-recurring' && inc.isRecurring) return false
+    if (!recurringFilter.includes(inc.isRecurring ? 'recurring' : 'non-recurring')) return false
     if (filterCategories.length > 0) {
       const none = filterCategories.includes(-1)
       const ids = filterCategories.filter(x => x !== -1)
@@ -572,29 +573,37 @@ export default function IncomePage() {
         <>
           <SearchInput value={search} onChange={setSearch} />
           <FilterGroup
-            activeCount={(recurringFilter !== 'all' ? 1 : 0) + (filterCategories.length > 0 ? 1 : 0) + (filterSubcategories.length > 0 ? 1 : 0) + (filterTags.length > 0 ? 1 : 0)}
-            onClear={() => { setRecurringFilter('all'); setFilterCategories([]); setFilterSubcategories([]); setFilterTags([]) }}
+            activeCount={(recurringFilter.length < INCOME_TYPE_FILTERS.length ? 1 : 0) + (filterCategories.length > 0 ? 1 : 0) + (filterSubcategories.length > 0 ? 1 : 0) + (filterTags.length > 0 ? 1 : 0)}
+            onClear={() => { setRecurringFilter([...INCOME_TYPE_FILTERS]); setFilterCategories([]); setFilterSubcategories([]); setFilterTags([]) }}
             primaryCount={1}
           >
             <div className="relative">
-              <button ref={recurringBtnRef} type="button" title={t('income.recurring')}
+              <button ref={recurringBtnRef} type="button" title={t('tileFields.type')}
                 onClick={() => setShowRecurringMenu(f => !f)}
-                className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border border-input hover:bg-accent transition-colors">
-                {recurringFilter === 'all' ? t('filters.allRecurring') : recurringFilter === 'recurring' ? t('filters.recurringOnly') : t('filters.nonRecurringOnly')}
+                className={`inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border transition-colors ${
+                  recurringFilter.length < INCOME_TYPE_FILTERS.length
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-transparent text-foreground border-input hover:bg-accent'
+                }`}>
+                <Layers size={11} />
+                <span data-filter-label>{t('tileFields.type')}</span>
+                {recurringFilter.length < INCOME_TYPE_FILTERS.length && (
+                  <span className="bg-primary-foreground text-primary text-[10px] rounded-full h-4 min-w-[16px] flex items-center justify-center font-bold">{recurringFilter.length}</span>
+                )}
                 <ChevronDown size={12} className="text-muted-foreground" />
               </button>
               {showRecurringMenu && (
-                <SimpleDropdown
+                <FilterDropdown
                   anchorRef={recurringBtnRef}
                   dropRef={recurringDropRef}
-                  options={[
-                    { key: 'all', label: t('filters.allRecurring') },
-                    { key: 'recurring', label: t('filters.recurringOnly') },
-                    { key: 'non-recurring', label: t('filters.nonRecurringOnly') }
-                  ]}
-                  current={recurringFilter}
-                  onChange={v => { setRecurringFilter(v as RecurringFilter); setShowRecurringMenu(false) }}
                   onClose={() => setShowRecurringMenu(false)}
+                  items={[
+                    { id: 'recurring', name: t('filters.recurringOnly'), color: '#22c55e' },
+                    { id: 'non-recurring', name: t('filters.nonRecurringOnly'), color: '#6b7280' }
+                  ]}
+                  selected={recurringFilter}
+                  onToggle={id => setRecurringFilter(current => current.includes(id) ? (current.length === 1 ? current : current.filter(type => type !== id)) : [...current, id])}
+                  searchable={false}
                 />
               )}
             </div>
