@@ -98,7 +98,7 @@ export function SectionLayout({
 
   /* ═══ FULL PAGE VARIANT ═══ */
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-32">
       {/* Header Card */}
       <Card className="p-0 overflow-hidden">
         <div className="flex min-h-[66px] flex-col xl:flex-row xl:items-stretch">

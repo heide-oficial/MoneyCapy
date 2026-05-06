@@ -48,8 +48,8 @@ function stop(event: MouseEvent) {
 
 function getTooltipPosition(target: HTMLElement): TooltipPosition {
   const rect = target.getBoundingClientRect()
-  const tooltipWidth = 352
-  const estimatedTooltipHeight = 240
+  const tooltipWidth = 448
+  const estimatedTooltipHeight = 320
   const margin = 12
   const left = Math.min(
     Math.max(rect.right - tooltipWidth, margin),
@@ -104,6 +104,7 @@ export function IncomeTile({
 
   const toggleReceived = (event: MouseEvent) => {
     stop(event)
+    if (activeInterruption) return
     onToggleReceived(income.id)
   }
 
@@ -150,8 +151,9 @@ export function IncomeTile({
         <button
           type="button"
           onClick={toggleReceived}
-          className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-accent"
-          title={income.isReceived ? t('items.markNotReceived') : t('items.markReceived')}
+          disabled={!!activeInterruption}
+          className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors ${activeInterruption ? 'cursor-not-allowed opacity-60' : 'hover:bg-accent'}`}
+          title={activeInterruption ? t('items.interrupted') : income.isReceived ? t('items.markNotReceived') : t('items.markReceived')}
         >
           {income.isReceived
             ? <CheckCircle size={24} className="text-primary" />
@@ -189,14 +191,16 @@ export function IncomeTile({
                     <Info size={16} />
                   </button>
                   {infoOpen && tooltipPosition && typeof document !== 'undefined' && createPortal(
-                    <div onClick={stop} className="tile-card-tooltip fixed z-[9999] max-h-[calc(100vh-1.5rem)] w-[22rem] overflow-y-auto rounded-lg border border-border p-3 text-left text-xs text-card-foreground opacity-100" style={tooltipPosition}>
+                    <div onClick={stop} className="tile-card-tooltip fixed max-h-[calc(100vh-1.5rem)] w-[28rem] overflow-y-auto rounded-lg border border-border p-3 text-left text-xs text-card-foreground opacity-100" style={tooltipPosition}>
                       <p className="font-semibold text-foreground">{t('items.cardInfo')}</p>
                       <dl className="mt-2 space-y-1.5">
                         {tooltipRows.map(row => (
-                          <div key={row.label} className="grid grid-cols-[16px_104px_minmax(0,1fr)] gap-2">
+                          <div key={row.label} className="grid grid-cols-[16px_minmax(0,1fr)] gap-2">
                             <row.icon size={14} className="mt-0.5 text-muted-foreground" />
-                            <dt className="text-muted-foreground">{row.label}:</dt>
-                            <dd className="min-w-0 text-foreground">{row.value}</dd>
+                            <div className="min-w-0">
+                              <dt className="text-muted-foreground">{row.label}:</dt>
+                              <dd className="min-w-0 whitespace-normal break-words text-foreground leading-snug">{row.value}</dd>
+                            </div>
                           </div>
                         ))}
                       </dl>

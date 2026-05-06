@@ -130,9 +130,10 @@
 }
 
 .tile-card-tooltip {
-  background-color: hsl(var(--card));
-  box-shadow: 0 24px 60px rgb(0 0 0 / 0.45), 0 0 0 1px hsl(var(--border));
+  background: hsl(var(--card)) !important;
+  box-shadow: 0 24px 60px rgb(0 0 0 / 0.55), 0 0 0 1px hsl(var(--border));
   isolation: isolate;
+  z-index: 2147483647;
 }
 
 @media (prefers-reduced-motion: reduce) {
