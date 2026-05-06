@@ -11,6 +11,7 @@ import { CurrencyMonthNavigator } from '../../components/ui/CurrencyMonthNavigat
 import { SectionLayout } from '../../components/layout/SectionLayout'
 import { formatCurrency } from '../../lib/currency'
 import { useFormatDate } from '../../lib/date'
+import { getActiveInterruption } from '../../lib/interruptions'
 import { usePageMonth } from '../../contexts/DefaultMonthContext'
 import {
   Plus, ChevronDown, Check, Filter, Receipt, Download,
@@ -350,7 +351,11 @@ export default function ItemsPage() {
       if (search && !item.description.toLowerCase().includes(search.toLowerCase())) return false
       return true
     })
-    return sortItems(result, sortMode, month)
+    const sorted = sortItems(result, sortMode, month)
+    return [
+      ...sorted.filter(item => !getActiveInterruption(item.interruptions, month)),
+      ...sorted.filter(item => getActiveInterruption(item.interruptions, month))
+    ]
   })()
 
   const getItemMonthlyValue = (i: SectionItem) => {
@@ -374,7 +379,9 @@ export default function ItemsPage() {
     return (i.type === 'subscription' ? (i.effectiveValue ?? i.value) : i.value) * rate
   }
 
-  const total = filteredAndSortedItems.filter(i => i.isActive).reduce((s, i) => s + getItemMonthlyValue(i), 0)
+  const total = filteredAndSortedItems
+    .filter(i => i.isActive && !getActiveInterruption(i.interruptions, month))
+    .reduce((s, i) => s + getItemMonthlyValue(i), 0)
   const csvColumns: CsvColumn<SectionItem>[] = [
     { id: 'description', label: t('csvExport.columns.description'), value: i => i.description },
     { id: 'type', label: t('csvExport.columns.type'), value: i => t(`itemTypes.${i.type}`) },
@@ -717,11 +724,12 @@ export default function ItemsPage() {
   }
 
   const interruptionPreview = (() => {
+    const pausedFrom = addMonthsForInterruption(month, 1)
     const pausedUntil = addMonthsForInterruption(month, interruptMonths)
     const resumeMonth = addMonthsForInterruption(month, interruptMonths + 1)
     return t('items.interruptionPreview', {
       count: String(interruptMonths),
-      startMonth: fmtMonth(month),
+      startMonth: fmtMonth(pausedFrom),
       endMonth: fmtMonth(pausedUntil),
       resumeMonth: fmtMonth(resumeMonth)
     })

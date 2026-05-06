@@ -116,9 +116,6 @@ export class SectionItemsRepository {
 
     const interruptions = this.getInterruptions(item.id)
 
-    // Check if month falls inside any pause gap
-    if (this.isMonthPaused(interruptions, month)) return false
-
     // If has end_month (not from interruption), check it
     if (item.end_month) return monthLte(month, item.end_month)
 
@@ -137,9 +134,6 @@ export class SectionItemsRepository {
     }
 
     const interruptions = this.getInterruptions(item.id)
-
-    // Check if month falls inside any pause gap
-    if (this.isMonthPaused(interruptions, month)) return false
 
     // Calculate total pause gap for completed interruptions
     const totalPauseGap = this.calcTotalPauseGap(interruptions, month)
@@ -265,9 +259,6 @@ export class SectionItemsRepository {
 
         const interruptions = this.getInterruptions(item.id)
 
-        // Check if month falls inside any pause gap
-        if (this.isMonthPaused(interruptions, month)) return false
-
         const totalPauseGap = this.calcTotalPauseGap(interruptions, month)
 
         const installments = item._card_installments || 0
@@ -383,6 +374,7 @@ export class SectionItemsRepository {
     let total = 0
     for (const item of items as any[]) {
       if (item.is_active !== 1) continue
+      if (this.isMonthPaused(this.getInterruptions(item.id), month)) continue
       const monthlyActive = this.db.prepare(
         'SELECT is_active FROM item_monthly_status WHERE item_id = ? AND month = ?'
       ).get(item.id, month) as any

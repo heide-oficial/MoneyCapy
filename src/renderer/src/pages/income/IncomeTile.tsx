@@ -1,4 +1,4 @@
-import { useEffect, useId, useState, type CSSProperties, type MouseEvent } from 'react'
+import { useState, type CSSProperties, type MouseEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { formatCurrency, formatCurrencyWith } from '../../lib/currency'
 import { useFormatDate } from '../../lib/date'
@@ -8,10 +8,12 @@ import { useDimPaid } from '../../contexts/DimPaidContext'
 import { useTileFields } from '../../contexts/TileFieldsContext'
 import { useTranslation } from '../../contexts/LanguageContext'
 import {
-  CheckCircle, Circle, CreditCard, Info, Settings
+  CalendarClock, CheckCircle, Circle, Info, Layers, PauseCircle,
+  Settings, Store, Tags, type LucideIcon
 } from 'lucide-react'
 import { Card } from '../../components/ui/Card'
 import { CurrencyTooltip } from '../../components/ui/CurrencyTooltip'
+import { formatInterruptionSummary, getActiveInterruption } from '../../lib/interruptions'
 import type { IncomeRecord } from '../../types/entities'
 
 interface IncomeTileProps {
@@ -29,6 +31,7 @@ interface IncomeTileProps {
 }
 
 interface TooltipRow {
+  icon: LucideIcon
   label: string
   value: string
 }
@@ -39,19 +42,13 @@ interface TooltipPosition {
   bottom?: number
 }
 
-function previousMonth(month: string) {
-  const [year, monthNumber] = month.split('-').map(Number)
-  const date = new Date(year, monthNumber - 2, 1)
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-}
-
 function stop(event: MouseEvent) {
   event.stopPropagation()
 }
 
 function getTooltipPosition(target: HTMLElement): TooltipPosition {
   const rect = target.getBoundingClientRect()
-  const tooltipWidth = 288
+  const tooltipWidth = 352
   const estimatedTooltipHeight = 240
   const margin = 12
   const left = Math.min(
@@ -66,12 +63,6 @@ function getTooltipPosition(target: HTMLElement): TooltipPosition {
   return { left, top: rect.bottom + 8 }
 }
 
-const TILE_EXPAND_EVENT = 'moneycapy:tile-expanded'
-
-function announceExpandedTile(key: string) {
-  window.dispatchEvent(new CustomEvent(TILE_EXPAND_EVENT, { detail: key }))
-}
-
 export function IncomeTile({
   income, month, fieldsPage = 'income', styleScope = 'income', receitasStyle,
   onEdit, onToggleReceived
@@ -81,8 +72,6 @@ export function IncomeTile({
   const { businessDayConfig } = useBusinessDayConfig()
   const { dimPaid } = useDimPaid()
   const { receitasFields } = useTileFields(fieldsPage)
-  const tileInstanceId = useId()
-  const [expanded, setExpanded] = useState(false)
   const [infoOpen, setInfoOpen] = useState(false)
   const [tooltipPosition, setTooltipPosition] = useState<TooltipPosition | null>(null)
   const [mYear, mMonth] = month.split('-').map(Number)
@@ -93,29 +82,24 @@ export function IncomeTile({
   const fmtBase = (value: number) => formatCurrency(value * snap)
   const categoryLabel = income.categoryName ? `${income.categoryName}${income.subcategoryName ? `/${income.subcategoryName}` : ''}` : t('items.noCategoryDefined')
   const typeText = income.isRecurring ? t('income.recurring') : t('income.nonRecurring')
-  const receivingDayText = formatDayLabelResolved(income.dueDay ?? null, income.dueDayType || null, t('income.receivingDay'), mYear, mMonth, businessDayConfig)
+  const receivingDayLabel = income.isRecurring ? t('income.receivingDay') : t('income.receivedDay')
+  const receivingDayText = formatDayLabelResolved(income.dueDay ?? null, income.dueDayType || null, receivingDayLabel, mYear, mMonth, businessDayConfig)
 
-  const activeInterruption = income.interruptions?.find(interruption => {
-    if (interruption.resumeMonth) return month >= interruption.endMonth && month < interruption.resumeMonth
-    return month >= interruption.endMonth
-  })
-  const interruptionSummary = activeInterruption
-    ? activeInterruption.resumeMonth
-      ? t('items.interruptionRange', { start: fmtMonth(activeInterruption.endMonth), end: fmtMonth(previousMonth(activeInterruption.resumeMonth)) })
-      : t('items.interruptedPermanentlySince', { start: fmtMonth(activeInterruption.endMonth) })
-    : t('items.notInterrupted')
+  const activeInterruption = getActiveInterruption(income.interruptions, month)
+  const interruptionSummary = formatInterruptionSummary(activeInterruption, fmtMonth, t)
 
   const tagsSummary = income.tags && income.tags.length > 0 ? income.tags.map(tag => tag.name).join(', ') : t('items.noTags')
   const statusSummary = income.isReceived
     ? (income.receivedAt ? t('items.receivedAt', { date: fmtDate(income.receivedAt) }) : t('items.received'))
     : t('income.notReceivedYet')
   const tooltipRows: TooltipRow[] = [
-    { label: t('tileFields.type'), value: typeText },
-    receivingDayText ? { label: t('income.receivingDay'), value: receivingDayText } : null,
-    income.storeName ? { label: t('tileFields.store'), value: income.storeName } : null,
-    { label: t('itemsForm.tags'), value: tagsSummary },
-    { label: t('itemsForm.status'), value: statusSummary },
-    { label: t('items.interruptions'), value: interruptionSummary }
+    { icon: Layers, label: t('tileFields.type'), value: typeText },
+    receivingDayText ? { icon: CalendarClock, label: receivingDayLabel, value: receivingDayText } : null,
+    income.storeName ? { icon: Store, label: t('tileFields.store'), value: income.storeName } : null,
+    { icon: CheckCircle, label: t('itemsForm.status'), value: income.isReceived ? t('items.received') : t('items.notReceived') },
+    { icon: CalendarClock, label: t('income.receivedDate'), value: statusSummary },
+    { icon: PauseCircle, label: t('items.interruptions'), value: interruptionSummary },
+    { icon: Tags, label: t('itemsForm.tags'), value: tagsSummary }
   ].filter(Boolean) as TooltipRow[]
 
   const toggleReceived = (event: MouseEvent) => {
@@ -139,23 +123,6 @@ export function IncomeTile({
     setInfoOpen(value => !value)
   }
 
-  const toggleExpanded = () => {
-    setExpanded(value => {
-      const next = !value
-      if (next) announceExpandedTile(tileInstanceId)
-      return next
-    })
-  }
-
-  useEffect(() => {
-    const closeOtherExpandedTiles = (event: Event) => {
-      const selectedKey = (event as CustomEvent<string>).detail
-      if (selectedKey !== tileInstanceId) setExpanded(false)
-    }
-    window.addEventListener(TILE_EXPAND_EVENT, closeOtherExpandedTiles)
-    return () => window.removeEventListener(TILE_EXPAND_EVENT, closeOtherExpandedTiles)
-  }, [tileInstanceId])
-
   const renderValue = () => (
     isForeign ? (
       <CurrencyTooltip label={fmtBase(income.effectiveValue)}>
@@ -169,29 +136,15 @@ export function IncomeTile({
       </span>
     )
   )
+  const cardDimClass = !infoOpen && activeInterruption
+    ? 'opacity-50 hover:opacity-100'
+    : !infoOpen && income.isReceived && dimPaid
+      ? 'opacity-60 hover:opacity-100'
+      : 'hover:shadow-md'
 
   return (
-    <>
-    {expanded && (
-      <div
-        aria-hidden="true"
-        className="tile-card-backdrop fixed inset-0 z-40 bg-black/60 backdrop-blur-[1px]"
-        onClick={() => setExpanded(false)}
-      />
-    )}
     <Card
-      tabIndex={0}
-      onClick={toggleExpanded}
-      onKeyDown={event => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault()
-          toggleExpanded()
-        }
-        if (event.key === 'Escape') {
-          setExpanded(false)
-        }
-      }}
-      className={`group relative overflow-visible cursor-pointer transition-all duration-200 ease-out ${expanded ? 'z-50 rounded-b-none border-b-0 shadow-2xl' : ''} ${!infoOpen && income.isReceived && dimPaid ? 'opacity-60 hover:opacity-100' : 'hover:shadow-md'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+      className={`group relative overflow-visible transition-all duration-200 ease-out ${cardDimClass}`}
     >
       <div className="relative z-20 flex items-center gap-3 px-3 py-3 sm:px-4">
         <button
@@ -236,11 +189,12 @@ export function IncomeTile({
                     <Info size={16} />
                   </button>
                   {infoOpen && tooltipPosition && typeof document !== 'undefined' && createPortal(
-                    <div onClick={stop} className="tile-card-tooltip fixed z-[9999] max-h-[calc(100vh-1.5rem)] w-72 overflow-y-auto rounded-lg border border-border p-3 text-left text-xs text-card-foreground opacity-100" style={tooltipPosition}>
+                    <div onClick={stop} className="tile-card-tooltip fixed z-[9999] max-h-[calc(100vh-1.5rem)] w-[22rem] overflow-y-auto rounded-lg border border-border p-3 text-left text-xs text-card-foreground opacity-100" style={tooltipPosition}>
                       <p className="font-semibold text-foreground">{t('items.cardInfo')}</p>
                       <dl className="mt-2 space-y-1.5">
                         {tooltipRows.map(row => (
-                          <div key={row.label} className="grid grid-cols-[88px_minmax(0,1fr)] gap-2">
+                          <div key={row.label} className="grid grid-cols-[16px_104px_minmax(0,1fr)] gap-2">
+                            <row.icon size={14} className="mt-0.5 text-muted-foreground" />
                             <dt className="text-muted-foreground">{row.label}:</dt>
                             <dd className="min-w-0 text-foreground">{row.value}</dd>
                           </div>
@@ -264,18 +218,6 @@ export function IncomeTile({
 
         </div>
       </div>
-
-      {expanded && (
-      <div className="tile-card-panel absolute -left-px -right-px top-full z-10 -mt-px rounded-b-lg border border-t-0 border-border px-4 pb-4 pt-3 shadow-2xl" onClick={stop}>
-        <div className="overflow-hidden rounded-lg border border-border/70 bg-background/20">
-          <div className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
-            <CreditCard size={14} className="shrink-0 opacity-70" />
-            {t('items.noLinkedCard')}
-          </div>
-        </div>
-      </div>
-      )}
     </Card>
-    </>
   )
 }

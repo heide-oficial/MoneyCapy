@@ -18,6 +18,7 @@ import { useColumnsPicker } from '../../components/ui/ColumnsPickerDropdown'
 import { TileFieldsPickerButton } from '../../components/ui/TileFieldsPickerButton'
 import { formatCurrency } from '../../lib/currency'
 import { PRESET_COLORS } from '../../lib/constants'
+import { getActiveInterruption } from '../../lib/interruptions'
 import { usePageMonth } from '../../contexts/DefaultMonthContext'
 import { useActivePerson } from '../../contexts/ActivePersonContext'
 import { useColorMode } from '../../contexts/ColorModeContext'
@@ -345,14 +346,16 @@ export default function SubcategoriesPage() {
 
   const allFilteredItems = groups.flatMap(group => group.items)
   const allFilteredIncomes = groups.flatMap(group => group.incomes)
-  const expenseTotal = allFilteredItems.filter(item => item.isActive).reduce((sum, item) => {
+  const expenseTotal = allFilteredItems.filter(item => item.isActive && !getActiveInterruption(item.interruptions, month)).reduce((sum, item) => {
     const rate = item.exchangeRateSnapshot || 1
     if ((item.type === 'installment' || item.type === 'emprestimo') && item.totalInstallments) {
       return sum + Math.round((item.value / item.totalInstallments) * 100) / 100 * rate
     }
     return sum + item.value * rate
   }, 0)
-  const incomeTotal = allFilteredIncomes.reduce((sum, income) => sum + income.effectiveValue * (income.exchangeRateSnapshot || 1), 0)
+  const incomeTotal = allFilteredIncomes
+    .filter(income => !getActiveInterruption(income.interruptions, month))
+    .reduce((sum, income) => sum + income.effectiveValue * (income.exchangeRateSnapshot || 1), 0)
   const paidCount = allFilteredItems.filter(item => item.isPaid).length
   const receivedCount = allFilteredIncomes.filter(income => income.isReceived).length
   const expenseStat = {

@@ -14,6 +14,7 @@ import { useColumnsPicker } from '../../components/ui/ColumnsPickerDropdown'
 import { formatCurrency } from '../../lib/currency'
 import { getItemCardLabels, formatCardLabel } from '../../lib/card-utils'
 import { getCurrentMonth, useFormatDate } from '../../lib/date'
+import { getActiveInterruption } from '../../lib/interruptions'
 import { usePageMonth } from '../../contexts/DefaultMonthContext'
 import {
   Tags, Plus, Pencil, Trash2, CheckCircle, Circle,
@@ -403,7 +404,7 @@ export default function CategoriesPage() {
   }
 
   const computeGroupTotal = (groupItems: SectionItem[]) =>
-    groupItems.filter(i => i.isActive).reduce((s, i) => {
+    groupItems.filter(i => i.isActive && !getActiveInterruption(i.interruptions, month)).reduce((s, i) => {
       const rate = i.exchangeRateSnapshot || 1.0
       if ((i.type === 'installment' || i.type === 'emprestimo') && i.totalInstallments) {
         if (i.cardSplits && i.cardSplits.length > 0) {
@@ -415,7 +416,7 @@ export default function CategoriesPage() {
     }, 0)
 
   const computeIncomeTotal = (incs: IncomeRecord[]) =>
-    incs.reduce((s, i) => s + i.effectiveValue * (i.exchangeRateSnapshot || 1.0), 0)
+    incs.filter(i => !getActiveInterruption(i.interruptions, month)).reduce((s, i) => s + i.effectiveValue * (i.exchangeRateSnapshot || 1.0), 0)
 
   const allFilteredItems = groups.flatMap(g => g.items)
   const allFilteredIncomes = groups.flatMap(g => g.incomes)

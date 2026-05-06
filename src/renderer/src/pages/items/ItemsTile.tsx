@@ -10,10 +10,13 @@ import { useTileFields } from '../../contexts/TileFieldsContext'
 import { useTranslation } from '../../contexts/LanguageContext'
 import {
   CheckCircle, Circle,
-  CreditCard, Info, Settings
+  Bookmark, CalendarClock, CalendarDays, CreditCard, DollarSign,
+  Info, Layers, PauseCircle, Percent, Settings, Store, Tags,
+  type LucideIcon
 } from 'lucide-react'
 import { Card } from '../../components/ui/Card'
 import { CurrencyTooltip } from '../../components/ui/CurrencyTooltip'
+import { formatInterruptionSummary, getActiveInterruption } from '../../lib/interruptions'
 import type { SectionItem } from '../../types/entities'
 
 interface ItemsTileProps {
@@ -41,6 +44,7 @@ interface CardDetailRow {
 }
 
 interface TooltipRow {
+  icon: LucideIcon
   label: string
   value: string
 }
@@ -51,19 +55,13 @@ interface TooltipPosition {
   bottom?: number
 }
 
-function previousMonth(month: string) {
-  const [year, monthNumber] = month.split('-').map(Number)
-  const date = new Date(year, monthNumber - 2, 1)
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-}
-
 function stop(event: MouseEvent) {
   event.stopPropagation()
 }
 
 function getTooltipPosition(target: HTMLElement): TooltipPosition {
   const rect = target.getBoundingClientRect()
-  const tooltipWidth = 288
+  const tooltipWidth = 352
   const estimatedTooltipHeight = 270
   const margin = 12
   const left = Math.min(
@@ -179,15 +177,8 @@ export function ItemsTile({
     })
   }
 
-  const activeInterruption = item.interruptions?.find(interruption => {
-    if (interruption.resumeMonth) return month >= interruption.endMonth && month < interruption.resumeMonth
-    return month >= interruption.endMonth
-  })
-  const interruptionSummary = activeInterruption
-    ? activeInterruption.resumeMonth
-      ? t('items.interruptionRange', { start: fmtMonth(activeInterruption.endMonth), end: fmtMonth(previousMonth(activeInterruption.resumeMonth)) })
-      : t('items.interruptedPermanentlySince', { start: fmtMonth(activeInterruption.endMonth) })
-    : t('items.notInterrupted')
+  const activeInterruption = getActiveInterruption(item.interruptions, month)
+  const interruptionSummary = formatInterruptionSummary(activeInterruption, fmtMonth, t)
 
   const tagsSummary = item.tags && item.tags.length > 0 ? item.tags.map(tag => tag.name).join(', ') : t('items.noTags')
   const statusSummary = item.isPaid
@@ -202,16 +193,16 @@ export function ItemsTile({
     !item.isActive ? t('common.disabled') : ''
   ].filter(Boolean)
   const tooltipRows: TooltipRow[] = [
-    { label: t('tileFields.type'), value: typeText },
-    billingDayText ? { label: t('items.billingDayLabel'), value: billingDayText } : null,
-    dueDayText ? { label: t('items.dueDayLabel'), value: dueDayText } : null,
-    item.storeName ? { label: t('tileFields.store'), value: item.storeName } : null,
-    item.interestRate && item.interestRate > 0 ? { label: t('tileFields.interestRate'), value: `${item.interestRate}%` } : null,
-    item.type === 'emprestimo' && item.baseValue && item.baseValue > 0 ? { label: t('items.baseValue', { value: '' }).replace(': ', '').trim(), value: fmtVal(item.baseValue) } : null,
-    statusBadges.length > 0 ? { label: t('items.summaryLabel'), value: statusBadges.join(', ') } : null,
-    { label: t('itemsForm.tags'), value: tagsSummary },
-    { label: t('itemsForm.status'), value: statusSummary },
-    { label: t('items.interruptions'), value: interruptionSummary }
+    { icon: Layers, label: t('tileFields.type'), value: typeText },
+    billingDayText ? { icon: CalendarClock, label: t('items.billingDayLabel'), value: billingDayText } : null,
+    dueDayText ? { icon: CalendarDays, label: t('items.dueDayLabel'), value: dueDayText } : null,
+    item.storeName ? { icon: Store, label: t('tileFields.store'), value: item.storeName } : null,
+    item.interestRate && item.interestRate > 0 ? { icon: Percent, label: t('tileFields.interestRate'), value: `${item.interestRate}%` } : null,
+    item.type === 'emprestimo' && item.baseValue && item.baseValue > 0 ? { icon: DollarSign, label: t('items.baseValue', { value: '' }).replace(': ', '').trim(), value: fmtVal(item.baseValue) } : null,
+    statusBadges.length > 0 ? { icon: Bookmark, label: t('items.summaryLabel'), value: statusBadges.join(', ') } : null,
+    { icon: CheckCircle, label: t('itemsForm.status'), value: statusSummary },
+    { icon: PauseCircle, label: t('items.interruptions'), value: interruptionSummary },
+    { icon: Tags, label: t('itemsForm.tags'), value: tagsSummary }
   ].filter(Boolean) as TooltipRow[]
 
   const togglePaid = (event: MouseEvent) => {
@@ -265,6 +256,13 @@ export function ItemsTile({
       </span>
     )
   )
+  const cardDimClass = !infoOpen && activeInterruption && !expanded
+    ? 'opacity-50 hover:opacity-100'
+    : !infoOpen && !item.isActive && dimPaid
+      ? 'opacity-60 hover:opacity-100'
+      : !infoOpen && item.isPaid && dimPaid
+        ? 'opacity-60 hover:opacity-100'
+        : 'hover:shadow-md'
 
   return (
     <>
@@ -287,7 +285,7 @@ export function ItemsTile({
           setExpanded(false)
         }
       }}
-      className={`group relative overflow-visible cursor-pointer transition-all duration-200 ease-out ${expanded ? 'z-50 rounded-b-none border-b-0 shadow-2xl' : ''} ${!infoOpen && !item.isActive && dimPaid ? 'opacity-60 hover:opacity-100' : ''} ${!infoOpen && item.isPaid && dimPaid ? 'opacity-60 hover:opacity-100' : 'hover:shadow-md'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+      className={`group relative overflow-visible cursor-pointer transition-all duration-200 ease-out ${expanded ? 'z-50 rounded-b-none border-b-0 shadow-2xl' : ''} ${cardDimClass} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
     >
       {!item.isActive && (
         <div className="absolute inset-0 z-[1] pointer-events-none select-none rounded-lg" style={{ backgroundImage: 'repeating-linear-gradient(135deg, transparent, transparent 8px, hsl(var(--muted)) 8px, hsl(var(--muted)) 9px)', opacity: 0.3 }} />
@@ -338,11 +336,12 @@ export function ItemsTile({
                     <Info size={16} />
                   </button>
                   {infoOpen && tooltipPosition && typeof document !== 'undefined' && createPortal(
-                    <div onClick={stop} className="tile-card-tooltip fixed z-[9999] max-h-[calc(100vh-1.5rem)] w-72 overflow-y-auto rounded-lg border border-border p-3 text-left text-xs text-card-foreground opacity-100" style={tooltipPosition}>
+                    <div onClick={stop} className="tile-card-tooltip fixed z-[9999] max-h-[calc(100vh-1.5rem)] w-[22rem] overflow-y-auto rounded-lg border border-border p-3 text-left text-xs text-card-foreground opacity-100" style={tooltipPosition}>
                       <p className="font-semibold text-foreground">{t('items.cardInfo')}</p>
                       <dl className="mt-2 space-y-1.5">
                         {tooltipRows.map(row => (
-                          <div key={row.label} className="grid grid-cols-[88px_minmax(0,1fr)] gap-2">
+                          <div key={row.label} className="grid grid-cols-[16px_104px_minmax(0,1fr)] gap-2">
+                            <row.icon size={14} className="mt-0.5 text-muted-foreground" />
                             <dt className="text-muted-foreground">{row.label}:</dt>
                             <dd className="min-w-0 text-foreground">{row.value}</dd>
                           </div>

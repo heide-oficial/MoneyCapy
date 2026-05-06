@@ -15,6 +15,7 @@ import { ColorPicker } from '../../components/ui/ColorPicker'
 import { useTranslation } from '../../contexts/LanguageContext'
 import { toast } from 'sonner'
 import { createNoteBlock, formatNoteBlockDate, parseNoteBlocks, serializeNoteBlocks } from '../../lib/note-blocks'
+import { addMonths } from '../../lib/interruptions'
 
 export interface FormSplit {
   cardId: string
@@ -722,8 +723,8 @@ export function ItemsForm({
                     <div key={int.id} className="flex items-center justify-between gap-3 rounded-md border border-border/60 bg-muted/20 px-3 py-2 text-sm">
                       <span>
                         {int.resumeMonth
-                          ? t('itemsForm.pausedAt', { startMonth: fmtMonth(int.endMonth), resumeMonth: fmtMonth(int.resumeMonth) })
-                          : t('itemsForm.interruptedPermanently', { endMonth: fmtMonth(int.endMonth) })}
+                          ? t('itemsForm.pausedAt', { startMonth: fmtMonth(addMonths(int.endMonth, 1)), resumeMonth: fmtMonth(int.resumeMonth) })
+                          : t('itemsForm.interruptedPermanently', { endMonth: fmtMonth(addMonths(int.endMonth, 1)) })}
                       </span>
                       <Button size="sm" variant="ghost" onClick={() => { handleReactivate(int.id); onClose() }}>
                         <Undo2 size={12} /> {t('common.undo')}

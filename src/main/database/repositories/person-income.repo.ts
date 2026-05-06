@@ -30,11 +30,6 @@ export class PersonIncomeRepository {
     // If has end_month, check it
     if (income.end_month && !monthLte(month, income.end_month)) return false
 
-    const interruptions = this.getIncomeInterruptions(income.id)
-
-    // Check if month falls inside any pause gap
-    if (this.isMonthPaused(interruptions, month)) return false
-
     return true
   }
 
@@ -171,6 +166,7 @@ export class PersonIncomeRepository {
     const incomes = this.findByPersonAndMonth(personId, month) as any[]
     let total = 0
     for (const inc of incomes) {
+      if (this.isMonthPaused(this.getIncomeInterruptions(inc.id), month)) continue
       total += this.getEffectiveValue(inc, month) * (inc.exchange_rate_snapshot || 1.0)
     }
     return total

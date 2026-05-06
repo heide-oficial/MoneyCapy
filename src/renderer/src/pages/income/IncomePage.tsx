@@ -12,6 +12,7 @@ import { SearchInput } from '../../components/ui/SearchInput'
 import { formatCurrency, formatCurrencyWith } from '../../lib/currency'
 import { useDisplayCurrency } from '../../contexts/DisplayCurrencyContext'
 import { getCurrentMonth, useFormatDate } from '../../lib/date'
+import { addMonths, getActiveInterruption } from '../../lib/interruptions'
 import { usePageMonth } from '../../contexts/DefaultMonthContext'
 import { useActivePerson } from '../../contexts/ActivePersonContext'
 import { useColorSettings } from '../../contexts/ColorSettingsContext'
@@ -192,6 +193,12 @@ export default function IncomePage() {
     if (showForm) requestAnimationFrame(handleModalScroll)
   }, [showForm, incomeTab])
 
+  useEffect(() => {
+    if (!form.isRecurring && (incomeTab === 'interrupcoes' || incomeTab === 'valores')) {
+      setIncomeTab('detalhes')
+    }
+  }, [form.isRecurring, incomeTab])
+
   // Apply category filter from navigation state
   useEffect(() => {
     const state = location.state as any
@@ -243,11 +250,13 @@ export default function IncomePage() {
     return true
   })
 
-  const total = filteredIncomes.reduce((s, i) => s + i.effectiveValue * (i.exchangeRateSnapshot || 1.0), 0)
+  const total = filteredIncomes
+    .filter(i => !getActiveInterruption(i.interruptions, month))
+    .reduce((s, i) => s + i.effectiveValue * (i.exchangeRateSnapshot || 1.0), 0)
   const receivedCount = filteredIncomes.filter(i => i.isReceived).length
   const unreceivedCount = filteredIncomes.length - receivedCount
 
-  const sortedIncomes = [...filteredIncomes].sort((a, b) => {
+  const sortedIncomesBase = [...filteredIncomes].sort((a, b) => {
     switch (sortMode) {
       case 'az': return a.description.localeCompare(b.description)
       case 'za': return b.description.localeCompare(a.description)
@@ -260,6 +269,10 @@ export default function IncomePage() {
       default: return 0
     }
   })
+  const sortedIncomes = [
+    ...sortedIncomesBase.filter(income => !getActiveInterruption(income.interruptions, month)),
+    ...sortedIncomesBase.filter(income => getActiveInterruption(income.interruptions, month))
+  ]
 
   const csvColumns: CsvColumn<Income>[] = [
     { id: 'description', label: t('csvExport.columns.description'), value: i => i.description },
@@ -472,11 +485,12 @@ export default function IncomePage() {
 
   const interruptionMonthsCount = Math.max(1, parseInt(interruptMonths) || 1)
   const interruptionPreview = (() => {
+    const pausedFrom = addMonthsForInterruption(month, 1)
     const pausedUntil = addMonthsForInterruption(month, interruptionMonthsCount)
     const resumeMonth = addMonthsForInterruption(month, interruptionMonthsCount + 1)
     return t('items.interruptionPreview', {
       count: String(interruptionMonthsCount),
-      startMonth: fmtMonth(month),
+      startMonth: fmtMonth(pausedFrom),
       endMonth: fmtMonth(pausedUntil),
       resumeMonth: fmtMonth(resumeMonth)
     })
@@ -755,7 +769,7 @@ export default function IncomePage() {
             {([
               { key: 'detalhes' as const, label: t('itemsForm.tabDetails') },
               ...(editing && form.isRecurring ? [{ key: 'valores' as const, label: t('itemsForm.tabValues') }] : []),
-              ...(editing ? [{ key: 'interrupcoes' as const, label: t('itemsForm.tabInterruptions') }] : []),
+              ...(editing && form.isRecurring ? [{ key: 'interrupcoes' as const, label: t('itemsForm.tabInterruptions') }] : []),
               { key: 'classificacao' as const, label: t('itemsForm.tabClassification') },
               { key: 'observacoes' as const, label: t('itemsForm.tabNotes') }
             ]).map(tab => (
@@ -826,9 +840,9 @@ export default function IncomePage() {
 
                 {/* Seção: Dia de recebimento */}
                 <div className="space-y-2">
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('income.receivingDay')}</h4>
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t(form.isRecurring ? 'income.receivingDay' : 'income.receivedDay')}</h4>
                   <div className="rounded-lg border border-border bg-card p-4">
-                    <DayPicker label={t('income.receivingDay')} day={form.dueDay} dayType={form.dueDayType}
+                    <DayPicker label={t(form.isRecurring ? 'income.receivingDay' : 'income.receivedDay')} day={form.dueDay} dayType={form.dueDayType}
                       onChange={(d, t) => setForm({ ...form, dueDay: d, dueDayType: t })} />
                   </div>
                 </div>
@@ -949,8 +963,8 @@ export default function IncomePage() {
                             <div key={int.id} className="flex items-center justify-between gap-3 rounded-md border border-border/60 bg-muted/20 px-3 py-2 text-sm">
                               <span>
                                 {int.resumeMonth
-                                  ? t('itemsForm.pausedAt', { startMonth: fmtMonth(int.endMonth), resumeMonth: fmtMonth(int.resumeMonth) })
-                                  : t('itemsForm.interruptedPermanently', { endMonth: fmtMonth(int.endMonth) })}
+                                  ? t('itemsForm.pausedAt', { startMonth: fmtMonth(addMonths(int.endMonth, 1)), resumeMonth: fmtMonth(int.resumeMonth) })
+                                  : t('itemsForm.interruptedPermanently', { endMonth: fmtMonth(addMonths(int.endMonth, 1)) })}
                               </span>
                               <Button size="sm" variant="ghost" onClick={() => { handleReactivate(int.id); setShowForm(false) }}>
                                 <Undo2 size={12} /> {t('common.undo')}
