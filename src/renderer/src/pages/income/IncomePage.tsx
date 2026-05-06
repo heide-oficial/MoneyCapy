@@ -32,6 +32,7 @@ import { ROUTES } from '../../lib/constants'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useUndoableDelete } from '../../hooks/useUndoableDelete'
+import { useDefaultSortMode } from '../../hooks/useDefaultSortMode'
 import { ColorPicker } from '../../components/ui/ColorPicker'
 import { useTranslation } from '../../contexts/LanguageContext'
 import { createNoteBlock, formatNoteBlockDate, parseNoteBlocks, serializeNoteBlocks } from '../../lib/note-blocks'
@@ -131,7 +132,17 @@ export default function IncomePage() {
 
   // Month value edit modal
   type IncomeSortMode = 'az' | 'za' | 'value-desc' | 'value-asc' | 'newest' | 'oldest' | 'due-day-asc' | 'due-day-desc'
-  const [sortMode, setSortMode] = useState<IncomeSortMode>('az')
+  const INCOME_SORT_OPTIONS: { key: IncomeSortMode; label: string }[] = [
+    { key: 'az', label: t('sort.azAsc') },
+    { key: 'za', label: t('sort.azDesc') },
+    { key: 'value-desc', label: t('sort.valueDesc') },
+    { key: 'value-asc', label: t('sort.valueAsc') },
+    { key: 'newest', label: t('sort.newest') },
+    { key: 'oldest', label: t('sort.oldest') },
+    { key: 'due-day-asc', label: t('sort.dueDayAsc') },
+    { key: 'due-day-desc', label: t('sort.dueDayDesc') }
+  ]
+  const { sortMode, setSortMode, defaultSortMode, setDefaultSortMode } = useDefaultSortMode<IncomeSortMode>('income', 'az', INCOME_SORT_OPTIONS.map(option => option.key))
   const [showSortMenu, setShowSortMenu] = useState(false)
   const sortBtnRef = useRef<HTMLButtonElement>(null)
   const sortDropRef = useRef<HTMLDivElement>(null)
@@ -712,17 +723,9 @@ export default function IncomePage() {
             </button>
             {showSortMenu && (
               <SimpleDropdown anchorRef={sortBtnRef} dropRef={sortDropRef}
-                options={[
-                  { key: 'az', label: t('sort.azAsc') },
-                  { key: 'za', label: t('sort.azDesc') },
-                  { key: 'value-desc', label: t('sort.valueDesc') },
-                  { key: 'value-asc', label: t('sort.valueAsc') },
-                  { key: 'newest', label: t('sort.newest') },
-                  { key: 'oldest', label: t('sort.oldest') },
-                  { key: 'due-day-asc', label: t('sort.dueDayAsc') },
-                  { key: 'due-day-desc', label: t('sort.dueDayDesc') }
-                ]}
-                current={sortMode} onChange={v => { setSortMode(v as IncomeSortMode); setShowSortMenu(false) }} onClose={() => setShowSortMenu(false)} />
+                options={INCOME_SORT_OPTIONS}
+                current={sortMode} onChange={v => { setSortMode(v as IncomeSortMode); setShowSortMenu(false) }} onClose={() => setShowSortMenu(false)}
+                defaultKey={defaultSortMode} onDefaultChange={v => setDefaultSortMode(v as IncomeSortMode)} defaultTitle={t('sort.setAsDefault')} />
             )}
           </div>
         </>
@@ -1075,9 +1078,18 @@ export default function IncomePage() {
           </div>
 
           {/* Botões */}
-          <div className="flex items-center justify-end gap-2 pt-3 shrink-0">
-            <Button variant="outline" onClick={() => setShowForm(false)}>{t('common.cancel')}</Button>
-            <Button onClick={handleSave}>{editing ? t('common.save') : t('common.create')}</Button>
+          <div className="flex items-center justify-between gap-2 pt-3 shrink-0">
+            <div>
+              {editing && (
+                <Button variant="destructive" onClick={() => { setShowForm(false); requestDelete(editing.id) }}>
+                  {t('common.delete')}
+                </Button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => setShowForm(false)}>{t('common.cancel')}</Button>
+              <Button onClick={handleSave}>{editing ? t('common.save') : t('common.create')}</Button>
+            </div>
           </div>
         </div>
       </Modal>

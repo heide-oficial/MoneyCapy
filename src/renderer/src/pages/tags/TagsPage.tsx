@@ -50,6 +50,7 @@ import type { TagData, SectionItem, IncomeRecord } from '../../types/entities'
 
 type ViewMode = 'all' | 'gastos' | 'receitas'
 import { type ItemSortMode, sortItems, getItemSortOptions, getSortLabelMap } from '../../hooks/useSortItems'
+import { useDefaultSortMode } from '../../hooks/useDefaultSortMode'
 
 export default function TagsPage() {
   const navigate = useNavigate()
@@ -126,7 +127,8 @@ export default function TagsPage() {
   const itemTypeDropRef = useRef<HTMLDivElement>(null)
   const [search, setSearch] = useState('')
   const [hideEmpty, setHideEmpty] = useState(false)
-  const [sortMode, setSortMode] = useState<ItemSortMode>('az')
+  const itemSortOptions = getItemSortOptions(t)
+  const { sortMode, setSortMode, defaultSortMode, setDefaultSortMode } = useDefaultSortMode<ItemSortMode>('tags', 'az', itemSortOptions.map(option => option.key))
   const [showSortMenu, setShowSortMenu] = useState(false)
   const sortBtnRef = useRef<HTMLButtonElement>(null)
   const sortDropRef = useRef<HTMLDivElement>(null)
@@ -1147,8 +1149,9 @@ export default function TagsPage() {
             </button>
             {showSortMenu && (
               <SimpleDropdown anchorRef={sortBtnRef} dropRef={sortDropRef}
-                options={getItemSortOptions(t)}
-                current={sortMode} onChange={v => { setSortMode(v as ItemSortMode); setShowSortMenu(false) }} onClose={() => setShowSortMenu(false)} />
+                options={itemSortOptions}
+                current={sortMode} onChange={v => { setSortMode(v as ItemSortMode); setShowSortMenu(false) }} onClose={() => setShowSortMenu(false)}
+                defaultKey={defaultSortMode} onDefaultChange={v => setDefaultSortMode(v as ItemSortMode)} defaultTitle={t('sort.setAsDefault')} />
             )}
           </div>
         </>

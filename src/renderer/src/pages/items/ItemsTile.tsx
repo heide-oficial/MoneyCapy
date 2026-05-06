@@ -197,16 +197,16 @@ export function ItemsTile({
     !item.isActive ? t('common.disabled') : ''
   ].filter(Boolean)
   const tooltipRows: TooltipRow[] = [
-    { icon: Layers, label: t('tileFields.type'), value: typeText },
-    billingDayText ? { icon: CalendarClock, label: t('items.billingDayLabel'), value: billingDayText } : null,
-    dueDayText ? { icon: CalendarDays, label: t('items.dueDayLabel'), value: dueDayText } : null,
-    item.storeName ? { icon: Store, label: t('tileFields.store'), value: item.storeName } : null,
-    item.interestRate && item.interestRate > 0 ? { icon: Percent, label: t('tileFields.interestRate'), value: `${item.interestRate}%` } : null,
-    item.type === 'emprestimo' && item.baseValue && item.baseValue > 0 ? { icon: DollarSign, label: t('items.baseValue', { value: '' }).replace(': ', '').trim(), value: fmtVal(item.baseValue) } : null,
-    statusBadges.length > 0 ? { icon: Bookmark, label: t('items.summaryLabel'), value: statusBadges.join(', ') } : null,
-    { icon: CheckCircle, label: t('itemsForm.status'), value: statusSummary },
-    { icon: PauseCircle, label: t('items.interruptions'), value: interruptionSummary },
-    { icon: Tags, label: t('itemsForm.tags'), value: tagsSummary }
+    gastosFields.type ? { icon: Layers, label: t('tileFields.type'), value: typeText } : null,
+    gastosFields.billingDay && billingDayText ? { icon: CalendarClock, label: t('items.billingDayLabel'), value: billingDayText } : null,
+    gastosFields.dueDay && dueDayText ? { icon: CalendarDays, label: t('items.dueDayLabel'), value: dueDayText } : null,
+    gastosFields.store && item.storeName ? { icon: Store, label: t('tileFields.store'), value: item.storeName } : null,
+    gastosFields.interestRate && item.interestRate && item.interestRate > 0 ? { icon: Percent, label: t('tileFields.interestRate'), value: `${item.interestRate}%` } : null,
+    gastosFields.baseValue && item.type === 'emprestimo' && item.baseValue && item.baseValue > 0 ? { icon: DollarSign, label: t('items.baseValue', { value: '' }).replace(': ', '').trim(), value: fmtVal(item.baseValue) } : null,
+    gastosFields.summary && statusBadges.length > 0 ? { icon: Bookmark, label: t('items.summaryLabel'), value: statusBadges.join(', ') } : null,
+    gastosFields.status ? { icon: CheckCircle, label: t('itemsForm.status'), value: statusSummary } : null,
+    gastosFields.interruptions ? { icon: PauseCircle, label: t('items.interruptions'), value: interruptionSummary } : null,
+    gastosFields.tags ? { icon: Tags, label: t('itemsForm.tags'), value: tagsSummary } : null
   ].filter(Boolean) as TooltipRow[]
 
   const togglePaid = (event: MouseEvent) => {

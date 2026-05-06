@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronDown } from 'lucide-react'
+import { useTranslation } from '../../contexts/LanguageContext'
 
 interface SelectOption {
   value: string | number
@@ -18,6 +19,8 @@ interface SelectProps {
   disabled?: boolean
   id?: string
   small?: boolean
+  searchable?: boolean
+  searchPlaceholder?: string
 }
 
 export function Select({
@@ -30,19 +33,28 @@ export function Select({
   className = '',
   disabled,
   id,
-  small
+  small,
+  searchable,
+  searchPlaceholder
 }: SelectProps) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
   const triggerRef = useRef<HTMLButtonElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState({ top: 0, left: 0, width: 0, ready: false })
+  const shouldSearch = searchable ?? options.length > 6
+  const normalizedSearch = search.trim().toLowerCase()
+  const filteredOptions = normalizedSearch
+    ? options.filter(option => option.label.toLowerCase().includes(normalizedSearch))
+    : options
 
   // Calculate dropdown position when opening
   useLayoutEffect(() => {
     if (!open || !triggerRef.current) return
     const rect = triggerRef.current.getBoundingClientRect()
     const spaceBelow = window.innerHeight - rect.bottom
-    const dropdownHeight = Math.min((options.length + (placeholder ? 1 : 0)) * 30 + 8, 248)
+    const dropdownHeight = Math.min((options.length + (placeholder ? 1 : 0)) * 30 + (shouldSearch ? 48 : 8), 292)
     const openAbove = spaceBelow < dropdownHeight && rect.top > spaceBelow
 
     setPos({
@@ -51,7 +63,7 @@ export function Select({
       width: rect.width,
       ready: true
     })
-  }, [open, options.length, placeholder])
+  }, [open, options.length, placeholder, shouldSearch])
 
   // Close on click outside or Escape
   useEffect(() => {
@@ -79,12 +91,14 @@ export function Select({
   const handleSelect = (opt: SelectOption) => {
     onChange?.({ target: { value: String(opt.value) } })
     setOpen(false)
+    setSearch('')
   }
 
   const handleClear = () => {
     if (placeholder) {
       onChange?.({ target: { value: '' } })
       setOpen(false)
+      setSearch('')
     }
   }
 
@@ -115,6 +129,17 @@ export function Select({
           className="fixed z-[9999] rounded-md border border-border bg-card shadow-lg"
           style={{ top: pos.top, left: pos.left, minWidth: pos.width, visibility: pos.ready ? 'visible' : 'hidden' }}
         >
+          {shouldSearch && (
+            <div className="p-2 pb-1">
+              <input
+                value={search}
+                onChange={event => setSearch(event.target.value)}
+                placeholder={searchPlaceholder || t('common.search')}
+                className="h-8 w-full rounded-md border border-input bg-muted/30 px-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                autoFocus
+              />
+            </div>
+          )}
           <div className="max-h-60 overflow-y-auto py-1">
             {placeholder && (
               <button
@@ -127,7 +152,11 @@ export function Select({
                 {placeholder}
               </button>
             )}
-            {options.map(opt => (
+            {filteredOptions.length === 0 ? (
+              <p className={`px-3 py-4 text-center ${small ? 'text-xs' : 'text-sm'} text-muted-foreground`}>
+                {t('filters.noOptions')}
+              </p>
+            ) : filteredOptions.map(opt => (
               <button
                 key={opt.value}
                 type="button"

@@ -1,6 +1,6 @@
 import { useState, useEffect, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Check } from 'lucide-react'
+import { Check, Star } from 'lucide-react'
 
 interface SimpleDropdownProps {
   anchorRef: React.RefObject<HTMLButtonElement | null>
@@ -9,9 +9,12 @@ interface SimpleDropdownProps {
   current: string
   onChange: (v: string) => void
   onClose: () => void
+  defaultKey?: string | null
+  onDefaultChange?: (v: string) => void
+  defaultTitle?: string
 }
 
-export function SimpleDropdown({ anchorRef, dropRef, options, current, onChange, onClose }: SimpleDropdownProps) {
+export function SimpleDropdown({ anchorRef, dropRef, options, current, onChange, onClose, defaultKey, onDefaultChange, defaultTitle }: SimpleDropdownProps) {
   const [pos, setPos] = useState({ top: 0, left: 0, ready: false })
 
   useLayoutEffect(() => {
@@ -45,13 +48,36 @@ export function SimpleDropdown({ anchorRef, dropRef, options, current, onChange,
       {options.map(opt => (
         <button key={opt.key} type="button"
           onClick={() => onChange(opt.key)}
-          className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground ${
+          className={`group/drop-option flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground ${
             current === opt.key ? 'text-primary font-medium bg-primary/5' : 'text-card-foreground'
           }`}>
           <span className="flex h-4 w-4 shrink-0 items-center justify-center">
             {current === opt.key && <Check size={12} />}
           </span>
           <span className="min-w-0 flex-1 whitespace-normal break-words">{opt.label}</span>
+          {onDefaultChange && (
+            <span
+              role="button"
+              tabIndex={0}
+              title={defaultTitle}
+              onClick={event => {
+                event.stopPropagation()
+                onDefaultChange(opt.key)
+              }}
+              onKeyDown={event => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  onDefaultChange(opt.key)
+                }
+              }}
+              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded transition-opacity ${
+                defaultKey === opt.key ? 'opacity-100 text-primary' : 'opacity-0 text-muted-foreground group-hover/drop-option:opacity-100 hover:text-primary'
+              }`}
+            >
+              <Star size={13} className={defaultKey === opt.key ? 'fill-primary' : ''} />
+            </span>
+          )}
         </button>
       ))}
     </div>,

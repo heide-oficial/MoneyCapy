@@ -49,6 +49,7 @@ interface BankAccountData { id: number; name: string }
 
 type ViewMode = 'all' | 'gastos' | 'receitas'
 import { type ItemSortMode, sortItems, getItemSortOptions, getSortLabelMap } from '../../hooks/useSortItems'
+import { useDefaultSortMode } from '../../hooks/useDefaultSortMode'
 
 import { PRESET_COLORS } from '../../lib/constants'
 
@@ -119,7 +120,8 @@ export default function StoresPage() {
   const itemTypeDropRef = useRef<HTMLDivElement>(null)
   const [hideEmpty, setHideEmpty] = useState(false)
   const [search, setSearch] = useState('')
-  const [sortMode, setSortMode] = useState<ItemSortMode>('az')
+  const itemSortOptions = getItemSortOptions(t)
+  const { sortMode, setSortMode, defaultSortMode, setDefaultSortMode } = useDefaultSortMode<ItemSortMode>('stores', 'az', itemSortOptions.map(option => option.key))
   const [showSortMenu, setShowSortMenu] = useState(false)
   const sortBtnRef = useRef<HTMLButtonElement>(null)
   const sortDropRef = useRef<HTMLDivElement>(null)
@@ -791,76 +793,81 @@ export default function StoresPage() {
         <>
           <SearchInput value={search} onChange={setSearch} />
 
-          {/* View mode filter */}
-          <div className="relative">
-            <button ref={viewBtnRef} type="button"
-              onClick={() => setShowViewMenu(f => !f)}
-              className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border border-input hover:bg-accent transition-colors">
-              {viewMode === 'all' ? t('filters.expensesAndIncome') : viewMode === 'gastos' ? t('filters.expenses') : t('filters.income')}
-              <ChevronDown size={12} className="text-muted-foreground" />
-            </button>
-            {showViewMenu && (
-              <SimpleDropdown
-                anchorRef={viewBtnRef}
-                dropRef={viewDropRef}
-                options={[
-                  { key: 'all', label: t('filters.expensesAndIncome') },
-                  { key: 'gastos', label: t('filters.expenses') },
-                  { key: 'receitas', label: t('filters.income') }
-                ]}
-                current={viewMode}
-                onChange={v => { setViewMode(v as ViewMode); setFilterItemType('all'); setShowViewMenu(false) }}
-                onClose={() => setShowViewMenu(false)}
-              />
-            )}
-          </div>
-
-          {viewMode !== 'all' && (
-            <div className="relative">
-              <button ref={itemTypeBtnRef} type="button"
-                onClick={() => setShowItemTypeMenu(f => !f)}
-                className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border border-input hover:bg-accent transition-colors">
-                {viewMode === 'gastos'
-                  ? { 'all': t('filters.allTypes'), 'common': t('filters.singles'), 'installment': t('filters.installments'), 'subscription': t('filters.recurring'), 'emprestimo': t('filters.loans') }[filterItemType] || t('filters.allTypes')
-                  : { 'all': t('filters.allTypes'), 'recurring': t('filters.recurringOnly'), 'non-recurring': t('filters.nonRecurringOnly') }[filterItemType] || t('filters.allTypes')
-                }
-                <ChevronDown size={12} className="text-muted-foreground" />
-              </button>
-              {showItemTypeMenu && (
-                <SimpleDropdown
-                  anchorRef={itemTypeBtnRef}
-                  dropRef={itemTypeDropRef}
-                  options={viewMode === 'gastos'
-                    ? [
-                        { key: 'all', label: t('filters.allTypes') },
-                        { key: 'common', label: t('filters.singles') },
-                        { key: 'installment', label: t('filters.installments') },
-                        { key: 'subscription', label: t('filters.recurring') },
-                        { key: 'emprestimo', label: t('filters.loans') }
-                      ]
-                    : [
-                        { key: 'all', label: t('filters.allTypes') },
-                        { key: 'recurring', label: t('filters.recurringOnly') },
-                        { key: 'non-recurring', label: t('filters.nonRecurringOnly') }
-                      ]
-                  }
-                  current={filterItemType}
-                  onChange={v => { setFilterItemType(v); setShowItemTypeMenu(false) }}
-                  onClose={() => setShowItemTypeMenu(false)}
-                />
-              )}
-            </div>
-          )}
           <FilterGroup
             activeCount={
+              (viewMode !== 'all' ? 1 : 0) + (filterItemType !== 'all' ? 1 : 0) +
               (filterCategoryKeys.length > 0 ? 1 : 0) + (filterSubcategoryKeys.length > 0 ? 1 : 0) + (filterBankKeys.length > 0 ? 1 : 0) +
               (filterCardKeys.length > 0 ? 1 : 0) +
               (filterActive !== 'all' ? 1 : 0) + (filterPaid !== 'all' ? 1 : 0) +
               (filterPayMethod !== 'all' ? 1 : 0)
             }
-            onClear={() => { setFilterActive('all'); setFilterPaid('all'); setFilterPayMethod('all'); setFilterItemType('all'); setFilterCategoryKeys([]); setFilterSubcategoryKeys([]); setFilterCardKeys([]); setFilterBankKeys([]); setHideEmpty(false) }}
+            onClear={() => { setViewMode('all'); setFilterActive('all'); setFilterPaid('all'); setFilterPayMethod('all'); setFilterItemType('all'); setFilterCategoryKeys([]); setFilterSubcategoryKeys([]); setFilterCardKeys([]); setFilterBankKeys([]); setHideEmpty(false) }}
             primaryCount={3}
           >
+            <div className="relative space-y-1">
+              <span className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t('filters.item')}</span>
+              <button ref={viewBtnRef} type="button"
+                onClick={() => setShowViewMenu(f => !f)}
+                className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border border-input hover:bg-accent transition-colors">
+                {viewMode === 'all' ? t('filters.expensesAndIncome') : viewMode === 'gastos' ? t('filters.expenses') : t('filters.income')}
+                <ChevronDown size={12} className="text-muted-foreground" />
+              </button>
+              {showViewMenu && (
+                <SimpleDropdown
+                  anchorRef={viewBtnRef}
+                  dropRef={viewDropRef}
+                  options={[
+                    { key: 'all', label: t('filters.expensesAndIncome') },
+                    { key: 'gastos', label: t('filters.expenses') },
+                    { key: 'receitas', label: t('filters.income') }
+                  ]}
+                  current={viewMode}
+                  onChange={v => { setViewMode(v as ViewMode); setFilterItemType('all'); setShowViewMenu(false) }}
+                  onClose={() => setShowViewMenu(false)}
+                />
+              )}
+            </div>
+
+            {viewMode !== 'all' && (
+              <div className="relative space-y-1">
+                <span className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {viewMode === 'gastos' ? t('filters.expenseType') : t('filters.incomeType')}
+                </span>
+                <button ref={itemTypeBtnRef} type="button"
+                  onClick={() => setShowItemTypeMenu(f => !f)}
+                  className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border border-input hover:bg-accent transition-colors">
+                  {viewMode === 'gastos'
+                    ? { 'all': t('filters.allTypes'), 'common': t('filters.singles'), 'installment': t('filters.installments'), 'subscription': t('filters.recurring'), 'emprestimo': t('filters.loans') }[filterItemType] || t('filters.allTypes')
+                    : { 'all': t('filters.allTypes'), 'recurring': t('filters.recurringOnly'), 'non-recurring': t('filters.nonRecurringOnly') }[filterItemType] || t('filters.allTypes')
+                  }
+                  <ChevronDown size={12} className="text-muted-foreground" />
+                </button>
+                {showItemTypeMenu && (
+                  <SimpleDropdown
+                    anchorRef={itemTypeBtnRef}
+                    dropRef={itemTypeDropRef}
+                    options={viewMode === 'gastos'
+                      ? [
+                          { key: 'all', label: t('filters.allTypes') },
+                          { key: 'common', label: t('filters.singles') },
+                          { key: 'installment', label: t('filters.installments') },
+                          { key: 'subscription', label: t('filters.recurring') },
+                          { key: 'emprestimo', label: t('filters.loans') }
+                        ]
+                      : [
+                          { key: 'all', label: t('filters.allTypes') },
+                          { key: 'recurring', label: t('filters.recurringOnly') },
+                          { key: 'non-recurring', label: t('filters.nonRecurringOnly') }
+                        ]
+                    }
+                    current={filterItemType}
+                    onChange={v => { setFilterItemType(v); setShowItemTypeMenu(false) }}
+                    onClose={() => setShowItemTypeMenu(false)}
+                  />
+                )}
+              </div>
+            )}
+
             <div className="relative">
               <button ref={catFilterRef} type="button" title={t('filters.category')}
                 onClick={() => { setShowCatFilter(f => !f); setShowCardFilter(false); setShowBankFilter(false) }}
@@ -1086,8 +1093,9 @@ export default function StoresPage() {
             </button>
             {showSortMenu && (
               <SimpleDropdown anchorRef={sortBtnRef} dropRef={sortDropRef}
-                options={getItemSortOptions(t)}
-                current={sortMode} onChange={v => { setSortMode(v as ItemSortMode); setShowSortMenu(false) }} onClose={() => setShowSortMenu(false)} />
+                options={itemSortOptions}
+                current={sortMode} onChange={v => { setSortMode(v as ItemSortMode); setShowSortMenu(false) }} onClose={() => setShowSortMenu(false)}
+                defaultKey={defaultSortMode} onDefaultChange={v => setDefaultSortMode(v as ItemSortMode)} defaultTitle={t('sort.setAsDefault')} />
             )}
           </div>
         </>

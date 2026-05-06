@@ -971,11 +971,15 @@
     "dueDayAsc": "Dia de vencimento mais próximo",
     "dueDayDesc": "Dia de vencimento mais distante",
     "billingDayNearest": "Dia de cobrança mais próximo",
-    "billingDayFarthest": "Dia de cobrança mais distante"
+    "billingDayFarthest": "Dia de cobrança mais distante",
+    "setAsDefault": "Definir como padrão desta página"
   },
   "filters": {
     "filters": "Filtros",
     "moreFilters": "Mais filtros",
+    "item": "Item",
+    "expenseType": "Tipo de gastos",
+    "incomeType": "Tipo de receita",
     "allTypes": "Todos os tipos",
     "category": "Categoria",
     "noCategory": "Sem categoria",
@@ -1037,7 +1041,7 @@
     "goToCurrentMonth": "Ir para mês atual"
   },
     "tileFields": {
-      "title": "Campos visiveis nos tiles",
+      "title": "Campos visíveis nos tooltips",
       "type": "Tipo",
       "billingDay": "Dia de cobrança",
       "dueDay": "Dia de vencimento",
@@ -1047,6 +1051,12 @@
     "interestRate": "Taxa de juros",
     "installments": "Parcelas",
     "receivingDay": "Dia de recebimento",
+    "baseValue": "Valor base",
+    "status": "Status",
+    "receivedDate": "Data de recebimento",
+    "interruptions": "Interrupções",
+    "tags": "Tags",
+    "summary": "Resumo",
       "expenses": "Gastos",
       "income": "Receitas"
     },

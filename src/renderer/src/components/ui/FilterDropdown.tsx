@@ -63,7 +63,7 @@ export function FilterDropdown<T extends string | number>({
             value={search}
             onChange={event => setSearch(event.target.value)}
             placeholder={searchPlaceholder || t('common.search')}
-            className="h-8 w-full rounded-md border border-input bg-background px-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+            className="h-8 w-full rounded-md border border-input bg-muted/30 px-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>
       )}

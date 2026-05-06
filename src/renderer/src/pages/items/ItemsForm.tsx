@@ -107,6 +107,7 @@ export interface ItemsFormProps {
   handleReactivate: (interruptionId: number) => void
   setInterruptItem: (item: SectionItem | null) => void
   onValuesChanged?: () => void
+  onDelete?: (id: number) => void
   showParcelasTab: boolean
   initialTab?: ModalTab
   anticipateCounts: Record<string, string>
@@ -121,6 +122,7 @@ export function ItemsForm({
   handleSave, handleAnticipate, handleUndoAnticipation,
   handleReactivate, setInterruptItem,
   onValuesChanged,
+  onDelete,
   showParcelasTab, initialTab,
   anticipateCounts, setAnticipateCounts
 }: ItemsFormProps) {
@@ -1219,9 +1221,18 @@ export function ItemsForm({
           <div className={`sticky bottom-0 -mt-6 h-6 z-10 pointer-events-none bg-gradient-to-t from-background to-transparent transition-opacity ${modalScrollFade.bottom ? 'opacity-100' : 'opacity-0'}`} />
         </div>
 
-        <div className="flex items-center justify-end gap-2 pt-3 shrink-0">
-          <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
-          <Button onClick={handleSave}>{editing ? t('common.save') : t('common.create')} <Check size={14} /></Button>
+        <div className="flex items-center justify-between gap-2 pt-3 shrink-0">
+          <div>
+            {editing && onDelete && (
+              <Button variant="destructive" onClick={() => { onClose(); onDelete(editing.id) }}>
+                {t('common.delete')}
+              </Button>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
+            <Button onClick={handleSave}>{editing ? t('common.save') : t('common.create')} <Check size={14} /></Button>
+          </div>
         </div>
       </div>
     </Modal>

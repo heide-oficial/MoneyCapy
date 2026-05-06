@@ -971,11 +971,15 @@
     "dueDayAsc": "Nearest due day",
     "dueDayDesc": "Farthest due day",
     "billingDayNearest": "Nearest billing day",
-    "billingDayFarthest": "Farthest billing day"
+    "billingDayFarthest": "Farthest billing day",
+    "setAsDefault": "Set as this page default"
   },
   "filters": {
     "filters": "Filters",
     "moreFilters": "More filters",
+    "item": "Item",
+    "expenseType": "Expense type",
+    "incomeType": "Income type",
     "allTypes": "All types",
     "category": "Category",
     "noCategory": "No category",
@@ -1037,7 +1041,7 @@
     "goToCurrentMonth": "Go to current month"
   },
     "tileFields": {
-      "title": "Visible fields on tiles",
+      "title": "Visible fields on tooltips",
       "type": "Type",
       "billingDay": "Billing day",
     "dueDay": "Due day",
@@ -1047,6 +1051,12 @@
     "interestRate": "Interest rate",
     "installments": "Installments",
     "receivingDay": "Receiving day",
+    "baseValue": "Base value",
+    "status": "Status",
+    "receivedDate": "Received date",
+    "interruptions": "Interruptions",
+    "tags": "Tags",
+    "summary": "Summary",
       "expenses": "Expenses",
       "income": "Income"
     },

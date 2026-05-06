@@ -31,6 +31,7 @@ import { CsvExportModal, type CsvColumn } from '../../components/ui/CsvExportMod
 
 import type { TagData, CardSplit, SectionItem } from '../../types/entities'
 import { type ItemSortMode, sortItems, getItemSortOptions, getSortLabelMap } from '../../hooks/useSortItems'
+import { useDefaultSortMode } from '../../hooks/useDefaultSortMode'
 import { useUndoableDelete } from '../../hooks/useUndoableDelete'
 import { ItemsForm, defaultForm, type ItemForm, type CardMode, type FormSplit, type ModalTab } from './ItemsForm'
 import { ItemsTile } from './ItemsTile'
@@ -201,7 +202,7 @@ export default function ItemsPage() {
   const typeFilterRef = useRef<HTMLButtonElement>(null)
   const typeFilterDropRef = useRef<HTMLDivElement>(null)
   const [showTypeFilter, setShowTypeFilter] = useState(false)
-  const [sortMode, setSortMode] = useState<ItemSortMode>('az')
+  const { sortMode, setSortMode, defaultSortMode, setDefaultSortMode } = useDefaultSortMode<ItemSortMode>('items', 'az', ITEM_SORT_OPTIONS.map(option => option.key))
   const [showSortMenu, setShowSortMenu] = useState(false)
   const sortBtnRef = useRef<HTMLButtonElement>(null)
   const sortDropRef = useRef<HTMLDivElement>(null)
@@ -1072,7 +1073,8 @@ export default function ItemsPage() {
             {showSortMenu && (
               <SimpleDropdown anchorRef={sortBtnRef} dropRef={sortDropRef}
                 options={ITEM_SORT_OPTIONS}
-                current={sortMode} onChange={v => { setSortMode(v as ItemSortMode); setShowSortMenu(false) }} onClose={() => setShowSortMenu(false)} />
+                current={sortMode} onChange={v => { setSortMode(v as ItemSortMode); setShowSortMenu(false) }} onClose={() => setShowSortMenu(false)}
+                defaultKey={defaultSortMode} onDefaultChange={v => setDefaultSortMode(v as ItemSortMode)} defaultTitle={t('sort.setAsDefault')} />
             )}
           </div>
         </>
@@ -1151,6 +1153,7 @@ export default function ItemsPage() {
           handleReactivate={handleReactivate}
           setInterruptItem={setInterruptItem}
           onValuesChanged={() => { bumpItems(); loadData() }}
+          onDelete={id => requestDelete(id)}
           showParcelasTab={showParcelasTab}
         initialTab={formInitialTab}
         anticipateCounts={anticipateCounts}

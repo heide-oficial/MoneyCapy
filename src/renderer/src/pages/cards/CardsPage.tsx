@@ -15,6 +15,7 @@ import { KebabMenu } from '../../components/ui/KebabMenu'
 import { SortableGrid } from '../../components/dnd/SortableGrid'
 import { SortableItem } from '../../components/dnd/SortableItem'
 import { useSortOrder } from '../../hooks/useSortOrder'
+import { useDefaultSortMode } from '../../hooks/useDefaultSortMode'
 import { usePageMonth } from '../../contexts/DefaultMonthContext'
 import { useActivePerson } from '../../contexts/ActivePersonContext'
 import { useSession } from '../../contexts/SessionContext'
@@ -106,6 +107,7 @@ export default function CardsPage() {
   const { currencies } = useCurrencySettings()
   const { formatDisplayCurrency } = useDisplayCurrency()
   const cardSortLabels = CARD_SORT_LABELS_FN(t)
+  const cardSortOptions = Object.entries(cardSortLabels).map(([key, label]) => ({ key, label })) as { key: CardSortMode; label: string }[]
   const [cards, setCards] = useState<CardEnriched[]>([])
   const [accounts, setAccounts] = useState<BankAccountBasic[]>([])
   const { month, setMonth } = usePageMonth()
@@ -115,7 +117,7 @@ export default function CardsPage() {
   const [pendingEditId, setPendingEditId] = useState<number | null>(null)
   const [payInvoiceCardId, setPayInvoiceCardId] = useState<number | null>(null)
   const [multiCardMessage, setMultiCardMessage] = useState<string | null>(null)
-  const [sortMode, setSortMode] = useState<CardSortMode>('manual')
+  const { sortMode, setSortMode, defaultSortMode, setDefaultSortMode } = useDefaultSortMode<CardSortMode>('cards', 'manual', cardSortOptions.map(option => option.key))
   const [filterBanco, setFilterBanco] = useState<string>('')
   const [filterCardType, setFilterCardType] = useState('all')
   const [search, setSearch] = useState('')
@@ -474,8 +476,9 @@ export default function CardsPage() {
             </button>
             {showSortMenu && (
               <SimpleDropdown anchorRef={sortBtnRef} dropRef={sortDropRef}
-                options={Object.entries(cardSortLabels).map(([k, v]) => ({ key: k, label: v }))}
-                current={sortMode} onChange={v => { setSortMode(v as CardSortMode); setShowSortMenu(false) }} onClose={() => setShowSortMenu(false)} />
+                options={cardSortOptions}
+                current={sortMode} onChange={v => { setSortMode(v as CardSortMode); setShowSortMenu(false) }} onClose={() => setShowSortMenu(false)}
+                defaultKey={defaultSortMode} onDefaultChange={v => setDefaultSortMode(v as CardSortMode)} defaultTitle={t('sort.setAsDefault')} />
             )}
           </div>
         </>

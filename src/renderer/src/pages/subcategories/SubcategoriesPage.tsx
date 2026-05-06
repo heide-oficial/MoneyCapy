@@ -30,6 +30,7 @@ import { useUndoableDelete } from '../../hooks/useUndoableDelete'
 import { useTileFields } from '../../contexts/TileFieldsContext'
 import type { IncomeRecord, SectionItem } from '../../types/entities'
 import { type ItemSortMode, sortItems, getItemSortOptions, getSortLabelMap } from '../../hooks/useSortItems'
+import { useDefaultSortMode } from '../../hooks/useDefaultSortMode'
 import { ItemsTile } from '../items/ItemsTile'
 import { IncomeTile } from '../income/IncomeTile'
 import { useFormatDate } from '../../lib/date'
@@ -126,7 +127,8 @@ export default function SubcategoriesPage() {
   const storeDropRef = useRef<HTMLDivElement>(null)
   const [hideEmpty, setHideEmpty] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState<Set<number | 'none'>>(new Set())
-  const [sortMode, setSortMode] = useState<ItemSortMode>('az')
+  const itemSortOptions = getItemSortOptions(t)
+  const { sortMode, setSortMode, defaultSortMode, setDefaultSortMode } = useDefaultSortMode<ItemSortMode>('subcategories', 'az', itemSortOptions.map(option => option.key))
   const [showSortMenu, setShowSortMenu] = useState(false)
   const sortBtnRef = useRef<HTMLButtonElement>(null)
   const sortDropRef = useRef<HTMLDivElement>(null)
@@ -547,64 +549,9 @@ export default function SubcategoriesPage() {
       controls={
         <>
           <SearchInput value={search} onChange={setSearch} />
-          <div className="relative">
-            <button ref={viewBtnRef} type="button" onClick={() => setShowViewMenu(v => !v)}
-              className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border border-input hover:bg-accent transition-colors">
-              {viewMode === 'all' ? t('filters.expensesAndIncome') : viewMode === 'gastos' ? t('filters.expenses') : t('filters.income')}
-              <ChevronDown size={12} className="text-muted-foreground" />
-            </button>
-            {showViewMenu && (
-              <SimpleDropdown
-                anchorRef={viewBtnRef}
-                dropRef={viewDropRef}
-                options={[
-                  { key: 'all', label: t('filters.expensesAndIncome') },
-                  { key: 'gastos', label: t('filters.expenses') },
-                  { key: 'receitas', label: t('filters.income') }
-                ]}
-                current={viewMode}
-                onChange={value => { setViewMode(value as ViewMode); setShowViewMenu(false) }}
-                onClose={() => setShowViewMenu(false)}
-              />
-            )}
-          </div>
-          {viewMode !== 'all' && (
-            <div className="relative">
-              <button ref={itemTypeBtnRef} type="button" onClick={() => setShowItemTypeMenu(v => !v)}
-                className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border border-input hover:bg-accent transition-colors">
-                {filterItemType === 'all'
-                  ? t('filters.allTypes')
-                  : viewMode === 'gastos'
-                    ? ({ common: t('filters.singles'), installment: t('filters.installments'), subscription: t('filters.recurring'), emprestimo: t('filters.loans') } as Record<string, string>)[filterItemType]
-                    : filterItemType === 'recurring' ? t('filters.recurringOnly') : t('filters.nonRecurringOnly')}
-                <ChevronDown size={12} className="text-muted-foreground" />
-              </button>
-              {showItemTypeMenu && (
-                <SimpleDropdown
-                  anchorRef={itemTypeBtnRef}
-                  dropRef={itemTypeDropRef}
-                  options={viewMode === 'gastos'
-                    ? [
-                        { key: 'all', label: t('filters.allTypes') },
-                        { key: 'common', label: t('filters.singles') },
-                        { key: 'installment', label: t('filters.installments') },
-                        { key: 'subscription', label: t('filters.recurring') },
-                        { key: 'emprestimo', label: t('filters.loans') }
-                      ]
-                    : [
-                        { key: 'all', label: t('filters.allTypes') },
-                        { key: 'recurring', label: t('filters.recurringOnly') },
-                        { key: 'non-recurring', label: t('filters.nonRecurringOnly') }
-                      ]}
-                  current={filterItemType}
-                  onChange={value => { setFilterItemType(value); setShowItemTypeMenu(false) }}
-                  onClose={() => setShowItemTypeMenu(false)}
-                />
-              )}
-            </div>
-          )}
           <FilterGroup
             activeCount={
+              (viewMode !== 'all' ? 1 : 0) + (filterItemType !== 'all' ? 1 : 0) +
               (filterCategoryKeys.length > 0 ? 1 : 0) + (filterSubcategoryKeys.length > 0 ? 1 : 0) +
               (filterBankKeys.length > 0 ? 1 : 0) + (filterCardKeys.length > 0 ? 1 : 0) +
               (filterStoreKeys.length > 0 ? 1 : 0) +
@@ -612,11 +559,71 @@ export default function SubcategoriesPage() {
               (filterPayMethod !== 'all' ? 1 : 0)
             }
             onClear={() => {
-              setFilterActive('all'); setFilterPaid('all'); setFilterPayMethod('all'); setFilterItemType('all')
+              setViewMode('all'); setFilterActive('all'); setFilterPaid('all'); setFilterPayMethod('all'); setFilterItemType('all')
               setFilterCategoryKeys([]); setFilterSubcategoryKeys([]); setFilterCardKeys([]); setFilterBankKeys([]); setFilterStoreKeys([]); setHideEmpty(false)
             }}
             primaryCount={3}
           >
+            <div className="relative space-y-1">
+              <span className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t('filters.item')}</span>
+              <button ref={viewBtnRef} type="button" onClick={() => setShowViewMenu(v => !v)}
+                className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border border-input hover:bg-accent transition-colors">
+                {viewMode === 'all' ? t('filters.expensesAndIncome') : viewMode === 'gastos' ? t('filters.expenses') : t('filters.income')}
+                <ChevronDown size={12} className="text-muted-foreground" />
+              </button>
+              {showViewMenu && (
+                <SimpleDropdown
+                  anchorRef={viewBtnRef}
+                  dropRef={viewDropRef}
+                  options={[
+                    { key: 'all', label: t('filters.expensesAndIncome') },
+                    { key: 'gastos', label: t('filters.expenses') },
+                    { key: 'receitas', label: t('filters.income') }
+                  ]}
+                  current={viewMode}
+                  onChange={value => { setViewMode(value as ViewMode); setFilterItemType('all'); setShowViewMenu(false) }}
+                  onClose={() => setShowViewMenu(false)}
+                />
+              )}
+            </div>
+            {viewMode !== 'all' && (
+              <div className="relative space-y-1">
+                <span className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {viewMode === 'gastos' ? t('filters.expenseType') : t('filters.incomeType')}
+                </span>
+                <button ref={itemTypeBtnRef} type="button" onClick={() => setShowItemTypeMenu(v => !v)}
+                  className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border border-input hover:bg-accent transition-colors">
+                  {filterItemType === 'all'
+                    ? t('filters.allTypes')
+                    : viewMode === 'gastos'
+                      ? ({ common: t('filters.singles'), installment: t('filters.installments'), subscription: t('filters.recurring'), emprestimo: t('filters.loans') } as Record<string, string>)[filterItemType]
+                      : filterItemType === 'recurring' ? t('filters.recurringOnly') : t('filters.nonRecurringOnly')}
+                  <ChevronDown size={12} className="text-muted-foreground" />
+                </button>
+                {showItemTypeMenu && (
+                  <SimpleDropdown
+                    anchorRef={itemTypeBtnRef}
+                    dropRef={itemTypeDropRef}
+                    options={viewMode === 'gastos'
+                      ? [
+                          { key: 'all', label: t('filters.allTypes') },
+                          { key: 'common', label: t('filters.singles') },
+                          { key: 'installment', label: t('filters.installments') },
+                          { key: 'subscription', label: t('filters.recurring') },
+                          { key: 'emprestimo', label: t('filters.loans') }
+                        ]
+                      : [
+                          { key: 'all', label: t('filters.allTypes') },
+                          { key: 'recurring', label: t('filters.recurringOnly') },
+                          { key: 'non-recurring', label: t('filters.nonRecurringOnly') }
+                        ]}
+                    current={filterItemType}
+                    onChange={value => { setFilterItemType(value); setShowItemTypeMenu(false) }}
+                    onClose={() => setShowItemTypeMenu(false)}
+                  />
+                )}
+              </div>
+            )}
             <div className="relative">
               <button ref={categoryFilterRef} type="button" title={t('filters.category')}
                 onClick={() => { setShowCategoryFilter(v => !v); setShowSubcategoryFilter(false) }}
@@ -789,10 +796,13 @@ export default function SubcategoriesPage() {
               <SimpleDropdown
                 anchorRef={sortBtnRef}
                 dropRef={sortDropRef}
-                options={getItemSortOptions(t)}
+                options={itemSortOptions}
                 current={sortMode}
                 onChange={value => { setSortMode(value as ItemSortMode); setShowSortMenu(false) }}
                 onClose={() => setShowSortMenu(false)}
+                defaultKey={defaultSortMode}
+                onDefaultChange={value => setDefaultSortMode(value as ItemSortMode)}
+                defaultTitle={t('sort.setAsDefault')}
               />
             )}
           </div>

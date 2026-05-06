@@ -13,12 +13,22 @@ const GASTOS_FIELDS: { key: keyof GastosFieldVisibility; tKey: string }[] = [
   { key: 'store', tKey: 'tileFields.store' },
   { key: 'category', tKey: 'tileFields.category' },
   { key: 'interestRate', tKey: 'tileFields.interestRate' },
-  { key: 'installments', tKey: 'tileFields.installments' }
+  { key: 'installments', tKey: 'tileFields.installments' },
+  { key: 'baseValue', tKey: 'tileFields.baseValue' },
+  { key: 'status', tKey: 'tileFields.status' },
+  { key: 'interruptions', tKey: 'tileFields.interruptions' },
+  { key: 'tags', tKey: 'tileFields.tags' },
+  { key: 'summary', tKey: 'tileFields.summary' }
 ]
 
 const RECEITAS_FIELDS: { key: keyof ReceitasFieldVisibility; tKey: string }[] = [
   { key: 'type', tKey: 'tileFields.type' },
-  { key: 'dueDay', tKey: 'tileFields.receivingDay' }
+  { key: 'dueDay', tKey: 'tileFields.receivingDay' },
+  { key: 'store', tKey: 'tileFields.store' },
+  { key: 'status', tKey: 'tileFields.status' },
+  { key: 'receivedDate', tKey: 'tileFields.receivedDate' },
+  { key: 'interruptions', tKey: 'tileFields.interruptions' },
+  { key: 'tags', tKey: 'tileFields.tags' }
 ]
 
 interface TileFieldsPickerButtonProps {

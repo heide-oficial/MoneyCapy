@@ -9,11 +9,21 @@ export interface GastosFieldVisibility {
   category: boolean
   interestRate: boolean
   installments: boolean
+  baseValue: boolean
+  status: boolean
+  interruptions: boolean
+  tags: boolean
+  summary: boolean
 }
 
 export interface ReceitasFieldVisibility {
   type: boolean
   dueDay: boolean
+  store: boolean
+  status: boolean
+  receivedDate: boolean
+  interruptions: boolean
+  tags: boolean
 }
 
 interface PageFields {
@@ -23,11 +33,12 @@ interface PageFields {
 
 const DEFAULT_GASTOS: GastosFieldVisibility = {
   type: true, billingDay: true, dueDay: true, card: true,
-  store: true, category: true, interestRate: true, installments: true
+  store: true, category: true, interestRate: true, installments: true,
+  baseValue: true, status: true, interruptions: true, tags: true, summary: true
 }
 
 const DEFAULT_RECEITAS: ReceitasFieldVisibility = {
-  type: true, dueDay: true
+  type: true, dueDay: true, store: true, status: true, receivedDate: true, interruptions: true, tags: true
 }
 
 const DEFAULT_PAGE: PageFields = { gastos: DEFAULT_GASTOS, receitas: DEFAULT_RECEITAS }

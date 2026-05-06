@@ -13,6 +13,7 @@ import { KebabMenu } from '../../components/ui/KebabMenu'
 import { SortableGrid } from '../../components/dnd/SortableGrid'
 import { SortableItem } from '../../components/dnd/SortableItem'
 import { useSortOrder } from '../../hooks/useSortOrder'
+import { useDefaultSortMode } from '../../hooks/useDefaultSortMode'
 import { usePageMonth } from '../../contexts/DefaultMonthContext'
 import { useActivePerson } from '../../contexts/ActivePersonContext'
 import { useColorSettings } from '../../contexts/ColorSettingsContext'
@@ -108,13 +109,14 @@ export default function AccountsPage() {
   const { currencies } = useCurrencySettings()
   const { formatDisplayCurrency } = useDisplayCurrency()
   const accountSortLabels = ACCOUNT_SORT_LABELS_FN(t)
+  const accountSortOptions = Object.entries(accountSortLabels).map(([key, label]) => ({ key, label })) as { key: AccountSortMode; label: string }[]
   const [accounts, setAccounts] = useState<BankAccountEnriched[]>([])
   const { month, setMonth } = usePageMonth()
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<number | null>(null)
   const { gridClass, pickerButton } = useColumnsPicker('accounts-columns')
   const [formData, setFormData] = useState({ ...EMPTY_FORM })
-  const [sortMode, setSortMode] = useState<AccountSortMode>('manual')
+  const { sortMode, setSortMode, defaultSortMode, setDefaultSortMode } = useDefaultSortMode<AccountSortMode>('accounts', 'manual', accountSortOptions.map(option => option.key))
   const [filterType, setFilterType] = useState('')
   const [filterJuridicidade, setFilterJuridicidade] = useState('')
   const [filterBanco, setFilterBanco] = useState('')
@@ -385,8 +387,9 @@ export default function AccountsPage() {
             </button>
             {showSortMenu && (
               <SimpleDropdown anchorRef={sortBtnRef} dropRef={sortDropRef}
-                options={Object.entries(accountSortLabels).map(([k, v]) => ({ key: k, label: v }))}
-                current={sortMode} onChange={v => { setSortMode(v as AccountSortMode); setShowSortMenu(false) }} onClose={() => setShowSortMenu(false)} />
+                options={accountSortOptions}
+                current={sortMode} onChange={v => { setSortMode(v as AccountSortMode); setShowSortMenu(false) }} onClose={() => setShowSortMenu(false)}
+                defaultKey={defaultSortMode} onDefaultChange={v => setDefaultSortMode(v as AccountSortMode)} defaultTitle={t('sort.setAsDefault')} />
             )}
           </div>
         </>
