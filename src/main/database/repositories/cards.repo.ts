@@ -39,6 +39,13 @@ export class CardsRepository {
     return row ? row.is_paid === 1 : false
   }
 
+  private isItemInterrupted(itemId: number, month: string): boolean {
+    const rows = this.db.prepare(
+      'SELECT end_month, resume_month FROM item_interruptions WHERE item_id = ?'
+    ).all(itemId) as any[]
+    return rows.some(row => row.resume_month ? month > row.end_month && month < row.resume_month : month > row.end_month)
+  }
+
   private getEffectiveValueForSubscription(itemId: number, baseValue: number, month: string): number {
     const row = this.db.prepare(
       'SELECT value FROM item_monthly_values WHERE item_id = ? AND month <= ? ORDER BY month DESC LIMIT 1'
@@ -150,6 +157,7 @@ export class CardsRepository {
        AND (payment_method IS NULL OR payment_method = 'credit')`
     ).all(cardId, month, month) as any[]
     for (const sub of subs) {
+      if (this.isItemInterrupted(sub.id, month)) continue
       const snapshot = sub.exchange_rate_snapshot || 1.0
       total += this.getEffectiveValueForSubscription(sub.id, sub.value, month) * snapshot / cardRate
     }
@@ -161,6 +169,7 @@ export class CardsRepository {
     ).all(cardId, month) as any[]
 
     for (const item of installmentItems) {
+      if (this.isItemInterrupted(item.id, month)) continue
       const instCount = item.total_installments || 0
       if (instCount <= 0) continue
       if (item.end_month) {
@@ -192,6 +201,7 @@ export class CardsRepository {
     ).all(cardId) as any[]
 
     for (const sp of splitItems) {
+      if (this.isItemInterrupted(sp.item_id, month)) continue
       const isCredit = sp.payment_method === null || sp.payment_method === 'credit'
       const snapshot = sp.exchange_rate_snapshot || 1.0
       if (sp.type === 'common' && sp.start_month === month && isCredit) {
@@ -258,8 +268,9 @@ export class CardsRepository {
       `SELECT id, value, exchange_rate_snapshot FROM section_items
        WHERE card_id = ? AND type = 'subscription' AND start_month <= ? AND (end_month IS NULL OR end_month >= ?) AND is_active = 1`
     ).all(cardId, month, month) as any[]
-    subscriptionCount += subsForCount.length
     for (const sub of subsForCount) {
+      if (this.isItemInterrupted(sub.id, month)) continue
+      subscriptionCount++
       const snapshot = sub.exchange_rate_snapshot || 1.0
       subscriptionTotal += this.getEffectiveValueForSubscription(sub.id, sub.value, month) * snapshot / cardRate
     }
@@ -270,6 +281,7 @@ export class CardsRepository {
        WHERE card_id = ? AND (type = 'installment' OR type = 'emprestimo') AND start_month <= ? AND is_active = 1`
     ).all(cardId, month) as any[]
     for (const item of installments) {
+      if (this.isItemInterrupted(item.id, month)) continue
       let visible = false
       if (item.end_month) {
         visible = item.end_month >= month
@@ -306,6 +318,7 @@ export class CardsRepository {
        WHERE ics.card_id = ? AND si.is_active = 1`
     ).all(cardId) as any[]
     for (const sp of splits) {
+      if (this.isItemInterrupted(sp.item_id, month)) continue
       const snapshot = sp.exchange_rate_snapshot || 1.0
       if (sp.type === 'common' && sp.start_month === month) {
         commonCount++

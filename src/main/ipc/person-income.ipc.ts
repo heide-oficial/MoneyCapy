@@ -57,6 +57,8 @@ export function registerPersonIncomeHandlers(db: WrappedDatabase): void {
   const interruptionsRepo = new IncomeInterruptionsRepository(db)
   const tagsRepo = new TagsRepository(db)
   const settingsRepo = new SettingsRepository(db)
+  const isIncomeInterrupted = (incomeId: number, month: string) =>
+    interruptionsRepo.findByIncomeId(incomeId).some(int => int.resume_month ? month > int.end_month && month < int.resume_month : month > int.end_month)
 
   ipcMain.handle(IPC_CHANNELS.PERSON_INCOME_LIST_BY_MONTH, (_, personId: number, month: string) => {
     const scm = getStartCountingMonth(settingsRepo, personId)
@@ -126,10 +128,12 @@ export function registerPersonIncomeHandlers(db: WrappedDatabase): void {
   ipcMain.handle(IPC_CHANNELS.PERSON_INCOME_DELETE, (_, id) => repo.delete(id))
 
   ipcMain.handle(IPC_CHANNELS.PERSON_INCOME_TOGGLE_RECEIVED, (_, incomeId: number, month: string) => {
+    if (isIncomeInterrupted(incomeId, month)) return statusRepo.isReceived(incomeId, month)
     return statusRepo.toggleReceived(incomeId, month)
   })
 
   ipcMain.handle(IPC_CHANNELS.PERSON_INCOME_SET_RECEIVED, (_, incomeId: number, month: string, isReceived: boolean, receivedAt?: string) => {
+    if (isIncomeInterrupted(incomeId, month)) return statusRepo.isReceived(incomeId, month)
     statusRepo.setReceived(incomeId, month, isReceived, receivedAt || null)
   })
 

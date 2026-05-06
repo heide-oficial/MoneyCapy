@@ -4,6 +4,20 @@ import { addMonths } from '../../utils/month-utils'
 export class BankAccountsRepository {
   constructor(private db: WrappedDatabase) {}
 
+  private isItemInterrupted(itemId: number, month: string): boolean {
+    const rows = this.db.prepare(
+      'SELECT end_month, resume_month FROM item_interruptions WHERE item_id = ?'
+    ).all(itemId) as any[]
+    return rows.some(row => row.resume_month ? month > row.end_month && month < row.resume_month : month > row.end_month)
+  }
+
+  private getEffectiveValueForSubscription(itemId: number, baseValue: number, month: string): number {
+    const row = this.db.prepare(
+      'SELECT value FROM item_monthly_values WHERE item_id = ? AND month <= ? ORDER BY month DESC LIMIT 1'
+    ).get(itemId, month) as any
+    return row ? row.value : baseValue
+  }
+
   findByPersonId(personId: number) {
     return this.db.prepare(
       `SELECT ba.*, cur.symbol as currency_symbol, cur.code as currency_code, cur.exchange_rate as currency_exchange_rate
@@ -97,6 +111,7 @@ export class BankAccountsRepository {
     ).all(bankAccountId, month) as any[]
     let count = 0
     for (const loan of loans) {
+      if (this.isItemInterrupted(loan.id, month)) continue
       if (loan.end_month) {
         if (loan.end_month >= month) count++
       } else {
@@ -151,14 +166,18 @@ export class BankAccountsRepository {
       `SELECT id, value, exchange_rate_snapshot FROM section_items
        WHERE bank_account_id = ? AND type = 'subscription' AND start_month <= ? AND (end_month IS NULL OR end_month >= ?) AND is_active = 1`
     ).all(bankAccountId, month, month) as any[]
-    subscriptionCount += subs.length
-    subscriptionTotal += subs.reduce((s: number, r: any) => s + r.value * (r.exchange_rate_snapshot || 1.0), 0)
+    for (const sub of subs) {
+      if (this.isItemInterrupted(sub.id, month)) continue
+      subscriptionCount++
+      subscriptionTotal += this.getEffectiveValueForSubscription(sub.id, sub.value, month) * (sub.exchange_rate_snapshot || 1.0)
+    }
 
     const instItems = this.db.prepare(
       `SELECT id, type, value, total_installments, start_month, end_month, exchange_rate_snapshot FROM section_items
        WHERE bank_account_id = ? AND (type = 'installment' OR type = 'emprestimo') AND start_month <= ? AND is_active = 1`
     ).all(bankAccountId, month) as any[]
     for (const item of instItems) {
+      if (this.isItemInterrupted(item.id, month)) continue
       let visible = false
       if (item.end_month) {
         visible = item.end_month >= month

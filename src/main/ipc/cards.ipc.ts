@@ -160,11 +160,16 @@ export function registerCardsHandlers(db: WrappedDatabase): void {
       let invoiceAllPaid = false
       if (!beforeStart && base.cardType !== 'debit') {
         const cardItems = itemsRepo.findByCardIdAndMonth(card.id, m) as any[]
+        const isInterrupted = (itemId: number) => {
+          const rows = db.prepare('SELECT end_month, resume_month FROM item_interruptions WHERE item_id = ?').all(itemId) as any[]
+          return rows.some(row => row.resume_month ? m > row.end_month && m < row.resume_month : m > row.end_month)
+        }
         const creditItems = cardItems.filter((item: any) => {
+          if (isInterrupted(item.id)) return false
           if (item.type === 'installment' || item.type === 'emprestimo') return true
           return item.payment_method === 'credit'
         })
-        invoiceAllPaid = creditItems.length > 0 && creditItems.every((item: any) => statusRepo.isPaid(item.id, m))
+        invoiceAllPaid = creditItems.length === 0 || creditItems.every((item: any) => statusRepo.isPaid(item.id, m))
       }
 
       return {
@@ -185,9 +190,14 @@ export function registerCardsHandlers(db: WrappedDatabase): void {
 
   ipcMain.handle(IPC_CHANNELS.CARDS_PAY_INVOICE, (_, cardId: number, month: string) => {
     const items = itemsRepo.findByCardIdAndMonth(cardId, month) as any[]
+    const isInterrupted = (itemId: number) => {
+      const rows = db.prepare('SELECT end_month, resume_month FROM item_interruptions WHERE item_id = ?').all(itemId) as any[]
+      return rows.some(row => row.resume_month ? month > row.end_month && month < row.resume_month : month > row.end_month)
+    }
 
     // Filter to credit items only (installment/emprestimo are always credit; common/subscription check payment_method)
     const creditItems = items.filter((item: any) => {
+      if (isInterrupted(item.id)) return false
       if (item.type === 'installment' || item.type === 'emprestimo') return true
       return item.payment_method === 'credit'
     })

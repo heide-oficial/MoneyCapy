@@ -191,6 +191,8 @@ export function registerSectionItemsHandlers(db: WrappedDatabase): void {
   const anticipationsRepo = new ItemAnticipationsRepository(db)
   const interruptionsRepo = new ItemInterruptionsRepository(db)
   const settingsRepo = new SettingsRepository(db)
+  const isItemInterrupted = (itemId: number, month: string) =>
+    interruptionsRepo.findByItemId(itemId).some(int => int.resume_month ? month > int.end_month && month < int.resume_month : month > int.end_month)
 
   ipcMain.handle(IPC_CHANNELS.ITEMS_LIST, (_, personId: number, month: string, typeFilter?: string) => {
     const scm = getStartCountingMonth(settingsRepo, personId)
@@ -302,10 +304,12 @@ export function registerSectionItemsHandlers(db: WrappedDatabase): void {
   })
 
   ipcMain.handle(IPC_CHANNELS.ITEMS_TOGGLE_PAID, (_, itemId: number, month: string) => {
+    if (isItemInterrupted(itemId, month)) return statusRepo.isPaid(itemId, month)
     return statusRepo.togglePaid(itemId, month)
   })
 
   ipcMain.handle(IPC_CHANNELS.ITEMS_SET_PAID, (_, itemId: number, month: string, isPaid: boolean, paidAt?: string) => {
+    if (isItemInterrupted(itemId, month)) return statusRepo.isPaid(itemId, month)
     statusRepo.setPaid(itemId, month, isPaid, paidAt || null)
   })
 
