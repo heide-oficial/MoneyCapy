@@ -7,8 +7,7 @@ import { useDimPaid } from '../../contexts/DimPaidContext'
 import { useTileFields } from '../../contexts/TileFieldsContext'
 import { useTranslation } from '../../contexts/LanguageContext'
 import {
-  CalendarClock, CheckCircle, Circle, CircleDot, CreditCard,
-  Info, Repeat, Settings, Store
+  CheckCircle, Circle, CreditCard, Info, Settings
 } from 'lucide-react'
 import { Card } from '../../components/ui/Card'
 import { CurrencyTooltip } from '../../components/ui/CurrencyTooltip'
@@ -28,9 +27,9 @@ interface IncomeTileProps {
   onReactivate: (interruptionId: number) => void
 }
 
-interface ChipItem {
-  icon: any
-  text: string
+interface TooltipRow {
+  label: string
+  value: string
 }
 
 function previousMonth(month: string) {
@@ -52,6 +51,7 @@ export function IncomeTile({
   const { businessDayConfig } = useBusinessDayConfig()
   const { dimPaid } = useDimPaid()
   const { receitasFields } = useTileFields(fieldsPage)
+  const [expanded, setExpanded] = useState(false)
   const [infoOpen, setInfoOpen] = useState(false)
   const [mYear, mMonth] = month.split('-').map(Number)
 
@@ -61,13 +61,7 @@ export function IncomeTile({
   const fmtBase = (value: number) => formatCurrency(value * snap)
   const categoryLabel = income.categoryName ? `${income.categoryName}${income.subcategoryName ? `/${income.subcategoryName}` : ''}` : t('items.noCategoryDefined')
   const typeText = income.isRecurring ? t('income.recurring') : t('income.nonRecurring')
-  const typeIcon = income.isRecurring ? Repeat : CircleDot
   const receivingDayText = formatDayLabelResolved(income.dueDay ?? null, income.dueDayType || null, t('income.receivingDay'), mYear, mMonth, businessDayConfig)
-
-  const chips: ChipItem[] = []
-  if (receitasFields.type) chips.push({ icon: typeIcon, text: typeText })
-  if (receitasFields.dueDay && receivingDayText) chips.push({ icon: CalendarClock, text: receivingDayText })
-  if (income.storeName) chips.push({ icon: Store, text: income.storeName })
 
   const activeInterruption = income.interruptions?.find(interruption => {
     if (interruption.resumeMonth) return month >= interruption.endMonth && month < interruption.resumeMonth
@@ -83,7 +77,14 @@ export function IncomeTile({
   const statusSummary = income.isReceived
     ? (income.receivedAt ? t('items.receivedAt', { date: fmtDate(income.receivedAt) }) : t('items.received'))
     : t('income.notReceivedYet')
-  const tooltipItems = chips.map(chip => chip.text)
+  const tooltipRows: TooltipRow[] = [
+    { label: t('tileFields.type'), value: typeText },
+    receivingDayText ? { label: t('income.receivingDay'), value: receivingDayText } : null,
+    income.storeName ? { label: t('tileFields.store'), value: income.storeName } : null,
+    { label: t('itemsForm.tags'), value: tagsSummary },
+    { label: t('itemsForm.status'), value: statusSummary },
+    { label: t('items.interruptions'), value: interruptionSummary }
+  ].filter(Boolean) as TooltipRow[]
 
   const toggleReceived = (event: MouseEvent) => {
     stop(event)
@@ -111,7 +112,15 @@ export function IncomeTile({
 
   return (
     <Card
-      className={`group relative overflow-visible transition-all duration-200 ease-out ${income.isReceived && dimPaid ? 'opacity-60 hover:opacity-100' : 'hover:shadow-md'}`}
+      tabIndex={0}
+      onClick={() => setExpanded(value => !value)}
+      onKeyDown={event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          setExpanded(value => !value)
+        }
+      }}
+      className={`group relative overflow-visible cursor-pointer transition-all duration-200 ease-out ${!infoOpen && income.isReceived && dimPaid ? 'opacity-60 hover:opacity-100' : 'hover:shadow-md'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
     >
       <div className="relative z-[2] flex items-center gap-3 px-3 py-3 sm:px-4">
         <button
@@ -159,24 +168,16 @@ export function IncomeTile({
                     <Info size={16} />
                   </button>
                   {infoOpen && (
-                    <div className="absolute right-0 top-full z-[100] mt-2 w-72 rounded-lg border border-border bg-card p-3 text-left text-xs text-card-foreground shadow-2xl" style={{ backgroundColor: 'hsl(var(--card))' }}>
+                    <div onClick={stop} className="absolute right-0 top-full z-[200] mt-2 w-72 rounded-lg border border-border p-3 text-left text-xs text-card-foreground opacity-100 shadow-2xl" style={{ backgroundColor: 'hsl(var(--card))' }}>
                       <p className="font-semibold text-foreground">{t('items.cardInfo')}</p>
-                      <div className="mt-2 space-y-1.5">
-                        <p className="text-muted-foreground">{t('itemsForm.tags')}: <span className="text-foreground">{tagsSummary}</span></p>
-                        <p className="text-muted-foreground">{t('itemsForm.status')}: <span className="text-foreground">{statusSummary}</span></p>
-                        <p className="text-muted-foreground">{t('items.interruptions')}: <span className="text-foreground">{interruptionSummary}</span></p>
-                      </div>
-                      {tooltipItems.length > 0 && (
-                        <div className="mt-3 border-t border-border/70 pt-2">
-                          <div className="flex flex-wrap gap-1.5">
-                            {tooltipItems.map(info => (
-                              <span key={info} className="rounded-md border border-border/70 bg-muted/30 px-2 py-1 text-muted-foreground">
-                                {info}
-                              </span>
-                            ))}
+                      <dl className="mt-2 space-y-1.5">
+                        {tooltipRows.map(row => (
+                          <div key={row.label} className="grid grid-cols-[88px_minmax(0,1fr)] gap-2">
+                            <dt className="text-muted-foreground">{row.label}:</dt>
+                            <dd className="min-w-0 text-foreground">{row.value}</dd>
                           </div>
-                        </div>
-                      )}
+                        ))}
+                      </dl>
                     </div>
                   )}
                 </span>
@@ -195,7 +196,8 @@ export function IncomeTile({
         </div>
       </div>
 
-      <div className="relative z-[2] border-t border-border/60 px-4 pb-4 pt-3">
+      {expanded && (
+      <div className="relative z-[2] border-t border-border/60 px-4 pb-4 pt-3" onClick={stop}>
         <div className="overflow-hidden rounded-lg border border-border/70 bg-background/20">
           <div className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
             <CreditCard size={14} className="shrink-0 opacity-70" />
@@ -203,6 +205,7 @@ export function IncomeTile({
           </div>
         </div>
       </div>
+      )}
     </Card>
   )
 }

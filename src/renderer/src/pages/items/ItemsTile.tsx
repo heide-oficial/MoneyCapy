@@ -9,8 +9,7 @@ import { useTileFields } from '../../contexts/TileFieldsContext'
 import { useTranslation } from '../../contexts/LanguageContext'
 import {
   CheckCircle, Circle,
-  CircleDot, Layers, Repeat, Landmark, CalendarClock, CreditCard,
-  Store, DollarSign, Info, Settings
+  CreditCard, Info, Settings
 } from 'lucide-react'
 import { Card } from '../../components/ui/Card'
 import { CurrencyTooltip } from '../../components/ui/CurrencyTooltip'
@@ -33,16 +32,16 @@ interface ItemsTileProps {
   onViewInterruptions: (item: SectionItem) => void
 }
 
-interface ChipItem {
-  icon: any
-  text: string
-}
-
 interface CardDetailRow {
   name: string
   detail?: string
   amount?: string
   progress?: number
+}
+
+interface TooltipRow {
+  label: string
+  value: string
 }
 
 function previousMonth(month: string) {
@@ -64,6 +63,7 @@ export function ItemsTile({
   const { businessDayConfig } = useBusinessDayConfig()
   const { dimPaid } = useDimPaid()
   const { gastosFields } = useTileFields(fieldsPage)
+  const [expanded, setExpanded] = useState(false)
   const [infoOpen, setInfoOpen] = useState(false)
   const [mYear, mMonth] = month.split('-').map(Number)
 
@@ -97,7 +97,6 @@ export function ItemsTile({
     monthValue = item.type === 'subscription' ? (item.effectiveValue ?? item.value) : item.value
   }
 
-  const typeIcon = item.type === 'emprestimo' ? Landmark : item.type === 'installment' ? Layers : item.type === 'subscription' ? Repeat : CircleDot
   const typeText = item.type === 'emprestimo' ? t('itemTypes.emprestimo') : item.type === 'installment' ? t('itemTypes.installment') : item.type === 'subscription' ? t('itemTypes.subscription') : t('itemTypes.common')
   const categoryLabel = item.categoryName ? `${item.categoryName}${item.subcategoryName ? `/${item.subcategoryName}` : ''}` : t('items.noCategoryDefined')
 
@@ -116,14 +115,6 @@ export function ItemsTile({
     }
     return formatDayLabelResolved(item.dueDay, item.dueDayType || null, t('items.dueDayLabel'), mYear, mMonth, businessDayConfig, undefined, dueOffset)
   })()
-
-  const chips: ChipItem[] = []
-  if (gastosFields.type) chips.push({ icon: typeIcon, text: typeText })
-  if (gastosFields.billingDay && billingDayText) chips.push({ icon: CalendarClock, text: billingDayText })
-  if (gastosFields.dueDay && dueDayText) chips.push({ icon: CalendarClock, text: dueDayText })
-  if (gastosFields.store && item.storeName) chips.push({ icon: Store, text: item.storeName })
-  if (gastosFields.interestRate && item.interestRate && item.interestRate > 0) chips.push({ icon: Landmark, text: t('items.interestRate', { rate: item.interestRate }) })
-  if (item.type === 'emprestimo' && item.baseValue && item.baseValue > 0) chips.push({ icon: DollarSign, text: t('items.baseValue', { value: fmtVal(item.baseValue) }) })
 
   const cardRows: CardDetailRow[] = []
   if (isInstallment) {
@@ -178,10 +169,18 @@ export function ItemsTile({
     totalAnticipatedThisMonth > 0 ? t('items.anticipatedInstallments', { count: totalAnticipatedThisMonth }) : '',
     !item.isActive ? t('common.disabled') : ''
   ].filter(Boolean)
-  const tooltipItems = [
-    ...chips.map(chip => chip.text),
-    ...statusBadges
-  ]
+  const tooltipRows: TooltipRow[] = [
+    { label: t('tileFields.type'), value: typeText },
+    billingDayText ? { label: t('items.billingDayLabel'), value: billingDayText } : null,
+    dueDayText ? { label: t('items.dueDayLabel'), value: dueDayText } : null,
+    item.storeName ? { label: t('tileFields.store'), value: item.storeName } : null,
+    item.interestRate && item.interestRate > 0 ? { label: t('tileFields.interestRate'), value: `${item.interestRate}%` } : null,
+    item.type === 'emprestimo' && item.baseValue && item.baseValue > 0 ? { label: t('items.baseValue', { value: '' }).replace(': ', '').trim(), value: fmtVal(item.baseValue) } : null,
+    statusBadges.length > 0 ? { label: t('items.summaryLabel'), value: statusBadges.join(', ') } : null,
+    { label: t('itemsForm.tags'), value: tagsSummary },
+    { label: t('itemsForm.status'), value: statusSummary },
+    { label: t('items.interruptions'), value: interruptionSummary }
+  ].filter(Boolean) as TooltipRow[]
 
   const togglePaid = (event: MouseEvent) => {
     stop(event)
@@ -209,7 +208,15 @@ export function ItemsTile({
 
   return (
     <Card
-      className={`group relative overflow-visible transition-all duration-200 ease-out ${!item.isActive && dimPaid ? 'opacity-60 hover:opacity-100' : ''} ${item.isPaid && dimPaid ? 'opacity-60 hover:opacity-100' : 'hover:shadow-md'}`}
+      tabIndex={0}
+      onClick={() => setExpanded(value => !value)}
+      onKeyDown={event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          setExpanded(value => !value)
+        }
+      }}
+      className={`group relative overflow-visible cursor-pointer transition-all duration-200 ease-out ${!infoOpen && !item.isActive && dimPaid ? 'opacity-60 hover:opacity-100' : ''} ${!infoOpen && item.isPaid && dimPaid ? 'opacity-60 hover:opacity-100' : 'hover:shadow-md'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
     >
       {!item.isActive && (
         <div className="absolute inset-0 z-[1] pointer-events-none select-none rounded-lg" style={{ backgroundImage: 'repeating-linear-gradient(135deg, transparent, transparent 8px, hsl(var(--muted)) 8px, hsl(var(--muted)) 9px)', opacity: 0.3 }} />
@@ -263,24 +270,16 @@ export function ItemsTile({
                     <Info size={16} />
                   </button>
                   {infoOpen && (
-                    <div className="absolute right-0 top-full z-[100] mt-2 w-72 rounded-lg border border-border bg-card p-3 text-left text-xs text-card-foreground shadow-2xl" style={{ backgroundColor: 'hsl(var(--card))' }}>
+                    <div onClick={stop} className="absolute right-0 top-full z-[200] mt-2 w-72 rounded-lg border border-border p-3 text-left text-xs text-card-foreground opacity-100 shadow-2xl" style={{ backgroundColor: 'hsl(var(--card))' }}>
                       <p className="font-semibold text-foreground">{t('items.cardInfo')}</p>
-                      <div className="mt-2 space-y-1.5">
-                        <p className="text-muted-foreground">{t('itemsForm.tags')}: <span className="text-foreground">{tagsSummary}</span></p>
-                        <p className="text-muted-foreground">{t('itemsForm.status')}: <span className="text-foreground">{statusSummary}</span></p>
-                        <p className="text-muted-foreground">{t('items.interruptions')}: <span className="text-foreground">{interruptionSummary}</span></p>
-                      </div>
-                      {tooltipItems.length > 0 && (
-                        <div className="mt-3 border-t border-border/70 pt-2">
-                          <div className="flex flex-wrap gap-1.5">
-                            {tooltipItems.map(info => (
-                              <span key={info} className="rounded-md border border-border/70 bg-muted/30 px-2 py-1 text-muted-foreground">
-                                {info}
-                              </span>
-                            ))}
+                      <dl className="mt-2 space-y-1.5">
+                        {tooltipRows.map(row => (
+                          <div key={row.label} className="grid grid-cols-[88px_minmax(0,1fr)] gap-2">
+                            <dt className="text-muted-foreground">{row.label}:</dt>
+                            <dd className="min-w-0 text-foreground">{row.value}</dd>
                           </div>
-                        </div>
-                      )}
+                        ))}
+                      </dl>
                     </div>
                   )}
                 </span>
@@ -298,7 +297,8 @@ export function ItemsTile({
         </div>
       </div>
 
-      <div className="relative z-[2] border-t border-border/60 px-4 pb-4 pt-3">
+      {expanded && (
+      <div className="relative z-[2] border-t border-border/60 px-4 pb-4 pt-3" onClick={stop}>
         <div className="overflow-hidden rounded-lg border border-border/70 bg-background/20">
           {cardRows.length === 0 ? (
             <div className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
@@ -327,6 +327,7 @@ export function ItemsTile({
           )}
           </div>
       </div>
+      )}
     </Card>
   )
 }
