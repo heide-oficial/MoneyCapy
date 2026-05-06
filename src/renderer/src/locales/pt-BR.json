@@ -497,6 +497,7 @@
     "incomeCount": "{{count}} receita",
     "incomeCountPlural": "{{count}} receitas",
     "unpaidCount": "{{count}} não pagos",
+    "interruptedCount": "{{count}} interrompidos",
     "unreceived": "{{count}} não recebidas",
     "totalActiveFiltered": "Total ativo (filtrado)",
     "totalActive": "Total ativo",

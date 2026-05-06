@@ -199,7 +199,7 @@ export default function CardsPage() {
     return true
   })
 
-  const cardTotalExpense = (c: CardEnriched) => c.commonTotal + c.installmentTotal + c.subscriptionTotal
+  const cardTotalExpense = (c: CardEnriched) => c.commonTotal + c.installmentTotal + c.subscriptionTotal + c.emprestimoTotal
 
   const displayCards = sortMode === 'manual' ? filteredCards : [...filteredCards].sort((a, b) => {
     switch (sortMode) {
@@ -367,25 +367,26 @@ export default function CardsPage() {
           <div className="relative group/expenses inline-flex items-center gap-1.5 text-xs text-muted-foreground cursor-default">
             <Receipt size={12} className="shrink-0 opacity-60" />
             <span className="font-medium">
-              {t('cards.totalExpenses', { total: fmtCard(card.commonTotal + card.installmentTotal + card.subscriptionTotal + card.emprestimoTotal) })}
+              {t('cards.totalExpenses', { total: fmtCard(cardTotalExpense(card)) })}
             </span>
-            <div className="absolute bottom-full left-0 mb-1.5 hidden group-hover/expenses:flex flex-col gap-1 bg-zinc-900 dark:bg-zinc-800 text-zinc-100 border border-zinc-700 rounded-lg shadow-lg p-2.5 z-50 min-w-max">
-              <span className="inline-flex items-center gap-1.5 text-[11px] text-zinc-300">
-                <CircleDot size={10} className="shrink-0 opacity-60" />
-                {t('accounts.commonCount', { count: card.commonCount, total: formatCurrency(card.commonTotal) })}
-              </span>
-              <span className="inline-flex items-center gap-1.5 text-[11px] text-zinc-300">
-                <Layers size={10} className="shrink-0 opacity-60" />
-                {t('accounts.installmentCount', { count: card.installmentCount, total: formatCurrency(card.installmentTotal) })}
-              </span>
-              <span className="inline-flex items-center gap-1.5 text-[11px] text-zinc-300">
-                <Repeat size={10} className="shrink-0 opacity-60" />
-                {t('accounts.subscriptionCount', { count: card.subscriptionCount, total: formatCurrency(card.subscriptionTotal) })}
-              </span>
-              <span className="inline-flex items-center gap-1.5 text-[11px] text-zinc-300">
-                <HandCoins size={10} className="shrink-0 opacity-60" />
-                {t('accounts.loanCount', { count: card.emprestimoCount, total: formatCurrency(card.emprestimoTotal) })}
-              </span>
+            <div className="tile-card-tooltip absolute bottom-full left-0 mb-2 hidden w-[22rem] rounded-lg border border-border p-3 text-left text-xs text-card-foreground group-hover/expenses:block">
+              <p className="font-semibold text-foreground">{t('cards.totalExpenses', { total: fmtCard(cardTotalExpense(card)) })}</p>
+              <dl className="mt-2 space-y-1.5">
+                {[
+                  { icon: CircleDot, label: t('itemTypes.common'), value: t('accounts.commonCount', { count: card.commonCount, total: fmtCard(card.commonTotal) }) },
+                  { icon: Layers, label: t('itemTypes.installment'), value: t('accounts.installmentCount', { count: card.installmentCount, total: fmtCard(card.installmentTotal) }) },
+                  { icon: Repeat, label: t('itemTypes.subscription'), value: t('accounts.subscriptionCount', { count: card.subscriptionCount, total: fmtCard(card.subscriptionTotal) }) },
+                  { icon: HandCoins, label: t('itemTypes.emprestimo'), value: t('accounts.loanCount', { count: card.emprestimoCount, total: fmtCard(card.emprestimoTotal) }) }
+                ].map(row => (
+                  <div key={row.label} className="grid grid-cols-[16px_minmax(0,1fr)] gap-2">
+                    <row.icon size={14} className="mt-0.5 text-muted-foreground" />
+                    <div className="min-w-0">
+                      <dt className="text-muted-foreground">{row.label}:</dt>
+                      <dd className="whitespace-normal break-words text-foreground leading-snug">{row.value}</dd>
+                    </div>
+                  </div>
+                ))}
+              </dl>
             </div>
           </div>
           <div className="ml-auto flex items-center gap-3">

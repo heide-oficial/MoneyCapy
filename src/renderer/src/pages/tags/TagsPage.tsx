@@ -398,17 +398,25 @@ export default function TagsPage() {
     return raw * (item.exchangeRateSnapshot || 1.0)
   }
 
-  const computeGroupTotal = (groupItems: SectionItem[]) =>
-    groupItems.filter(i => i.isActive && !getActiveInterruption(i.interruptions, month)).reduce((s, i) => {
-      const rate = i.exchangeRateSnapshot || 1.0
-      if ((i.type === 'installment' || i.type === 'emprestimo') && i.totalInstallments) {
-        if (i.cardSplits && i.cardSplits.length > 0) {
-          return s + i.cardSplits.reduce((acc, sp) => acc + Math.round((sp.value / sp.totalInstallments) * 100) / 100, 0) * rate
-        }
-        return s + Math.round((i.value / i.totalInstallments) * 100) / 100 * rate
+  const getMonthlyExpenseValue = (i: SectionItem) => {
+    const rate = i.exchangeRateSnapshot || 1.0
+    if ((i.type === 'installment' || i.type === 'emprestimo') && i.totalInstallments) {
+      if (i.cardSplits && i.cardSplits.length > 0) {
+        return i.cardSplits.reduce((acc, sp) => {
+          const monthly = Math.round((sp.value / sp.totalInstallments) * 100) / 100
+          if ((sp.anticipatedThisMonth || 0) > 0 && sp.discountedTotalThisMonth != null) return acc + monthly + sp.discountedTotalThisMonth
+          return acc + monthly * (1 + (sp.anticipatedThisMonth || 0))
+        }, 0) * rate
       }
-      return s + i.value * rate
-    }, 0)
+      const monthly = Math.round((i.value / i.totalInstallments) * 100) / 100
+      if ((i.anticipatedThisMonth || 0) > 0 && i.discountedTotalThisMonth != null) return (monthly + i.discountedTotalThisMonth) * rate
+      return monthly * (1 + (i.anticipatedThisMonth || 0)) * rate
+    }
+    return (i.type === 'subscription' ? (i.effectiveValue ?? i.value) : i.value) * rate
+  }
+
+  const computeGroupTotal = (groupItems: SectionItem[]) =>
+    groupItems.filter(i => i.isActive && !getActiveInterruption(i.interruptions, month)).reduce((s, i) => s + getMonthlyExpenseValue(i), 0)
 
   const computeIncomeTotal = (incs: IncomeRecord[]) =>
     incs.filter(i => !getActiveInterruption(i.interruptions, month)).reduce((s, i) => s + i.effectiveValue * (i.exchangeRateSnapshot || 1.0), 0)
@@ -438,10 +446,17 @@ export default function TagsPage() {
 
   const grandTotalItems = computeGroupTotal(uniqueFilteredItems)
   const grandTotalIncomes = computeIncomeTotal(uniqueFilteredIncomes)
-  const paidCount = uniqueFilteredItems.filter(i => i.isPaid).length
+  const activeMonthlyItems = uniqueFilteredItems.filter(i => !getActiveInterruption(i.interruptions, month))
+  const interruptedItemsCount = uniqueFilteredItems.length - activeMonthlyItems.length
+  const paidCount = activeMonthlyItems.filter(i => i.isPaid).length
   const receivedCount = uniqueFilteredIncomes.filter(i => i.isReceived).length
+  const expenseStatLabel = [
+    activeMonthlyItems.length === 1 ? t('items.itemCount', { count: activeMonthlyItems.length }) : t('items.itemCountPlural', { count: activeMonthlyItems.length }),
+    t('items.unpaidCount', { count: activeMonthlyItems.length - paidCount }),
+    interruptedItemsCount > 0 ? t('items.interruptedCount', { count: interruptedItemsCount }) : ''
+  ].filter(Boolean).join(' - ')
   const expenseStat = {
-    label: `${uniqueFilteredItems.length === 1 ? t('items.itemCount', { count: uniqueFilteredItems.length }) : t('items.itemCountPlural', { count: uniqueFilteredItems.length })} · ${t('items.unpaidCount', { count: uniqueFilteredItems.length - paidCount })}`,
+    label: expenseStatLabel,
     value: formatDisplayCurrency(grandTotalItems),
     style: gastosStyle('tags', 'hero')
   }
@@ -870,6 +885,13 @@ export default function TagsPage() {
             </div>
           )}
 
+
+          <button type="button" title={t('categories.hideEmpty')} onClick={() => setHideEmpty(v => !v)}
+            className={`inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border transition-colors ${hideEmpty ? 'bg-primary text-primary-foreground border-primary' : 'bg-transparent text-foreground border-input hover:bg-accent'}`}>
+            <EyeOff size={11} />
+            <span data-filter-label>{t('categories.hideEmpty')}</span>
+          </button>
+
           <FilterGroup
             activeCount={
               (filterTagKeys.length > 0 ? 1 : 0) + (filterSubcategoryKeys.length > 0 ? 1 : 0) + (filterBankKeys.length > 0 ? 1 : 0) +
@@ -1019,16 +1041,6 @@ export default function TagsPage() {
               )}
             </div>
 
-            <button type="button" title={t('categories.hideEmpty')} onClick={() => setHideEmpty(f => !f)}
-              className={`inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border transition-colors ${
-                hideEmpty
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'bg-transparent text-foreground border-input hover:bg-accent'
-              }`}>
-              <EyeOff size={11} />
-              <span data-filter-label>{t('categories.hideEmpty')}</span>
-              <ChevronDown size={12} className="text-muted-foreground" />
-            </button>
 
             {viewMode !== 'receitas' && (
               <>

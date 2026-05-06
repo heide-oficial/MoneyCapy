@@ -382,6 +382,14 @@ export default function ItemsPage() {
   const total = filteredAndSortedItems
     .filter(i => i.isActive && !getActiveInterruption(i.interruptions, month))
     .reduce((s, i) => s + getItemMonthlyValue(i), 0)
+  const interruptedItemsCount = filteredAndSortedItems.filter(i => getActiveInterruption(i.interruptions, month)).length
+  const activeMonthlyItems = filteredAndSortedItems.filter(i => !getActiveInterruption(i.interruptions, month))
+  const unpaidActiveItemsCount = activeMonthlyItems.filter(i => !i.isPaid).length
+  const itemsStatLabel = [
+    t(activeMonthlyItems.length === 1 ? 'items.itemCount' : 'items.itemCountPlural', { count: activeMonthlyItems.length }),
+    t('items.unpaidCount', { count: unpaidActiveItemsCount }),
+    interruptedItemsCount > 0 ? t('items.interruptedCount', { count: interruptedItemsCount }) : ''
+  ].filter(Boolean).join(' · ')
   const csvColumns: CsvColumn<SectionItem>[] = [
     { id: 'description', label: t('csvExport.columns.description'), value: i => i.description },
     { id: 'type', label: t('csvExport.columns.type'), value: i => t(`itemTypes.${i.type}`) },
@@ -1052,7 +1060,7 @@ export default function ItemsPage() {
       }
       stats={[
         {
-          label: `${t(filteredAndSortedItems.length === 1 ? 'items.itemCount' : 'items.itemCountPlural', { count: filteredAndSortedItems.length })} · ${t('items.unpaidCount', { count: filteredAndSortedItems.filter(i => !i.isPaid).length })}`,
+          label: itemsStatLabel,
           value: formatDisplayCurrency(total),
           style: gastosStyle('items', 'hero')
         }

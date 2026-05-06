@@ -23,7 +23,7 @@ import { getCurrentMonth } from '../../lib/date'
 import { useColumnsPicker } from '../../components/ui/ColumnsPickerDropdown'
 import { SimpleDropdown } from '../../components/ui/SimpleDropdown'
 import { FilterGroup } from '../../components/ui/FilterGroup'
-import { Landmark, Plus, Pencil, Trash2, CreditCard, HandCoins, CircleDot, Layers, Repeat, ChevronDown, RotateCcw, Users } from 'lucide-react'
+import { Landmark, Plus, Pencil, Trash2, CreditCard, HandCoins, CircleDot, Layers, Repeat, ChevronDown, RotateCcw, Users, Receipt } from 'lucide-react'
 import { toast } from 'sonner'
 import { useUndoableDelete } from '../../hooks/useUndoableDelete'
 import { useTranslation } from '../../contexts/LanguageContext'
@@ -161,7 +161,7 @@ export default function AccountsPage() {
   if (filterJuridicidade) filtered = filtered.filter(a => a.juridicidade === filterJuridicidade)
   if (filterBanco) filtered = filtered.filter(a => a.nomeBanco === filterBanco)
 
-  const accountTotalExpense = (a: BankAccountEnriched) => a.commonTotal + a.installmentTotal + a.subscriptionTotal
+  const accountTotalExpense = (a: BankAccountEnriched) => a.commonTotal + a.installmentTotal + a.subscriptionTotal + a.emprestimoTotal
 
   const displayAccounts = sortMode === 'manual' ? filtered : [...filtered].sort((a, b) => {
     switch (sortMode) {
@@ -282,23 +282,30 @@ export default function AccountsPage() {
         {fmtAcct(account, account.balance)}
       </p>
 
-      <div className="flex items-center gap-2.5 flex-wrap">
-        <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-          <CircleDot size={10} className="shrink-0 opacity-60" />
-          {t('accounts.commonCount', { count: account.commonCount, total: formatCurrency(account.commonTotal) })}
-        </span>
-        <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-          <Layers size={10} className="shrink-0 opacity-60" />
-          {t('accounts.installmentCount', { count: account.installmentCount, total: formatCurrency(account.installmentTotal) })}
-        </span>
-        <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-          <Repeat size={10} className="shrink-0 opacity-60" />
-          {t('accounts.subscriptionCount', { count: account.subscriptionCount, total: formatCurrency(account.subscriptionTotal) })}
-        </span>
-        <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-          <HandCoins size={10} className="shrink-0 opacity-60" />
-          {t('accounts.loanCount', { count: account.emprestimoCount, total: formatCurrency(account.emprestimoTotal) })}
-        </span>
+      <div className="mt-3 border-t border-border/50 pt-3">
+        <div className="relative group/expenses inline-flex items-center gap-1.5 text-xs text-muted-foreground cursor-default" onClick={e => e.stopPropagation()}>
+          <Receipt size={12} className="shrink-0 opacity-60" />
+          <span className="font-medium">{t('cards.totalExpenses', { total: fmtAcct(account, accountTotalExpense(account)) })}</span>
+          <div className="tile-card-tooltip absolute bottom-full left-0 mb-2 hidden w-[22rem] rounded-lg border border-border p-3 text-left text-xs text-card-foreground group-hover/expenses:block">
+            <p className="font-semibold text-foreground">{t('cards.totalExpenses', { total: fmtAcct(account, accountTotalExpense(account)) })}</p>
+            <dl className="mt-2 space-y-1.5">
+              {[
+                { icon: CircleDot, label: t('itemTypes.common'), value: t('accounts.commonCount', { count: account.commonCount, total: fmtAcct(account, account.commonTotal) }) },
+                { icon: Layers, label: t('itemTypes.installment'), value: t('accounts.installmentCount', { count: account.installmentCount, total: fmtAcct(account, account.installmentTotal) }) },
+                { icon: Repeat, label: t('itemTypes.subscription'), value: t('accounts.subscriptionCount', { count: account.subscriptionCount, total: fmtAcct(account, account.subscriptionTotal) }) },
+                { icon: HandCoins, label: t('itemTypes.emprestimo'), value: t('accounts.loanCount', { count: account.emprestimoCount, total: fmtAcct(account, account.emprestimoTotal) }) }
+              ].map(row => (
+                <div key={row.label} className="grid grid-cols-[16px_minmax(0,1fr)] gap-2">
+                  <row.icon size={14} className="mt-0.5 text-muted-foreground" />
+                  <div className="min-w-0">
+                    <dt className="text-muted-foreground">{row.label}:</dt>
+                    <dd className="whitespace-normal break-words text-foreground leading-snug">{row.value}</dd>
+                  </div>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </div>
       </div>
     </Card>
   )

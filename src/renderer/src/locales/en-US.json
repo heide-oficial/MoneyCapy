@@ -497,6 +497,7 @@
     "incomeCount": "{{count}} income",
     "incomeCountPlural": "{{count}} income",
     "unpaidCount": "{{count}} unpaid",
+    "interruptedCount": "{{count}} interrupted",
     "unreceived": "{{count}} unreceived",
     "totalActiveFiltered": "Total active (filtered)",
     "totalActive": "Total active",

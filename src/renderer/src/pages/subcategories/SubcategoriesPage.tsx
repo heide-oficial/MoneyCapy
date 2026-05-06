@@ -346,20 +346,40 @@ export default function SubcategoriesPage() {
 
   const allFilteredItems = groups.flatMap(group => group.items)
   const allFilteredIncomes = groups.flatMap(group => group.incomes)
-  const expenseTotal = allFilteredItems.filter(item => item.isActive && !getActiveInterruption(item.interruptions, month)).reduce((sum, item) => {
+  const getMonthlyExpenseValue = (item: SectionItem) => {
     const rate = item.exchangeRateSnapshot || 1
     if ((item.type === 'installment' || item.type === 'emprestimo') && item.totalInstallments) {
-      return sum + Math.round((item.value / item.totalInstallments) * 100) / 100 * rate
+      if (item.cardSplits && item.cardSplits.length > 0) {
+        return item.cardSplits.reduce((acc, split) => {
+          const monthly = Math.round((split.value / split.totalInstallments) * 100) / 100
+          if ((split.anticipatedThisMonth || 0) > 0 && split.discountedTotalThisMonth != null) return acc + monthly + split.discountedTotalThisMonth
+          return acc + monthly * (1 + (split.anticipatedThisMonth || 0))
+        }, 0) * rate
+      }
+      const monthly = Math.round((item.value / item.totalInstallments) * 100) / 100
+      if ((item.anticipatedThisMonth || 0) > 0 && item.discountedTotalThisMonth != null) return (monthly + item.discountedTotalThisMonth) * rate
+      return monthly * (1 + (item.anticipatedThisMonth || 0)) * rate
     }
-    return sum + item.value * rate
-  }, 0)
+    return (item.type === 'subscription' ? (item.effectiveValue ?? item.value) : item.value) * rate
+  }
+
+  const expenseTotal = allFilteredItems
+    .filter(item => item.isActive && !getActiveInterruption(item.interruptions, month))
+    .reduce((sum, item) => sum + getMonthlyExpenseValue(item), 0)
   const incomeTotal = allFilteredIncomes
     .filter(income => !getActiveInterruption(income.interruptions, month))
     .reduce((sum, income) => sum + income.effectiveValue * (income.exchangeRateSnapshot || 1), 0)
-  const paidCount = allFilteredItems.filter(item => item.isPaid).length
+  const activeMonthlyItems = allFilteredItems.filter(item => !getActiveInterruption(item.interruptions, month))
+  const interruptedItemsCount = allFilteredItems.length - activeMonthlyItems.length
+  const paidCount = activeMonthlyItems.filter(item => item.isPaid).length
   const receivedCount = allFilteredIncomes.filter(income => income.isReceived).length
+  const expenseStatLabel = [
+    activeMonthlyItems.length === 1 ? t('items.itemCount', { count: activeMonthlyItems.length }) : t('items.itemCountPlural', { count: activeMonthlyItems.length }),
+    t('items.unpaidCount', { count: activeMonthlyItems.length - paidCount }),
+    interruptedItemsCount > 0 ? t('items.interruptedCount', { count: interruptedItemsCount }) : ''
+  ].filter(Boolean).join(' - ')
   const expenseStat = {
-    label: `${allFilteredItems.length === 1 ? t('items.itemCount', { count: allFilteredItems.length }) : t('items.itemCountPlural', { count: allFilteredItems.length })} · ${t('items.unpaidCount', { count: allFilteredItems.length - paidCount })}`,
+    label: expenseStatLabel,
     value: formatDisplayCurrency(expenseTotal),
     style: gastosStyle('subcategories', 'hero')
   }
@@ -583,6 +603,13 @@ export default function SubcategoriesPage() {
               )}
             </div>
           )}
+
+          <button type="button" title={t('categories.hideEmpty')} onClick={() => setHideEmpty(v => !v)}
+            className={`inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border transition-colors ${hideEmpty ? 'bg-primary text-primary-foreground border-primary' : 'bg-transparent text-foreground border-input hover:bg-accent'}`}>
+            <EyeOff size={11} />
+            <span data-filter-label>{t('categories.hideEmpty')}</span>
+          </button>
+
           <FilterGroup
             activeCount={
               (filterCategoryKeys.length > 0 ? 1 : 0) + (filterSubcategoryKeys.length > 0 ? 1 : 0) +
@@ -670,12 +697,7 @@ export default function SubcategoriesPage() {
                   emptyText={t('filters.noStoreRegistered')} />
               )}
             </div>
-            <button type="button" title={t('categories.hideEmpty')} onClick={() => setHideEmpty(v => !v)}
-              className={`inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border transition-colors ${hideEmpty ? 'bg-primary text-primary-foreground border-primary' : 'bg-transparent text-foreground border-input hover:bg-accent'}`}>
-              <EyeOff size={11} />
-              <span data-filter-label>{t('categories.hideEmpty')}</span>
-            </button>
-            {viewMode !== 'receitas' && (
+{viewMode !== 'receitas' && (
               <>
                 <div className="relative">
                   <button ref={activeBtnRef} type="button" title={t('common.active')}
