@@ -1,7 +1,7 @@
 import { useState, type CSSProperties, type MouseEvent } from 'react'
 import { formatCurrency, formatCurrencyWith } from '../../lib/currency'
 import { useFormatDate } from '../../lib/date'
-import { getItemCardLabels, formatCardLabel, getTypeLabels } from '../../lib/card-utils'
+import { formatCardLabel, getTypeLabels } from '../../lib/card-utils'
 import { formatDayLabelResolved } from '../../../../../shared/day-utils'
 import { useBusinessDayConfig } from '../../contexts/BusinessDayContext'
 import { useDimPaid } from '../../contexts/DimPaidContext'
@@ -10,7 +10,7 @@ import { useTranslation } from '../../contexts/LanguageContext'
 import {
   CheckCircle, Circle,
   CircleDot, Layers, Repeat, Landmark, CalendarClock, CreditCard,
-  Store, Wallet, DollarSign, Info, Settings
+  Store, DollarSign, Info, Settings
 } from 'lucide-react'
 import { Card } from '../../components/ui/Card'
 import { CurrencyTooltip } from '../../components/ui/CurrencyTooltip'
@@ -36,6 +36,13 @@ interface ItemsTileProps {
 interface ChipItem {
   icon: any
   text: string
+}
+
+interface CardDetailRow {
+  name: string
+  detail?: string
+  amount?: string
+  progress?: number
 }
 
 function previousMonth(month: string) {
@@ -96,7 +103,6 @@ export function ItemsTile({
   const categoryLabel = item.categoryName ? `${item.categoryName}${item.subcategoryName ? `/${item.subcategoryName}` : ''}` : t('items.noCategoryDefined')
 
   const cardTypeLabels = getTypeLabels(t)
-  const cardLabels = getItemCardLabels(item, cardTypeLabels)
 
   const billingDayText = formatDayLabelResolved(item.billingDay ?? null, item.billingDayType || null, t('items.billingDayLabel'), mYear, mMonth, businessDayConfig, undefined, item.billingDayMonthOffset || 0)
   const dueDayText = (() => {
@@ -117,38 +123,38 @@ export function ItemsTile({
   if (gastosFields.billingDay && billingDayText) chips.push({ icon: CalendarClock, text: billingDayText })
   if (gastosFields.dueDay && dueDayText) chips.push({ icon: CalendarClock, text: dueDayText })
   if (gastosFields.store && item.storeName) chips.push({ icon: Store, text: item.storeName })
-  if (gastosFields.card) {
-    chips.push({
-      icon: cardLabels.length > 0 ? CreditCard : Wallet,
-      text: cardLabels.length > 0 ? cardLabels.join(', ') : t('items.noCard')
-    })
-  }
   if (gastosFields.interestRate && item.interestRate && item.interestRate > 0) chips.push({ icon: Landmark, text: t('items.interestRate', { rate: item.interestRate }) })
   if (item.type === 'emprestimo' && item.baseValue && item.baseValue > 0) chips.push({ icon: DollarSign, text: t('items.baseValue', { value: fmtVal(item.baseValue) }) })
 
-  const installmentCards: { name: string; current: number; total: number; monthly: number; anticipated: number }[] = []
+  const cardRows: CardDetailRow[] = []
   if (isInstallment) {
     if (hasSplits && item.type !== 'emprestimo') {
       for (const split of item.cardSplits!) {
         const current = split.currentInstallment || Math.min(item.currentInstallment!, split.totalInstallments)
         const splitLabel = split.cardName ? formatCardLabel(split.cardName, split.cardType, split.paymentMethod, cardTypeLabels) : t('items.cardFallback', { id: String(split.cardId) })
-        installmentCards.push({
+        const anticipated = split.anticipatedThisMonth || 0
+        cardRows.push({
           name: splitLabel,
-          current,
-          total: split.totalInstallments,
-          monthly: split.value / split.totalInstallments,
-          anticipated: split.anticipatedThisMonth || 0
+          detail: `${current}/${split.totalInstallments} ${t('items.installments').toLowerCase()}${anticipated > 0 ? ` (+${anticipated})` : ''}`,
+          amount: `${fmtVal(split.value / split.totalInstallments)}${t('itemsForm.perMonth')}`,
+          progress: Math.min((current / split.totalInstallments) * 100, 100)
         })
       }
     } else {
-      installmentCards.push({
+      cardRows.push({
         name: item.type === 'emprestimo' ? t('items.installments') : (item.cardName ? formatCardLabel(item.cardName, item.cardType, item.paymentMethod, cardTypeLabels) : t('items.installments')),
-        current: item.currentInstallment!,
-        total: item.totalInstallments!,
-        monthly: item.value / item.totalInstallments!,
-        anticipated: item.anticipatedThisMonth || 0
+        detail: `${item.currentInstallment!}/${item.totalInstallments!} ${t('items.installments').toLowerCase()}${(item.anticipatedThisMonth || 0) > 0 ? ` (+${item.anticipatedThisMonth})` : ''}`,
+        amount: `${fmtVal(item.value / item.totalInstallments!)}${t('itemsForm.perMonth')}`,
+        progress: Math.min((item.currentInstallment! / item.totalInstallments!) * 100, 100)
       })
     }
+  } else if (item.cardName) {
+    const recurring = item.type === 'subscription'
+    cardRows.push({
+      name: formatCardLabel(item.cardName, item.cardType, item.paymentMethod, cardTypeLabels),
+      detail: recurring && item.endMonth ? t('items.cardUntil', { month: fmtMonth(item.endMonth) }) : undefined,
+      amount: recurring ? `${fmtVal(monthValue)}${t('itemsForm.perMonth')}` : fmtVal(monthValue)
+    })
   }
 
   const activeInterruption = item.interruptions?.find(interruption => {
@@ -169,6 +175,10 @@ export function ItemsTile({
   const totalAnticipatedThisMonth = hasSplits
     ? item.cardSplits!.reduce((sum, split) => sum + (split.anticipatedThisMonth || 0), 0)
     : (item.anticipatedThisMonth || 0)
+  const statusBadges = [
+    totalAnticipatedThisMonth > 0 ? t('items.anticipatedInstallments', { count: totalAnticipatedThisMonth }) : '',
+    !item.isActive ? t('common.disabled') : ''
+  ].filter(Boolean)
 
   const togglePaid = (event: MouseEvent) => {
     stop(event)
@@ -199,7 +209,7 @@ export function ItemsTile({
       {expanded && (
         <div
           aria-hidden="true"
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[1px]"
+          className="tile-card-backdrop fixed inset-0 z-40 bg-black/60 backdrop-blur-[1px]"
           onClick={() => setExpanded(false)}
         />
       )}
@@ -215,13 +225,13 @@ export function ItemsTile({
             setExpanded(false)
           }
         }}
-        className={`group relative overflow-visible transition-all cursor-pointer ${expanded ? 'z-50 shadow-2xl ring-1 ring-border' : ''} ${!item.isActive && dimPaid ? 'opacity-60 hover:opacity-100' : ''} ${item.isPaid && dimPaid ? 'opacity-60 hover:opacity-100' : 'hover:shadow-md'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+        className={`group relative overflow-visible transition-all duration-200 ease-out cursor-pointer ${expanded ? 'z-50 rounded-b-none border-b-0 shadow-2xl ring-1 ring-border' : ''} ${!item.isActive && dimPaid ? 'opacity-60 hover:opacity-100' : ''} ${item.isPaid && dimPaid ? 'opacity-60 hover:opacity-100' : 'hover:shadow-md'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
       >
       {!item.isActive && (
         <div className="absolute inset-0 z-[1] pointer-events-none select-none rounded-lg" style={{ backgroundImage: 'repeating-linear-gradient(135deg, transparent, transparent 8px, hsl(var(--muted)) 8px, hsl(var(--muted)) 9px)', opacity: 0.3 }} />
       )}
 
-      <div className="relative z-[2] flex items-stretch gap-3 p-3 sm:p-4">
+      <div className="relative z-[2] flex items-center gap-3 px-3 py-3 sm:px-4">
         <button
           type="button"
           onClick={togglePaid}
@@ -289,25 +299,22 @@ export function ItemsTile({
             </div>
           </div>
 
-          <div className="mt-3 flex items-center gap-2 overflow-hidden">
-            {totalAnticipatedThisMonth > 0 && (
-              <span className="rounded-full border border-primary/30 bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary">
-                {t('items.anticipatedInstallments', { count: totalAnticipatedThisMonth })}
-              </span>
-            )}
-            {!item.isActive && (
-              <span className="rounded-full border border-muted-foreground/20 bg-muted-foreground/10 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                {t('common.disabled')}
-              </span>
-            )}
-          </div>
+          {statusBadges.length > 0 && (
+            <div className="mt-2 flex items-center gap-2 overflow-hidden">
+              {statusBadges.map((badge, index) => (
+                <span key={badge} className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${index === 0 && totalAnticipatedThisMonth > 0 ? 'border-primary/30 bg-primary/15 text-primary' : 'border-muted-foreground/20 bg-muted-foreground/10 text-muted-foreground'}`}>
+                  {badge}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
       {expanded && (
-        <div onClick={stop} className="absolute left-0 right-0 top-full z-[3] rounded-b-lg border border-t-0 border-border bg-card px-4 pb-4 pt-3 shadow-2xl">
+        <div onClick={stop} className="tile-card-panel absolute left-0 right-0 top-full z-[3] -mt-px rounded-b-lg border border-t-0 border-border bg-card px-4 pb-4 pt-3 shadow-2xl">
           {chips.length > 0 && (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 border-t border-border/60 pt-3">
               {chips.map((chip, index) => {
                 const Icon = chip.icon
                 return (
@@ -320,29 +327,37 @@ export function ItemsTile({
             </div>
           )}
 
-          {gastosFields.installments && isInstallment && item.isActive && installmentCards.length > 0 && (
-            <div className="mt-4 overflow-hidden rounded-lg border border-border/70 bg-background/20">
-              {installmentCards.map(card => {
-                const done = card.current >= card.total
-                const progress = Math.min((card.current / card.total) * 100, 100)
-                return (
-                  <div key={card.name} className="grid gap-3 border-b border-border/60 px-3 py-3 last:border-b-0 sm:grid-cols-[minmax(0,1.2fr)_120px_130px_minmax(120px,1fr)] sm:items-center">
-                    <p className="truncate text-sm font-semibold">{card.name}</p>
-                    <span className={`text-sm font-bold tabular-nums ${done ? 'text-green-500' : 'text-foreground/80'}`}>
-                      {card.current}/{card.total} {t('items.installments').toLowerCase()}
-                      {card.anticipated > 0 && <span className="text-primary"> (+{card.anticipated})</span>}
-                    </span>
-                    <span className="text-sm text-muted-foreground tabular-nums">
-                      {fmtVal(card.monthly)}{t('itemsForm.perMonth')}
-                    </span>
-                    <div className="h-2 rounded-full bg-muted">
-                      <div className={`h-full rounded-full ${done ? 'bg-green-500' : 'bg-primary'}`} style={{ width: `${progress}%` }} />
-                    </div>
-                  </div>
-                )
-              })}
+          <div className={chips.length > 0 ? 'mt-4' : 'border-t border-border/60 pt-3'}>
+            <div className="mb-2 flex items-center gap-2">
+              <CreditCard size={14} className="text-muted-foreground" />
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('items.cardsSection')}</h4>
             </div>
-          )}
+            <div className="overflow-hidden rounded-lg border border-border/70 bg-background/20">
+              {cardRows.length === 0 ? (
+                <div className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
+                  <CreditCard size={14} className="shrink-0 opacity-70" />
+                  {t('items.noLinkedCard')}
+                </div>
+              ) : (
+                cardRows.map((card, index) => (
+                  <div key={`${card.name}-${index}`} className="border-b border-border/60 px-3 py-3 last:border-b-0">
+                    <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold">{card.name}</p>
+                        {card.detail && <p className="mt-0.5 text-xs text-muted-foreground">{card.detail}</p>}
+                      </div>
+                      {card.amount && <p className="text-sm font-bold tabular-nums text-foreground sm:text-right">{card.amount}</p>}
+                    </div>
+                    {card.progress != null && (
+                      <div className="mt-3 h-2 rounded-full bg-muted">
+                        <div className={`h-full rounded-full ${card.progress >= 100 ? 'bg-green-500' : 'bg-primary'}`} style={{ width: `${card.progress}%` }} />
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
 
         </div>
       )}

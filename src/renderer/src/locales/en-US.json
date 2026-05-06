@@ -509,6 +509,9 @@
     "dueDayText": "{{label}} day {{day}}",
     "ofTotal": "of {{value}}",
     "cardFallback": "Card #{{id}}",
+    "cardsSection": "Cards",
+    "noLinkedCard": "No card linked to this item",
+    "cardUntil": "Until {{month}}",
     "differentBillingMonth": "Different billing month",
     "differentBillingConfirm": "This item will be billed in {{month}} and will appear in that month, not the current one. Continue?"
   },

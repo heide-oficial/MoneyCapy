@@ -509,6 +509,9 @@
     "dueDayText": "{{label}} dia {{day}}",
     "ofTotal": "de {{value}}",
     "cardFallback": "Cartão #{{id}}",
+    "cardsSection": "Cartões",
+    "noLinkedCard": "Nenhum cartão vinculado a esse item",
+    "cardUntil": "Até {{month}}",
     "differentBillingMonth": "Mês da cobrança diferente",
     "differentBillingConfirm": "Este item ficará para a fatura de {{month}} e aparecerá nesse mês, não no mês atual. Deseja continuar?"
   },

@@ -7,7 +7,7 @@ import { useDimPaid } from '../../contexts/DimPaidContext'
 import { useTileFields } from '../../contexts/TileFieldsContext'
 import { useTranslation } from '../../contexts/LanguageContext'
 import {
-  CalendarClock, CheckCircle, Circle, CircleDot,
+  CalendarClock, CheckCircle, Circle, CircleDot, CreditCard,
   Info, Repeat, Settings, Store
 } from 'lucide-react'
 import { Card } from '../../components/ui/Card'
@@ -114,7 +114,7 @@ export function IncomeTile({
       {expanded && (
         <div
           aria-hidden="true"
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[1px]"
+          className="tile-card-backdrop fixed inset-0 z-40 bg-black/60 backdrop-blur-[1px]"
           onClick={() => setExpanded(false)}
         />
       )}
@@ -130,9 +130,9 @@ export function IncomeTile({
             setExpanded(false)
           }
         }}
-        className={`group relative overflow-visible transition-all cursor-pointer ${expanded ? 'z-50 shadow-2xl ring-1 ring-border' : ''} ${income.isReceived && dimPaid ? 'opacity-60 hover:opacity-100' : 'hover:shadow-md'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+        className={`group relative overflow-visible transition-all duration-200 ease-out cursor-pointer ${expanded ? 'z-50 rounded-b-none border-b-0 shadow-2xl ring-1 ring-border' : ''} ${income.isReceived && dimPaid ? 'opacity-60 hover:opacity-100' : 'hover:shadow-md'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
       >
-      <div className="relative z-[2] flex items-stretch gap-3 p-3 sm:p-4">
+      <div className="relative z-[2] flex items-center gap-3 px-3 py-3 sm:px-4">
         <button
           type="button"
           onClick={toggleReceived}
@@ -202,9 +202,9 @@ export function IncomeTile({
       </div>
 
       {expanded && (
-        <div onClick={stop} className="absolute left-0 right-0 top-full z-[3] rounded-b-lg border border-t-0 border-border bg-card px-4 pb-4 pt-3 shadow-2xl">
+        <div onClick={stop} className="tile-card-panel absolute left-0 right-0 top-full z-[3] -mt-px rounded-b-lg border border-t-0 border-border bg-card px-4 pb-4 pt-3 shadow-2xl">
           {chips.length > 0 && (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 border-t border-border/60 pt-3">
               {chips.map((chip, index) => {
                 const Icon = chip.icon
                 return (
@@ -216,6 +216,18 @@ export function IncomeTile({
               })}
             </div>
           )}
+          <div className={chips.length > 0 ? 'mt-4' : 'border-t border-border/60 pt-3'}>
+            <div className="mb-2 flex items-center gap-2">
+              <CreditCard size={14} className="text-muted-foreground" />
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('items.cardsSection')}</h4>
+            </div>
+            <div className="overflow-hidden rounded-lg border border-border/70 bg-background/20">
+              <div className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
+                <CreditCard size={14} className="shrink-0 opacity-70" />
+                {t('items.noLinkedCard')}
+              </div>
+            </div>
+          </div>
         </div>
       )}
       </Card>
