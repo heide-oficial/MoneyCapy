@@ -251,13 +251,13 @@ export function ItemsTile({
           setExpanded(false)
         }
       }}
-      className={`group relative overflow-visible cursor-pointer transition-all duration-200 ease-out ${expanded ? 'z-50 rounded-b-none border-b-0 shadow-2xl ring-1 ring-border' : ''} ${!infoOpen && !item.isActive && dimPaid ? 'opacity-60 hover:opacity-100' : ''} ${!infoOpen && item.isPaid && dimPaid ? 'opacity-60 hover:opacity-100' : 'hover:shadow-md'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+      className={`group relative overflow-visible cursor-pointer transition-all duration-200 ease-out ${expanded ? 'z-50 rounded-b-none border-b-0 shadow-2xl' : ''} ${!infoOpen && !item.isActive && dimPaid ? 'opacity-60 hover:opacity-100' : ''} ${!infoOpen && item.isPaid && dimPaid ? 'opacity-60 hover:opacity-100' : 'hover:shadow-md'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
     >
       {!item.isActive && (
         <div className="absolute inset-0 z-[1] pointer-events-none select-none rounded-lg" style={{ backgroundImage: 'repeating-linear-gradient(135deg, transparent, transparent 8px, hsl(var(--muted)) 8px, hsl(var(--muted)) 9px)', opacity: 0.3 }} />
       )}
 
-      <div className="relative z-[2] flex items-center gap-3 px-3 py-3 sm:px-4">
+      <div className="relative z-20 flex items-center gap-3 px-3 py-3 sm:px-4">
         <button
           type="button"
           onClick={togglePaid}
@@ -305,7 +305,7 @@ export function ItemsTile({
                     <Info size={16} />
                   </button>
                   {infoOpen && (
-                    <div onClick={stop} className="absolute right-0 top-full z-[200] mt-2 w-72 rounded-lg border border-border p-3 text-left text-xs text-card-foreground opacity-100 shadow-2xl" style={{ backgroundColor: 'hsl(var(--card))' }}>
+                    <div onClick={stop} className="tile-card-tooltip absolute right-0 top-full z-[80] mt-2 w-72 rounded-lg border border-border p-3 text-left text-xs text-card-foreground opacity-100">
                       <p className="font-semibold text-foreground">{t('items.cardInfo')}</p>
                       <dl className="mt-2 space-y-1.5">
                         {tooltipRows.map(row => (
@@ -333,7 +333,7 @@ export function ItemsTile({
       </div>
 
       {expanded && (
-      <div className="tile-card-panel absolute left-0 right-0 top-full z-[3] -mt-px rounded-b-lg border border-t-0 border-border bg-card px-4 pb-4 pt-3 shadow-2xl" onClick={stop}>
+      <div className="tile-card-panel absolute -left-px -right-px top-full z-10 -mt-px rounded-b-lg border border-t-0 border-border px-4 pb-4 pt-3 shadow-2xl" onClick={stop}>
         <div className="overflow-hidden rounded-lg border border-border/70 bg-background/20">
           {cardRows.length === 0 ? (
             <div className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">

@@ -124,8 +124,15 @@
 }
 
 .tile-card-panel {
+  background-color: hsl(var(--card));
   transform-origin: top;
   animation: tile-card-panel-in 180ms ease-out;
+}
+
+.tile-card-tooltip {
+  background-color: hsl(var(--card));
+  box-shadow: 0 24px 60px rgb(0 0 0 / 0.45), 0 0 0 1px hsl(var(--border));
+  isolation: isolate;
 }
 
 @media (prefers-reduced-motion: reduce) {
