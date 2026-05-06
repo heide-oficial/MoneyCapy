@@ -15,7 +15,6 @@ import { ColorPicker } from '../../components/ui/ColorPicker'
 import { useTranslation } from '../../contexts/LanguageContext'
 import { toast } from 'sonner'
 import { createNoteBlock, formatNoteBlockDate, parseNoteBlocks, serializeNoteBlocks } from '../../lib/note-blocks'
-import { addMonths } from '../../lib/interruptions'
 
 export interface FormSplit {
   cardId: string
