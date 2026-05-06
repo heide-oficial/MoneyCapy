@@ -8,6 +8,7 @@ import { useBusinessDayConfig } from '../../contexts/BusinessDayContext'
 import { useDimPaid } from '../../contexts/DimPaidContext'
 import { useTileFields } from '../../contexts/TileFieldsContext'
 import { useTranslation } from '../../contexts/LanguageContext'
+import { useDisplayCurrency } from '../../contexts/DisplayCurrencyContext'
 import {
   CheckCircle, Circle,
   Bookmark, CalendarClock, CalendarDays, CreditCard, DollarSign,
@@ -91,6 +92,7 @@ export function ItemsTile({
   const { businessDayConfig } = useBusinessDayConfig()
   const { dimPaid } = useDimPaid()
   const { gastosFields } = useTileFields(fieldsPage)
+  const { displayCurrency } = useDisplayCurrency()
   const tileInstanceId = useId()
   const [expanded, setExpanded] = useState(false)
   const [infoOpen, setInfoOpen] = useState(false)
@@ -101,7 +103,9 @@ export function ItemsTile({
   const isForeign = !!(item.currencySymbol && item.exchangeRateSnapshot && item.exchangeRateSnapshot !== 1.0)
   const sym = item.currencySymbol || ''
   const snap = item.exchangeRateSnapshot || 1.0
-  const fmtVal = (value: number) => isForeign ? formatCurrencyWith(value, sym) : formatCurrency(value)
+  const fmtVal = (value: number) => displayCurrency && displayCurrency.exchangeRate > 0
+    ? formatCurrencyWith((value * snap) / displayCurrency.exchangeRate, displayCurrency.symbol)
+    : isForeign ? formatCurrencyWith(value, sym) : formatCurrency(value)
   const fmtBase = (value: number) => formatCurrency(value * snap)
   const isInstallment = Boolean((item.type === 'installment' || item.type === 'emprestimo') && item.totalInstallments && item.currentInstallment)
 

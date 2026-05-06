@@ -6,7 +6,7 @@ interface DisplayCurrencyContextType {
   currencies: Currency[]
   baseCurrency: Currency | null
   displayCurrency: Currency | null
-  setDisplayCurrencyId: (id: number) => void
+  setDisplayCurrencyId: (id: number | null) => void
   formatDisplayCurrency: (value: number) => string
 }
 
@@ -29,18 +29,19 @@ export function DisplayCurrencyProvider({ children }: { children: ReactNode }) {
       const selected = currencies.find(currency => currency.id === displayCurrencyId)
       if (selected) return selected
     }
-    return baseCurrency
+    return null
   }, [baseCurrency, currencies, displayCurrencyId])
 
-  const setDisplayCurrencyId = (id: number) => {
+  const setDisplayCurrencyId = (id: number | null) => {
     setDisplayCurrencyIdState(id)
-    window.api.settings.set('displayCurrencyId', String(id))
+    window.api.settings.set('displayCurrencyId', id == null ? '' : String(id))
   }
 
   const formatDisplayCurrency = (value: number) => {
     if (displayCurrency && displayCurrency.exchangeRate > 0) {
       return formatCurrencyWith(value / displayCurrency.exchangeRate, displayCurrency.symbol)
     }
+    if (baseCurrency) return formatCurrencyWith(value, baseCurrency.symbol)
     return formatCurrency(value)
   }
 

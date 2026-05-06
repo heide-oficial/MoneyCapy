@@ -1125,6 +1125,7 @@
     "deleteCurrencyConfirm": "Are you sure you want to delete the currency {{name}} ({{code}})?",
     "changeBaseCurrency": "Change base currency",
     "changeDisplayCurrency": "Change displayed currency",
+    "defaultDisplayCurrency": "Default currency",
     "changeBaseConfirm": "Set {{name}} ({{code}}) as base currency? All rates and snapshots will be recalculated."
   },
   "errors": {

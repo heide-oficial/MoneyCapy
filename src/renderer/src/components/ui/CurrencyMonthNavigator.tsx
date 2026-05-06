@@ -1,5 +1,6 @@
 import { MonthNavigator } from './MonthNavigator'
 import { useDisplayCurrency } from '../../contexts/DisplayCurrencyContext'
+import { useTranslation } from '../../contexts/LanguageContext'
 
 interface CurrencyMonthNavigatorProps {
   month: string
@@ -8,15 +9,17 @@ interface CurrencyMonthNavigatorProps {
 
 export function CurrencySelector() {
   const { currencies, displayCurrency, setDisplayCurrencyId } = useDisplayCurrency()
+  const { t } = useTranslation()
 
   if (currencies.length <= 1) return null
 
   return (
     <select
       value={displayCurrency?.id ?? ''}
-      onChange={event => setDisplayCurrencyId(Number(event.target.value))}
-      className="h-8 min-w-[86px] rounded-md border border-input bg-card px-2.5 text-sm font-medium text-foreground outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
+      onChange={event => setDisplayCurrencyId(event.target.value ? Number(event.target.value) : null)}
+      className="h-8 min-w-[112px] rounded-md border border-input bg-card px-2.5 text-sm font-medium text-foreground outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
     >
+      <option value="">{t('currencyManagement.defaultDisplayCurrency')}</option>
       {currencies.map(currency => (
         <option key={currency.id} value={currency.id}>
           {currency.code}

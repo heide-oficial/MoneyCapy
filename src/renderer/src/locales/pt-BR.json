@@ -1125,6 +1125,7 @@
     "deleteCurrencyConfirm": "Tem certeza que deseja excluir a moeda {{name}} ({{code}})?",
     "changeBaseCurrency": "Trocar moeda base",
     "changeDisplayCurrency": "Alterar moeda exibida",
+    "defaultDisplayCurrency": "Moeda padrão",
     "changeBaseConfirm": "Deseja definir {{name}} ({{code}}) como moeda base? Todas as taxas e snapshots serão recalculados."
   },
   "errors": {

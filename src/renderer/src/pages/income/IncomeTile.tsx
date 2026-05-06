@@ -7,6 +7,7 @@ import { useBusinessDayConfig } from '../../contexts/BusinessDayContext'
 import { useDimPaid } from '../../contexts/DimPaidContext'
 import { useTileFields } from '../../contexts/TileFieldsContext'
 import { useTranslation } from '../../contexts/LanguageContext'
+import { useDisplayCurrency } from '../../contexts/DisplayCurrencyContext'
 import {
   CalendarClock, CheckCircle, Circle, Info, Layers, PauseCircle,
   Settings, Store, Tags, type LucideIcon
@@ -72,13 +73,16 @@ export function IncomeTile({
   const { businessDayConfig } = useBusinessDayConfig()
   const { dimPaid } = useDimPaid()
   const { receitasFields } = useTileFields(fieldsPage)
+  const { displayCurrency } = useDisplayCurrency()
   const [infoOpen, setInfoOpen] = useState(false)
   const [tooltipPosition, setTooltipPosition] = useState<TooltipPosition | null>(null)
   const [mYear, mMonth] = month.split('-').map(Number)
 
   const isForeign = !!(income.currencySymbol && income.exchangeRateSnapshot && income.exchangeRateSnapshot !== 1.0)
   const snap = income.exchangeRateSnapshot || 1.0
-  const fmtVal = (value: number) => isForeign ? formatCurrencyWith(value, income.currencySymbol || '') : formatCurrency(value)
+  const fmtVal = (value: number) => displayCurrency && displayCurrency.exchangeRate > 0
+    ? formatCurrencyWith((value * snap) / displayCurrency.exchangeRate, displayCurrency.symbol)
+    : isForeign ? formatCurrencyWith(value, income.currencySymbol || '') : formatCurrency(value)
   const fmtBase = (value: number) => formatCurrency(value * snap)
   const categoryLabel = income.categoryName ? `${income.categoryName}${income.subcategoryName ? `/${income.subcategoryName}` : ''}` : t('items.noCategoryDefined')
   const typeText = income.isRecurring ? t('income.recurring') : t('income.nonRecurring')
