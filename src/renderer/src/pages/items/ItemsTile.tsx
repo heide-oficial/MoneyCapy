@@ -64,7 +64,6 @@ export function ItemsTile({
   const { businessDayConfig } = useBusinessDayConfig()
   const { dimPaid } = useDimPaid()
   const { gastosFields } = useTileFields(fieldsPage)
-  const [expanded, setExpanded] = useState(false)
   const [infoOpen, setInfoOpen] = useState(false)
   const [mYear, mMonth] = month.split('-').map(Number)
 
@@ -179,6 +178,10 @@ export function ItemsTile({
     totalAnticipatedThisMonth > 0 ? t('items.anticipatedInstallments', { count: totalAnticipatedThisMonth }) : '',
     !item.isActive ? t('common.disabled') : ''
   ].filter(Boolean)
+  const tooltipItems = [
+    ...chips.map(chip => chip.text),
+    ...statusBadges
+  ]
 
   const togglePaid = (event: MouseEvent) => {
     stop(event)
@@ -205,28 +208,9 @@ export function ItemsTile({
   )
 
   return (
-    <>
-      {expanded && (
-        <div
-          aria-hidden="true"
-          className="tile-card-backdrop fixed inset-0 z-40 bg-black/60 backdrop-blur-[1px]"
-          onClick={() => setExpanded(false)}
-        />
-      )}
-      <Card
-        tabIndex={0}
-        onClick={() => setExpanded(value => !value)}
-        onKeyDown={event => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault()
-            setExpanded(value => !value)
-          }
-          if (event.key === 'Escape') {
-            setExpanded(false)
-          }
-        }}
-        className={`group relative overflow-visible transition-all duration-200 ease-out cursor-pointer ${expanded ? 'z-50 rounded-b-none border-b-0 shadow-2xl ring-1 ring-border' : ''} ${!item.isActive && dimPaid ? 'opacity-60 hover:opacity-100' : ''} ${item.isPaid && dimPaid ? 'opacity-60 hover:opacity-100' : 'hover:shadow-md'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
-      >
+    <Card
+      className={`group relative overflow-visible transition-all duration-200 ease-out ${!item.isActive && dimPaid ? 'opacity-60 hover:opacity-100' : ''} ${item.isPaid && dimPaid ? 'opacity-60 hover:opacity-100' : 'hover:shadow-md'}`}
+    >
       {!item.isActive && (
         <div className="absolute inset-0 z-[1] pointer-events-none select-none rounded-lg" style={{ backgroundImage: 'repeating-linear-gradient(135deg, transparent, transparent 8px, hsl(var(--muted)) 8px, hsl(var(--muted)) 9px)', opacity: 0.3 }} />
       )}
@@ -257,7 +241,7 @@ export function ItemsTile({
             <div className="flex shrink-0 items-start gap-3 text-right">
               <div>
                 <div className="leading-none">{renderValue(monthValue)}</div>
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="mt-1 text-sm text-muted-foreground">
                   {isInstallment ? t('items.ofTotal', { value: fmtVal(item.value) }) : t('items.total')}
                 </p>
               </div>
@@ -279,12 +263,25 @@ export function ItemsTile({
                     <Info size={16} />
                   </button>
                   {infoOpen && (
-                    <span className="absolute right-0 top-full z-50 mt-2 w-64 rounded-lg border border-border bg-card p-3 text-left text-xs text-card-foreground shadow-xl">
-                      <span className="block font-semibold text-foreground">{t('items.cardInfo')}</span>
-                      <span className="mt-2 block text-muted-foreground">{t('itemsForm.tags')}: <span className="text-foreground">{tagsSummary}</span></span>
-                      <span className="mt-1 block text-muted-foreground">{t('itemsForm.status')}: <span className="text-foreground">{statusSummary}</span></span>
-                      <span className="mt-1 block text-muted-foreground">{t('items.interruptions')}: <span className="text-foreground">{interruptionSummary}</span></span>
-                    </span>
+                    <div className="absolute right-0 top-full z-[100] mt-2 w-72 rounded-lg border border-border bg-card p-3 text-left text-xs text-card-foreground shadow-2xl" style={{ backgroundColor: 'hsl(var(--card))' }}>
+                      <p className="font-semibold text-foreground">{t('items.cardInfo')}</p>
+                      <div className="mt-2 space-y-1.5">
+                        <p className="text-muted-foreground">{t('itemsForm.tags')}: <span className="text-foreground">{tagsSummary}</span></p>
+                        <p className="text-muted-foreground">{t('itemsForm.status')}: <span className="text-foreground">{statusSummary}</span></p>
+                        <p className="text-muted-foreground">{t('items.interruptions')}: <span className="text-foreground">{interruptionSummary}</span></p>
+                      </div>
+                      {tooltipItems.length > 0 && (
+                        <div className="mt-3 border-t border-border/70 pt-2">
+                          <div className="flex flex-wrap gap-1.5">
+                            {tooltipItems.map(info => (
+                              <span key={info} className="rounded-md border border-border/70 bg-muted/30 px-2 py-1 text-muted-foreground">
+                                {info}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </span>
                 <button
@@ -298,70 +295,38 @@ export function ItemsTile({
               </div>
             </div>
           </div>
-
-          {statusBadges.length > 0 && (
-            <div className="mt-2 flex items-center gap-2 overflow-hidden">
-              {statusBadges.map((badge, index) => (
-                <span key={badge} className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${index === 0 && totalAnticipatedThisMonth > 0 ? 'border-primary/30 bg-primary/15 text-primary' : 'border-muted-foreground/20 bg-muted-foreground/10 text-muted-foreground'}`}>
-                  {badge}
-                </span>
-              ))}
-            </div>
-          )}
         </div>
       </div>
 
-      {expanded && (
-        <div onClick={stop} className="tile-card-panel absolute left-0 right-0 top-full z-[3] -mt-px rounded-b-lg border border-t-0 border-border bg-card px-4 pb-4 pt-3 shadow-2xl">
-          {chips.length > 0 && (
-            <div className="flex flex-wrap gap-2 border-t border-border/60 pt-3">
-              {chips.map((chip, index) => {
-                const Icon = chip.icon
-                return (
-                  <span key={index} className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/20 px-3 py-1.5 text-xs text-muted-foreground">
-                    <Icon size={13} className="shrink-0 opacity-70" />
-                    {chip.text}
-                  </span>
-                )
-              })}
+      <div className="relative z-[2] border-t border-border/60 px-4 pb-4 pt-3">
+        <div className="overflow-hidden rounded-lg border border-border/70 bg-background/20">
+          {cardRows.length === 0 ? (
+            <div className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
+              <CreditCard size={14} className="shrink-0 opacity-70" />
+              {t('items.noLinkedCard')}
             </div>
-          )}
-
-          <div className={chips.length > 0 ? 'mt-4' : 'border-t border-border/60 pt-3'}>
-            <div className="mb-2 flex items-center gap-2">
-              <CreditCard size={14} className="text-muted-foreground" />
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('items.cardsSection')}</h4>
-            </div>
-            <div className="overflow-hidden rounded-lg border border-border/70 bg-background/20">
-              {cardRows.length === 0 ? (
-                <div className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
-                  <CreditCard size={14} className="shrink-0 opacity-70" />
-                  {t('items.noLinkedCard')}
-                </div>
-              ) : (
-                cardRows.map((card, index) => (
-                  <div key={`${card.name}-${index}`} className="border-b border-border/60 px-3 py-3 last:border-b-0">
-                    <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold">{card.name}</p>
-                        {card.detail && <p className="mt-0.5 text-xs text-muted-foreground">{card.detail}</p>}
-                      </div>
-                      {card.amount && <p className="text-sm font-bold tabular-nums text-foreground sm:text-right">{card.amount}</p>}
+          ) : (
+            cardRows.map((card, index) => (
+              <div key={`${card.name}-${index}`} className="border-b border-border/60 px-3 py-3 last:border-b-0">
+                <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                      <p className="truncate text-sm font-semibold">{card.name}</p>
+                      {card.detail && <p className="text-xs text-muted-foreground">{card.detail}</p>}
                     </div>
-                    {card.progress != null && (
-                      <div className="mt-3 h-2 rounded-full bg-muted">
-                        <div className={`h-full rounded-full ${card.progress >= 100 ? 'bg-green-500' : 'bg-primary'}`} style={{ width: `${card.progress}%` }} />
-                      </div>
-                    )}
                   </div>
-                ))
-              )}
-            </div>
+                  {card.amount && <p className="text-sm font-bold tabular-nums text-foreground sm:text-right">{card.amount}</p>}
+                </div>
+                {card.progress != null && (
+                  <div className="mt-3 h-2 rounded-full bg-muted">
+                    <div className={`h-full rounded-full ${card.progress >= 100 ? 'bg-green-500' : 'bg-primary'}`} style={{ width: `${card.progress}%` }} />
+                  </div>
+                )}
+              </div>
+            ))
+          )}
           </div>
-
-        </div>
-      )}
-      </Card>
-    </>
+      </div>
+    </Card>
   )
 }
