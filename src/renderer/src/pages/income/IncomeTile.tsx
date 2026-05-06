@@ -7,8 +7,8 @@ import { useDimPaid } from '../../contexts/DimPaidContext'
 import { useTileFields } from '../../contexts/TileFieldsContext'
 import { useTranslation } from '../../contexts/LanguageContext'
 import {
-  CalendarClock, CheckCircle, ChevronDown, Circle, CircleDot,
-  DollarSign, Info, Repeat, Settings, Store, Trash2, ToggleRight, X
+  CalendarClock, CheckCircle, Circle, CircleDot,
+  Info, Repeat, Settings, Store
 } from 'lucide-react'
 import { Card } from '../../components/ui/Card'
 import { CurrencyTooltip } from '../../components/ui/CurrencyTooltip'
@@ -45,7 +45,7 @@ function stop(event: MouseEvent) {
 
 export function IncomeTile({
   income, month, fieldsPage = 'income', styleScope = 'income', receitasStyle,
-  onEdit, onToggleReceived, onDelete, onEditValue, onInterrupt, onReactivate
+  onEdit, onToggleReceived
 }: IncomeTileProps) {
   const { t } = useTranslation()
   const { fmtDate, fmtMonth } = useFormatDate()
@@ -95,37 +95,43 @@ export function IncomeTile({
     onEdit(income)
   }
 
-  const actionClick = (event: MouseEvent, action: () => void) => {
-    stop(event)
-    action()
-  }
-
   const renderValue = () => (
     isForeign ? (
       <CurrencyTooltip label={fmtBase(income.effectiveValue)}>
-        <span className="text-2xl font-bold tabular-nums sm:text-3xl" style={receitasStyle(styleScope, 'itens')}>
+        <span className="text-lg font-bold leading-tight tabular-nums sm:text-xl" style={receitasStyle(styleScope, 'itens')}>
           {fmtVal(income.effectiveValue)}
         </span>
       </CurrencyTooltip>
     ) : (
-      <span className="text-2xl font-bold tabular-nums sm:text-3xl" style={receitasStyle(styleScope, 'itens')}>
+      <span className="text-lg font-bold leading-tight tabular-nums sm:text-xl" style={receitasStyle(styleScope, 'itens')}>
         {fmtVal(income.effectiveValue)}
       </span>
     )
   )
 
   return (
-    <Card
-      tabIndex={0}
-      onClick={() => setExpanded(value => !value)}
-      onKeyDown={event => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault()
-          setExpanded(value => !value)
-        }
-      }}
-      className={`group relative overflow-visible transition-all cursor-pointer ${income.isReceived && dimPaid ? 'opacity-60 hover:opacity-100' : 'hover:shadow-md'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
-    >
+    <>
+      {expanded && (
+        <div
+          aria-hidden="true"
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[1px]"
+          onClick={() => setExpanded(false)}
+        />
+      )}
+      <Card
+        tabIndex={0}
+        onClick={() => setExpanded(value => !value)}
+        onKeyDown={event => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            setExpanded(value => !value)
+          }
+          if (event.key === 'Escape') {
+            setExpanded(false)
+          }
+        }}
+        className={`group relative overflow-visible transition-all cursor-pointer ${expanded ? 'z-50 shadow-2xl ring-1 ring-border' : ''} ${income.isReceived && dimPaid ? 'opacity-60 hover:opacity-100' : 'hover:shadow-md'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+      >
       <div className="relative z-[2] flex items-stretch gap-3 p-3 sm:p-4">
         <button
           type="button"
@@ -192,18 +198,11 @@ export function IncomeTile({
             </div>
           </div>
 
-          <div className="mt-3 flex items-center gap-2 overflow-hidden">
-            {activeInterruption && (
-              <span className="rounded-full border border-yellow-500/30 bg-yellow-500/15 px-2 py-0.5 text-[10px] font-bold text-yellow-500">
-                {activeInterruption.resumeMonth ? t('items.pausedUntil', { month: fmtMonth(activeInterruption.resumeMonth) }) : t('items.interrupted')}
-              </span>
-            )}
-          </div>
         </div>
       </div>
 
       {expanded && (
-        <div className="relative z-[2] border-t border-border px-4 pb-4 pt-3">
+        <div onClick={stop} className="absolute left-0 right-0 top-full z-[3] rounded-b-lg border border-t-0 border-border bg-card px-4 pb-4 pt-3 shadow-2xl">
           {chips.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {chips.map((chip, index) => {
@@ -217,38 +216,9 @@ export function IncomeTile({
               })}
             </div>
           )}
-
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            {income.isRecurring && (
-              <button type="button" onClick={event => actionClick(event, () => onEditValue(income))} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium hover:bg-accent">
-                <DollarSign size={13} /> {t('items.editValueThisMonth')}
-              </button>
-            )}
-            {income.isRecurring && income.interruptions && income.interruptions.length > 0 && (
-              <button type="button" onClick={event => actionClick(event, () => onEdit(income))} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium hover:bg-accent">
-                <Repeat size={13} /> {t('items.viewInterruptions')}
-              </button>
-            )}
-            {activeInterruption && (
-              <button type="button" onClick={event => actionClick(event, () => onReactivate(activeInterruption.id))} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium hover:bg-accent">
-                <ToggleRight size={13} /> {t('common.activate')}
-              </button>
-            )}
-            {income.isRecurring && !(income.interruptions?.some(interruption => !interruption.resumeMonth)) && (
-              <button type="button" onClick={event => actionClick(event, () => onInterrupt(income))} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium hover:bg-accent">
-                <X size={13} /> {t('items.interrupt')}
-              </button>
-            )}
-            <button type="button" onClick={event => actionClick(event, () => onDelete(income.id))} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-destructive/40 px-3 text-xs font-medium text-destructive hover:bg-destructive/10">
-              <Trash2 size={13} /> {t('common.delete')}
-            </button>
-          </div>
         </div>
       )}
-
-      <div className="pointer-events-none absolute bottom-2 right-2 text-muted-foreground/50">
-        <ChevronDown size={16} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} />
-      </div>
-    </Card>
+      </Card>
+    </>
   )
 }

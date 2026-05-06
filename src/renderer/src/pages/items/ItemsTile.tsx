@@ -1,16 +1,16 @@
 import { useState, type CSSProperties, type MouseEvent } from 'react'
 import { formatCurrency, formatCurrencyWith } from '../../lib/currency'
 import { useFormatDate } from '../../lib/date'
-import { getItemCardLabels, formatCardLabel } from '../../lib/card-utils'
+import { getItemCardLabels, formatCardLabel, getTypeLabels } from '../../lib/card-utils'
 import { formatDayLabelResolved } from '../../../../../shared/day-utils'
 import { useBusinessDayConfig } from '../../contexts/BusinessDayContext'
 import { useDimPaid } from '../../contexts/DimPaidContext'
 import { useTileFields } from '../../contexts/TileFieldsContext'
 import { useTranslation } from '../../contexts/LanguageContext'
 import {
-  CheckCircle, Circle, Trash2, ToggleRight, ToggleLeft,
+  CheckCircle, Circle,
   CircleDot, Layers, Repeat, Landmark, CalendarClock, CreditCard,
-  Store, Wallet, DollarSign, X, Info, Settings, ChevronDown
+  Store, Wallet, DollarSign, Info, Settings
 } from 'lucide-react'
 import { Card } from '../../components/ui/Card'
 import { CurrencyTooltip } from '../../components/ui/CurrencyTooltip'
@@ -50,8 +50,7 @@ function stop(event: MouseEvent) {
 
 export function ItemsTile({
   item, month, columns, fieldsPage = 'items', styleScope = 'items', gastosStyle,
-  onEdit, onToggleActive, onTogglePaid, onDelete,
-  onEditValue, onReactivate, onInterrupt, onViewInterruptions
+  onEdit, onTogglePaid
 }: ItemsTileProps) {
   const { t } = useTranslation()
   const { fmtDate, fmtMonth } = useFormatDate()
@@ -96,17 +95,8 @@ export function ItemsTile({
   const typeText = item.type === 'emprestimo' ? t('itemTypes.emprestimo') : item.type === 'installment' ? t('itemTypes.installment') : item.type === 'subscription' ? t('itemTypes.subscription') : t('itemTypes.common')
   const categoryLabel = item.categoryName ? `${item.categoryName}${item.subcategoryName ? `/${item.subcategoryName}` : ''}` : t('items.noCategoryDefined')
 
-  const cardLabels = getItemCardLabels(item)
-  const paymentMethods = new Set<string>()
-  if (item.paymentMethod) paymentMethods.add(item.paymentMethod)
-  if (item.cardType) paymentMethods.add(item.cardType)
-  item.cardSplits?.forEach(split => {
-    if (split.paymentMethod) paymentMethods.add(split.paymentMethod)
-    else if (split.cardType) paymentMethods.add(split.cardType)
-  })
-  const methodLabel = Array.from(paymentMethods)
-    .map(method => method === 'credit' ? t('cardTypes.credit') : method === 'debit' ? t('cardTypes.debit') : method === 'both' ? t('cardTypes.both') : method)
-    .join(', ')
+  const cardTypeLabels = getTypeLabels(t)
+  const cardLabels = getItemCardLabels(item, cardTypeLabels)
 
   const billingDayText = formatDayLabelResolved(item.billingDay ?? null, item.billingDayType || null, t('items.billingDayLabel'), mYear, mMonth, businessDayConfig, undefined, item.billingDayMonthOffset || 0)
   const dueDayText = (() => {
@@ -130,10 +120,9 @@ export function ItemsTile({
   if (gastosFields.card) {
     chips.push({
       icon: cardLabels.length > 0 ? CreditCard : Wallet,
-      text: cardLabels.length > 1 ? t('items.cardCount', { count: cardLabels.length }) : (cardLabels[0] || t('items.noCard'))
+      text: cardLabels.length > 0 ? cardLabels.join(', ') : t('items.noCard')
     })
   }
-  if (methodLabel) chips.push({ icon: CreditCard, text: methodLabel })
   if (gastosFields.interestRate && item.interestRate && item.interestRate > 0) chips.push({ icon: Landmark, text: t('items.interestRate', { rate: item.interestRate }) })
   if (item.type === 'emprestimo' && item.baseValue && item.baseValue > 0) chips.push({ icon: DollarSign, text: t('items.baseValue', { value: fmtVal(item.baseValue) }) })
 
@@ -142,7 +131,7 @@ export function ItemsTile({
     if (hasSplits && item.type !== 'emprestimo') {
       for (const split of item.cardSplits!) {
         const current = split.currentInstallment || Math.min(item.currentInstallment!, split.totalInstallments)
-        const splitLabel = split.cardName ? formatCardLabel(split.cardName, split.cardType, split.paymentMethod) : t('items.cardFallback', { id: String(split.cardId) })
+        const splitLabel = split.cardName ? formatCardLabel(split.cardName, split.cardType, split.paymentMethod, cardTypeLabels) : t('items.cardFallback', { id: String(split.cardId) })
         installmentCards.push({
           name: splitLabel,
           current,
@@ -153,7 +142,7 @@ export function ItemsTile({
       }
     } else {
       installmentCards.push({
-        name: item.type === 'emprestimo' ? t('items.installments') : (item.cardName || t('items.installments')),
+        name: item.type === 'emprestimo' ? t('items.installments') : (item.cardName ? formatCardLabel(item.cardName, item.cardType, item.paymentMethod, cardTypeLabels) : t('items.installments')),
         current: item.currentInstallment!,
         total: item.totalInstallments!,
         monthly: item.value / item.totalInstallments!,
@@ -191,37 +180,43 @@ export function ItemsTile({
     onEdit(item)
   }
 
-  const actionClick = (event: MouseEvent, action: () => void) => {
-    stop(event)
-    action()
-  }
-
   const renderValue = (value: number) => (
     isForeign ? (
       <CurrencyTooltip label={fmtBase(value)}>
-        <span className="text-2xl font-bold tabular-nums sm:text-3xl" style={gastosStyle(styleScope, 'itens')}>
+        <span className="text-lg font-bold leading-tight tabular-nums sm:text-xl" style={gastosStyle(styleScope, 'itens')}>
           {fmtVal(value)}
         </span>
       </CurrencyTooltip>
     ) : (
-      <span className="text-2xl font-bold tabular-nums sm:text-3xl" style={gastosStyle(styleScope, 'itens')}>
+      <span className="text-lg font-bold leading-tight tabular-nums sm:text-xl" style={gastosStyle(styleScope, 'itens')}>
         {fmtVal(value)}
       </span>
     )
   )
 
   return (
-    <Card
-      tabIndex={0}
-      onClick={() => setExpanded(value => !value)}
-      onKeyDown={event => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault()
-          setExpanded(value => !value)
-        }
-      }}
-      className={`group relative overflow-visible transition-all cursor-pointer ${!item.isActive && dimPaid ? 'opacity-60 hover:opacity-100' : ''} ${item.isPaid && dimPaid ? 'opacity-60 hover:opacity-100' : 'hover:shadow-md'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
-    >
+    <>
+      {expanded && (
+        <div
+          aria-hidden="true"
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[1px]"
+          onClick={() => setExpanded(false)}
+        />
+      )}
+      <Card
+        tabIndex={0}
+        onClick={() => setExpanded(value => !value)}
+        onKeyDown={event => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            setExpanded(value => !value)
+          }
+          if (event.key === 'Escape') {
+            setExpanded(false)
+          }
+        }}
+        className={`group relative overflow-visible transition-all cursor-pointer ${expanded ? 'z-50 shadow-2xl ring-1 ring-border' : ''} ${!item.isActive && dimPaid ? 'opacity-60 hover:opacity-100' : ''} ${item.isPaid && dimPaid ? 'opacity-60 hover:opacity-100' : 'hover:shadow-md'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+      >
       {!item.isActive && (
         <div className="absolute inset-0 z-[1] pointer-events-none select-none rounded-lg" style={{ backgroundImage: 'repeating-linear-gradient(135deg, transparent, transparent 8px, hsl(var(--muted)) 8px, hsl(var(--muted)) 9px)', opacity: 0.3 }} />
       )}
@@ -300,11 +295,6 @@ export function ItemsTile({
                 {t('items.anticipatedInstallments', { count: totalAnticipatedThisMonth })}
               </span>
             )}
-            {activeInterruption && (
-              <span className="rounded-full border border-yellow-500/30 bg-yellow-500/15 px-2 py-0.5 text-[10px] font-bold text-yellow-500">
-                {activeInterruption.resumeMonth ? t('items.pausedUntil', { month: fmtMonth(activeInterruption.resumeMonth) }) : t('items.interrupted')}
-              </span>
-            )}
             {!item.isActive && (
               <span className="rounded-full border border-muted-foreground/20 bg-muted-foreground/10 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
                 {t('common.disabled')}
@@ -315,7 +305,7 @@ export function ItemsTile({
       </div>
 
       {expanded && (
-        <div className="relative z-[2] border-t border-border px-4 pb-4 pt-3">
+        <div onClick={stop} className="absolute left-0 right-0 top-full z-[3] rounded-b-lg border border-t-0 border-border bg-card px-4 pb-4 pt-3 shadow-2xl">
           {chips.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {chips.map((chip, index) => {
@@ -354,41 +344,9 @@ export function ItemsTile({
             </div>
           )}
 
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            {item.type === 'subscription' && (
-              <button type="button" onClick={event => actionClick(event, () => onEditValue(item))} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium hover:bg-accent">
-                <DollarSign size={13} /> {t('items.editValueThisMonth')}
-              </button>
-            )}
-            {(item.type === 'installment' || item.type === 'emprestimo' || item.type === 'subscription') && item.interruptions && item.interruptions.length > 0 && (
-              <button type="button" onClick={event => actionClick(event, () => onViewInterruptions(item))} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium hover:bg-accent">
-                <Repeat size={13} /> {t('items.viewInterruptions')}
-              </button>
-            )}
-            {activeInterruption && (
-              <button type="button" onClick={event => actionClick(event, () => onReactivate(activeInterruption.id))} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium hover:bg-accent">
-                <ToggleRight size={13} /> {t('common.activate')}
-              </button>
-            )}
-            {(item.type === 'installment' || item.type === 'emprestimo' || item.type === 'subscription') && !(item.interruptions?.some(interruption => !interruption.resumeMonth)) && (
-              <button type="button" onClick={event => actionClick(event, () => onInterrupt(item))} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium hover:bg-accent">
-                <X size={13} /> {t('items.interrupt')}
-              </button>
-            )}
-            <button type="button" onClick={event => actionClick(event, () => onToggleActive(item))} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium hover:bg-accent">
-              {item.isActive ? <ToggleLeft size={13} /> : <ToggleRight size={13} />}
-              {item.isActive ? t('common.deactivate') : t('common.activate')}
-            </button>
-            <button type="button" onClick={event => actionClick(event, () => onDelete(item.id))} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-destructive/40 px-3 text-xs font-medium text-destructive hover:bg-destructive/10">
-              <Trash2 size={13} /> {t('common.delete')}
-            </button>
-          </div>
         </div>
       )}
-
-      <div className="pointer-events-none absolute bottom-2 right-2 text-muted-foreground/50">
-        <ChevronDown size={16} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} />
-      </div>
-    </Card>
+      </Card>
+    </>
   )
 }
