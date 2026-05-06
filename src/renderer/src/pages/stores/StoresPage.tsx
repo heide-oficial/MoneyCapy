@@ -851,18 +851,10 @@ export default function StoresPage() {
               )}
             </div>
           )}
-
-
-          <button type="button" title={t('categories.hideEmpty')} onClick={() => setHideEmpty(v => !v)}
-            className={`inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border transition-colors ${hideEmpty ? 'bg-primary text-primary-foreground border-primary' : 'bg-transparent text-foreground border-input hover:bg-accent'}`}>
-            <EyeOff size={11} />
-            <span data-filter-label>{t('categories.hideEmpty')}</span>
-          </button>
-
           <FilterGroup
             activeCount={
               (filterCategoryKeys.length > 0 ? 1 : 0) + (filterSubcategoryKeys.length > 0 ? 1 : 0) + (filterBankKeys.length > 0 ? 1 : 0) +
-              (filterCardKeys.length > 0 ? 1 : 0) + (hideEmpty ? 1 : 0) +
+              (filterCardKeys.length > 0 ? 1 : 0) +
               (filterActive !== 'all' ? 1 : 0) + (filterPaid !== 'all' ? 1 : 0) +
               (filterPayMethod !== 'all' ? 1 : 0)
             }
@@ -1059,6 +1051,14 @@ export default function StoresPage() {
               </>
             )}
           </FilterGroup>
+
+
+
+          <button type="button" title={t('categories.hideEmpty')} onClick={() => setHideEmpty(v => !v)}
+            className={`inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border transition-colors ${hideEmpty ? 'bg-primary text-primary-foreground border-primary' : 'bg-transparent text-foreground border-input hover:bg-accent'}`}>
+            <EyeOff size={11} />
+            <span data-filter-label>{t('categories.hideEmpty')}</span>
+          </button>
 
           <div className="h-6 w-px bg-border shrink-0 ml-auto" />
 

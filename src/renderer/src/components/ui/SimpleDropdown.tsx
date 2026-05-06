@@ -40,16 +40,18 @@ export function SimpleDropdown({ anchorRef, dropRef, options, current, onChange,
   }, [anchorRef, dropRef, onClose])
 
   return createPortal(
-    <div ref={dropRef} data-filter-dropdown="true" className="fixed z-[9999] rounded-md border border-border bg-card shadow-lg py-1 min-w-[160px]"
+    <div ref={dropRef} data-filter-dropdown="true" className="fixed z-[9999] min-w-[180px] max-w-[min(320px,calc(100vw-16px))] rounded-lg border border-border bg-card p-1.5 shadow-lg"
       style={{ top: pos.top, left: pos.left, visibility: pos.ready ? 'visible' : 'hidden' }}>
       {options.map(opt => (
         <button key={opt.key} type="button"
           onClick={() => onChange(opt.key)}
-          className={`flex w-full items-center gap-2 px-3 py-1.5 text-sm transition-colors hover:bg-accent hover:text-accent-foreground ${
+          className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground ${
             current === opt.key ? 'text-primary font-medium bg-primary/5' : 'text-card-foreground'
           }`}>
-          {current === opt.key && <Check size={12} />}
-          <span className={current !== opt.key ? 'ml-5' : ''}>{opt.label}</span>
+          <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+            {current === opt.key && <Check size={12} />}
+          </span>
+          <span className="min-w-0 flex-1 whitespace-normal break-words">{opt.label}</span>
         </button>
       ))}
     </div>,

@@ -287,8 +287,7 @@ export default function AccountsPage() {
           <Receipt size={12} className="shrink-0 opacity-60" />
           <span className="font-medium">{t('cards.totalExpenses', { total: fmtAcct(account, accountTotalExpense(account)) })}</span>
           <div className="tile-card-tooltip absolute bottom-full left-0 mb-2 hidden w-[22rem] rounded-lg border border-border p-3 text-left text-xs text-card-foreground group-hover/expenses:block">
-            <p className="font-semibold text-foreground">{t('cards.totalExpenses', { total: fmtAcct(account, accountTotalExpense(account)) })}</p>
-            <dl className="mt-2 space-y-1.5">
+            <dl className="space-y-1.5">
               {[
                 { icon: CircleDot, label: t('itemTypes.common'), value: t('accounts.commonCount', { count: account.commonCount, total: fmtAcct(account, account.commonTotal) }) },
                 { icon: Layers, label: t('itemTypes.installment'), value: t('accounts.installmentCount', { count: account.installmentCount, total: fmtAcct(account, account.installmentTotal) }) },
