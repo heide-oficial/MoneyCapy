@@ -102,3 +102,35 @@
 .filter-compact [data-filter-label] {
   display: none;
 }
+
+@keyframes tile-card-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes tile-card-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scaleY(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+  }
+}
+
+.tile-card-backdrop {
+  animation: tile-card-backdrop-in 160ms ease-out;
+}
+
+.tile-card-panel {
+  transform-origin: top;
+  animation: tile-card-panel-in 180ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile-card-backdrop,
+  .tile-card-panel {
+    animation: none;
+  }
+}

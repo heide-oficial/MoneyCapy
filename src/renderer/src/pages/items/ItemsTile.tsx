@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type MouseEvent } from 'react'
+import { useEffect, useId, useState, type CSSProperties, type MouseEvent } from 'react'
 import { formatCurrency, formatCurrencyWith } from '../../lib/currency'
 import { useFormatDate } from '../../lib/date'
 import { formatCardLabel, getTypeLabels } from '../../lib/card-utils'
@@ -54,6 +54,12 @@ function stop(event: MouseEvent) {
   event.stopPropagation()
 }
 
+const TILE_EXPAND_EVENT = 'moneycapy:tile-expanded'
+
+function announceExpandedTile(key: string) {
+  window.dispatchEvent(new CustomEvent(TILE_EXPAND_EVENT, { detail: key }))
+}
+
 export function ItemsTile({
   item, month, columns, fieldsPage = 'items', styleScope = 'items', gastosStyle,
   onEdit, onTogglePaid
@@ -63,6 +69,7 @@ export function ItemsTile({
   const { businessDayConfig } = useBusinessDayConfig()
   const { dimPaid } = useDimPaid()
   const { gastosFields } = useTileFields(fieldsPage)
+  const tileInstanceId = useId()
   const [expanded, setExpanded] = useState(false)
   const [infoOpen, setInfoOpen] = useState(false)
   const [mYear, mMonth] = month.split('-').map(Number)
@@ -192,6 +199,23 @@ export function ItemsTile({
     onEdit(item)
   }
 
+  const toggleExpanded = () => {
+    setExpanded(value => {
+      const next = !value
+      if (next) announceExpandedTile(tileInstanceId)
+      return next
+    })
+  }
+
+  useEffect(() => {
+    const closeOtherExpandedTiles = (event: Event) => {
+      const selectedKey = (event as CustomEvent<string>).detail
+      if (selectedKey !== tileInstanceId) setExpanded(false)
+    }
+    window.addEventListener(TILE_EXPAND_EVENT, closeOtherExpandedTiles)
+    return () => window.removeEventListener(TILE_EXPAND_EVENT, closeOtherExpandedTiles)
+  }, [tileInstanceId])
+
   const renderValue = (value: number) => (
     isForeign ? (
       <CurrencyTooltip label={fmtBase(value)}>
@@ -207,16 +231,27 @@ export function ItemsTile({
   )
 
   return (
+    <>
+    {expanded && (
+      <div
+        aria-hidden="true"
+        className="tile-card-backdrop fixed inset-0 z-40 bg-black/60 backdrop-blur-[1px]"
+        onClick={() => setExpanded(false)}
+      />
+    )}
     <Card
       tabIndex={0}
-      onClick={() => setExpanded(value => !value)}
+      onClick={toggleExpanded}
       onKeyDown={event => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault()
-          setExpanded(value => !value)
+          toggleExpanded()
+        }
+        if (event.key === 'Escape') {
+          setExpanded(false)
         }
       }}
-      className={`group relative overflow-visible cursor-pointer transition-all duration-200 ease-out ${!infoOpen && !item.isActive && dimPaid ? 'opacity-60 hover:opacity-100' : ''} ${!infoOpen && item.isPaid && dimPaid ? 'opacity-60 hover:opacity-100' : 'hover:shadow-md'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+      className={`group relative overflow-visible cursor-pointer transition-all duration-200 ease-out ${expanded ? 'z-50 rounded-b-none border-b-0 shadow-2xl ring-1 ring-border' : ''} ${!infoOpen && !item.isActive && dimPaid ? 'opacity-60 hover:opacity-100' : ''} ${!infoOpen && item.isPaid && dimPaid ? 'opacity-60 hover:opacity-100' : 'hover:shadow-md'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
     >
       {!item.isActive && (
         <div className="absolute inset-0 z-[1] pointer-events-none select-none rounded-lg" style={{ backgroundImage: 'repeating-linear-gradient(135deg, transparent, transparent 8px, hsl(var(--muted)) 8px, hsl(var(--muted)) 9px)', opacity: 0.3 }} />
@@ -298,7 +333,7 @@ export function ItemsTile({
       </div>
 
       {expanded && (
-      <div className="relative z-[2] border-t border-border/60 px-4 pb-4 pt-3" onClick={stop}>
+      <div className="tile-card-panel absolute left-0 right-0 top-full z-[3] -mt-px rounded-b-lg border border-t-0 border-border bg-card px-4 pb-4 pt-3 shadow-2xl" onClick={stop}>
         <div className="overflow-hidden rounded-lg border border-border/70 bg-background/20">
           {cardRows.length === 0 ? (
             <div className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
@@ -329,5 +364,6 @@ export function ItemsTile({
       </div>
       )}
     </Card>
+    </>
   )
 }

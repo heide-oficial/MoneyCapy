@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type MouseEvent } from 'react'
+import { useEffect, useId, useState, type CSSProperties, type MouseEvent } from 'react'
 import { formatCurrency, formatCurrencyWith } from '../../lib/currency'
 import { useFormatDate } from '../../lib/date'
 import { formatDayLabelResolved } from '../../../../../shared/day-utils'
@@ -42,6 +42,12 @@ function stop(event: MouseEvent) {
   event.stopPropagation()
 }
 
+const TILE_EXPAND_EVENT = 'moneycapy:tile-expanded'
+
+function announceExpandedTile(key: string) {
+  window.dispatchEvent(new CustomEvent(TILE_EXPAND_EVENT, { detail: key }))
+}
+
 export function IncomeTile({
   income, month, fieldsPage = 'income', styleScope = 'income', receitasStyle,
   onEdit, onToggleReceived
@@ -51,6 +57,7 @@ export function IncomeTile({
   const { businessDayConfig } = useBusinessDayConfig()
   const { dimPaid } = useDimPaid()
   const { receitasFields } = useTileFields(fieldsPage)
+  const tileInstanceId = useId()
   const [expanded, setExpanded] = useState(false)
   const [infoOpen, setInfoOpen] = useState(false)
   const [mYear, mMonth] = month.split('-').map(Number)
@@ -96,6 +103,23 @@ export function IncomeTile({
     onEdit(income)
   }
 
+  const toggleExpanded = () => {
+    setExpanded(value => {
+      const next = !value
+      if (next) announceExpandedTile(tileInstanceId)
+      return next
+    })
+  }
+
+  useEffect(() => {
+    const closeOtherExpandedTiles = (event: Event) => {
+      const selectedKey = (event as CustomEvent<string>).detail
+      if (selectedKey !== tileInstanceId) setExpanded(false)
+    }
+    window.addEventListener(TILE_EXPAND_EVENT, closeOtherExpandedTiles)
+    return () => window.removeEventListener(TILE_EXPAND_EVENT, closeOtherExpandedTiles)
+  }, [tileInstanceId])
+
   const renderValue = () => (
     isForeign ? (
       <CurrencyTooltip label={fmtBase(income.effectiveValue)}>
@@ -111,16 +135,27 @@ export function IncomeTile({
   )
 
   return (
+    <>
+    {expanded && (
+      <div
+        aria-hidden="true"
+        className="tile-card-backdrop fixed inset-0 z-40 bg-black/60 backdrop-blur-[1px]"
+        onClick={() => setExpanded(false)}
+      />
+    )}
     <Card
       tabIndex={0}
-      onClick={() => setExpanded(value => !value)}
+      onClick={toggleExpanded}
       onKeyDown={event => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault()
-          setExpanded(value => !value)
+          toggleExpanded()
+        }
+        if (event.key === 'Escape') {
+          setExpanded(false)
         }
       }}
-      className={`group relative overflow-visible cursor-pointer transition-all duration-200 ease-out ${!infoOpen && income.isReceived && dimPaid ? 'opacity-60 hover:opacity-100' : 'hover:shadow-md'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+      className={`group relative overflow-visible cursor-pointer transition-all duration-200 ease-out ${expanded ? 'z-50 rounded-b-none border-b-0 shadow-2xl ring-1 ring-border' : ''} ${!infoOpen && income.isReceived && dimPaid ? 'opacity-60 hover:opacity-100' : 'hover:shadow-md'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
     >
       <div className="relative z-[2] flex items-center gap-3 px-3 py-3 sm:px-4">
         <button
@@ -197,7 +232,7 @@ export function IncomeTile({
       </div>
 
       {expanded && (
-      <div className="relative z-[2] border-t border-border/60 px-4 pb-4 pt-3" onClick={stop}>
+      <div className="tile-card-panel absolute left-0 right-0 top-full z-[3] -mt-px rounded-b-lg border border-t-0 border-border bg-card px-4 pb-4 pt-3 shadow-2xl" onClick={stop}>
         <div className="overflow-hidden rounded-lg border border-border/70 bg-background/20">
           <div className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
             <CreditCard size={14} className="shrink-0 opacity-70" />
@@ -207,5 +242,6 @@ export function IncomeTile({
       </div>
       )}
     </Card>
+    </>
   )
 }
