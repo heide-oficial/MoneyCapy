@@ -1,4 +1,5 @@
 import { useEffect, useId, useState, type CSSProperties, type MouseEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { formatCurrency, formatCurrencyWith } from '../../lib/currency'
 import { useFormatDate } from '../../lib/date'
 import { formatDayLabelResolved } from '../../../../../shared/day-utils'
@@ -32,6 +33,12 @@ interface TooltipRow {
   value: string
 }
 
+interface TooltipPosition {
+  left: number
+  top?: number
+  bottom?: number
+}
+
 function previousMonth(month: string) {
   const [year, monthNumber] = month.split('-').map(Number)
   const date = new Date(year, monthNumber - 2, 1)
@@ -40,6 +47,23 @@ function previousMonth(month: string) {
 
 function stop(event: MouseEvent) {
   event.stopPropagation()
+}
+
+function getTooltipPosition(target: HTMLElement): TooltipPosition {
+  const rect = target.getBoundingClientRect()
+  const tooltipWidth = 288
+  const estimatedTooltipHeight = 240
+  const margin = 12
+  const left = Math.min(
+    Math.max(rect.right - tooltipWidth, margin),
+    window.innerWidth - tooltipWidth - margin
+  )
+
+  if (rect.bottom + estimatedTooltipHeight > window.innerHeight && rect.top > estimatedTooltipHeight) {
+    return { left, bottom: window.innerHeight - rect.top + 8 }
+  }
+
+  return { left, top: rect.bottom + 8 }
 }
 
 const TILE_EXPAND_EVENT = 'moneycapy:tile-expanded'
@@ -60,6 +84,7 @@ export function IncomeTile({
   const tileInstanceId = useId()
   const [expanded, setExpanded] = useState(false)
   const [infoOpen, setInfoOpen] = useState(false)
+  const [tooltipPosition, setTooltipPosition] = useState<TooltipPosition | null>(null)
   const [mYear, mMonth] = month.split('-').map(Number)
 
   const isForeign = !!(income.currencySymbol && income.exchangeRateSnapshot && income.exchangeRateSnapshot !== 1.0)
@@ -101,6 +126,17 @@ export function IncomeTile({
   const openEdit = (event: MouseEvent) => {
     stop(event)
     onEdit(income)
+  }
+
+  const openInfo = (target: HTMLElement) => {
+    setTooltipPosition(getTooltipPosition(target))
+    setInfoOpen(true)
+  }
+
+  const toggleInfo = (event: MouseEvent<HTMLButtonElement>) => {
+    stop(event)
+    setTooltipPosition(getTooltipPosition(event.currentTarget))
+    setInfoOpen(value => !value)
   }
 
   const toggleExpanded = () => {
@@ -189,21 +225,18 @@ export function IncomeTile({
                 <span className="relative">
                   <button
                     type="button"
-                    onMouseEnter={() => setInfoOpen(true)}
+                    onMouseEnter={event => openInfo(event.currentTarget)}
                     onMouseLeave={() => setInfoOpen(false)}
-                    onFocus={() => setInfoOpen(true)}
+                    onFocus={event => openInfo(event.currentTarget)}
                     onBlur={() => setInfoOpen(false)}
-                    onClick={event => {
-                      stop(event)
-                      setInfoOpen(value => !value)
-                    }}
+                    onClick={toggleInfo}
                     className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                     title={t('items.cardInfo')}
                   >
                     <Info size={16} />
                   </button>
-                  {infoOpen && (
-                    <div onClick={stop} className="tile-card-tooltip absolute right-0 top-full z-[80] mt-2 w-72 rounded-lg border border-border p-3 text-left text-xs text-card-foreground opacity-100">
+                  {infoOpen && tooltipPosition && typeof document !== 'undefined' && createPortal(
+                    <div onClick={stop} className="tile-card-tooltip fixed z-[9999] max-h-[calc(100vh-1.5rem)] w-72 overflow-y-auto rounded-lg border border-border p-3 text-left text-xs text-card-foreground opacity-100" style={tooltipPosition}>
                       <p className="font-semibold text-foreground">{t('items.cardInfo')}</p>
                       <dl className="mt-2 space-y-1.5">
                         {tooltipRows.map(row => (
@@ -213,7 +246,8 @@ export function IncomeTile({
                           </div>
                         ))}
                       </dl>
-                    </div>
+                    </div>,
+                    document.body
                   )}
                 </span>
                 <button
