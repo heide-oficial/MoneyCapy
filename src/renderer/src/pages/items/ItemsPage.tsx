@@ -10,7 +10,7 @@ import { SearchInput } from '../../components/ui/SearchInput'
 import { CurrencyMonthNavigator } from '../../components/ui/CurrencyMonthNavigator'
 import { SectionLayout } from '../../components/layout/SectionLayout'
 import { formatCurrency } from '../../lib/currency'
-import { useFormatDate } from '../../lib/date'
+import { addMonths, useFormatDate } from '../../lib/date'
 import { getActiveInterruption } from '../../lib/interruptions'
 import { usePageMonth } from '../../contexts/DefaultMonthContext'
 import {
@@ -736,18 +736,10 @@ export default function ItemsPage() {
     }
   }
 
-  const addMonthsForInterruption = (baseMonth: string, count: number) => {
-    const [year, monthNumber] = baseMonth.split('-').map(Number)
-    const total = year * 12 + monthNumber - 1 + count
-    const nextYear = Math.floor(total / 12)
-    const nextMonth = (total % 12) + 1
-    return `${nextYear}-${String(nextMonth).padStart(2, '0')}`
-  }
-
   const interruptionPreview = (() => {
-    const pausedFrom = addMonthsForInterruption(month, 1)
-    const pausedUntil = addMonthsForInterruption(month, interruptMonths)
-    const resumeMonth = addMonthsForInterruption(month, interruptMonths + 1)
+    const pausedFrom = addMonths(month, 1)
+    const pausedUntil = addMonths(month, interruptMonths)
+    const resumeMonth = addMonths(month, interruptMonths + 1)
     return t('items.interruptionPreview', {
       count: String(interruptMonths),
       startMonth: fmtMonth(pausedFrom),

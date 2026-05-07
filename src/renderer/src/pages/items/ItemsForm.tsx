@@ -6,7 +6,7 @@ import { CurrencyInput } from '../../components/ui/CurrencyInput'
 import { DatePicker } from '../../components/ui/DatePicker'
 import { Select } from '../../components/ui/Select'
 import { formatCurrency, formatCurrencyWith } from '../../lib/currency'
-import { useFormatDate } from '../../lib/date'
+import { addMonths, useFormatDate } from '../../lib/date'
 import { useCurrencySettings } from '../../contexts/CurrencySettingsContext'
 import { Plus, X, FastForward, Undo2, Check, Palette } from 'lucide-react'
 import type { TagData, CardSplit, SectionItem } from '../../types/entities'
@@ -73,15 +73,6 @@ interface Subcategory { id: number; name: string; color: string; scope?: 'expens
 interface StoreData2 { id: number; name: string }
 interface CardData { id: number; name: string; personId: number | null; bankAccountId: number | null; billingCloseDay?: number; cardType?: 'credit' | 'debit' | 'both' }
 interface BankAccountData { id: number; name: string; nomeBanco: string | null }
-
-function addMonths(month: string, offset: number): string {
-  const [year, monthIndex] = month.split('-').map(Number)
-  if (!year || !monthIndex) return ''
-  const total = year * 12 + monthIndex - 1 + offset
-  const nextYear = Math.floor(total / 12)
-  const nextMonth = (total % 12) + 1
-  return `${nextYear}-${String(nextMonth).padStart(2, '0')}`
-}
 
 export interface ItemsFormProps {
   open: boolean
@@ -746,14 +737,6 @@ export function ItemsForm({
   const renderTabParcelas = () => {
     if (!editing) return null
 
-    function addMonthsFn(m: string, n: number): string {
-      const [y, mo] = m.split('-').map(Number)
-      const total = (y * 12 + mo - 1) + n
-      const ny = Math.floor(total / 12)
-      const nm = (total % 12) + 1
-      return `${ny}-${String(nm).padStart(2, '0')}`
-    }
-
     const hasSplits = form.type === 'installment' && editing.cardSplits && editing.cardSplits.length > 0
 
     // Render progress + anticipation for a single unit (item-level or per-split)
@@ -768,7 +751,7 @@ export function ItemsForm({
       const effectiveTotal = opts.totalInst - opts.totalAnticipated
       const remaining = Math.max(effectiveTotal - opts.currentInst, 0)
       const maxAnticipate = remaining > 1 ? remaining - 1 : 0
-      const effectiveEnd = addMonthsFn(editing.startMonth, effectiveTotal)
+      const effectiveEnd = addMonths(editing.startMonth, effectiveTotal)
       const key = String(opts.splitId ?? 'item')
       const countStr = anticipateCounts[key] || ''
       const countNum = parseInt(countStr) || 0
@@ -777,7 +760,7 @@ export function ItemsForm({
 
       // Preview values
       const previewCurrent = opts.currentInst + countNum
-      const previewEnd = previewing ? addMonthsFn(editing.startMonth, effectiveTotal - countNum) : effectiveEnd
+      const previewEnd = previewing ? addMonths(editing.startMonth, effectiveTotal - countNum) : effectiveEnd
       const previewMonthly = previewing && opts.monthlyValue > 0 ? opts.monthlyValue * (countNum + 1) : 0
 
       const paidPct = effectiveTotal > 0 ? Math.min((opts.currentInst / effectiveTotal) * 100, 100) : 0

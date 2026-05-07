@@ -1,4 +1,16 @@
 import { useLocaleArray } from '../contexts/LanguageContext'
+import { addMonths, getCurrentMonth as getCurrentCalendarMonth, nextMonth, previousMonth } from '../../../../shared/month-utils'
+
+export {
+  addMonths,
+  isValidMonth,
+  monthDiff,
+  monthGt,
+  monthLte,
+  nextMonth,
+  parseMonth,
+  previousMonth
+} from '../../../../shared/month-utils'
 
 export const MONTH_NAMES = [
   'Janeiro', 'Fevereiro', 'Marco', 'Abril', 'Maio', 'Junho',
@@ -26,8 +38,7 @@ export function useLocalizedMonths() {
 }
 
 export function getCurrentMonth(): string {
-  const now = new Date()
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  return getCurrentCalendarMonth()
 }
 
 export function getMonthLabel(month: string | null | undefined): string {
@@ -41,17 +52,11 @@ export function getMonthsOfYear(year: number): string[] {
 }
 
 export function getPreviousMonth(month: string): string {
-  if (!month) return getCurrentMonth()
-  const [year, m] = month.split('-').map(Number)
-  if (m === 1) return `${year - 1}-12`
-  return `${year}-${String(m - 1).padStart(2, '0')}`
+  return previousMonth(month) || getCurrentMonth()
 }
 
 export function getNextMonth(month: string): string {
-  if (!month) return getCurrentMonth()
-  const [year, m] = month.split('-').map(Number)
-  if (m === 12) return `${year + 1}-01`
-  return `${year}-${String(m + 1).padStart(2, '0')}`
+  return nextMonth(month) || getCurrentMonth()
 }
 
 // ── Configurable date formatting ──

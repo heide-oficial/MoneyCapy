@@ -1,16 +1,7 @@
 import type { ItemInterruption } from '../types/entities'
+import { addMonths, previousMonth } from '../../../../shared/month-utils'
 
-export function addMonths(month: string, count: number) {
-  const [year, monthNumber] = month.split('-').map(Number)
-  const total = year * 12 + monthNumber - 1 + count
-  const nextYear = Math.floor(total / 12)
-  const nextMonth = (total % 12) + 1
-  return `${nextYear}-${String(nextMonth).padStart(2, '0')}`
-}
-
-export function previousMonth(month: string) {
-  return addMonths(month, -1)
-}
+export { addMonths, previousMonth }
 
 export function getActiveInterruption(interruptions: ItemInterruption[] | undefined, month: string) {
   return interruptions?.find(interruption => {

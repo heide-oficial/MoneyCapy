@@ -487,19 +487,11 @@ export default function IncomePage() {
 
   const formatMonth = (m: string) => fmtMonth(m)
 
-  const addMonthsForInterruption = (baseMonth: string, count: number) => {
-    const [year, monthNumber] = baseMonth.split('-').map(Number)
-    const total = year * 12 + monthNumber - 1 + count
-    const nextYear = Math.floor(total / 12)
-    const nextMonth = (total % 12) + 1
-    return `${nextYear}-${String(nextMonth).padStart(2, '0')}`
-  }
-
   const interruptionMonthsCount = Math.max(1, parseInt(interruptMonths) || 1)
   const interruptionPreview = (() => {
-    const pausedFrom = addMonthsForInterruption(month, 1)
-    const pausedUntil = addMonthsForInterruption(month, interruptionMonthsCount)
-    const resumeMonth = addMonthsForInterruption(month, interruptionMonthsCount + 1)
+    const pausedFrom = addMonths(month, 1)
+    const pausedUntil = addMonths(month, interruptionMonthsCount)
+    const resumeMonth = addMonths(month, interruptionMonthsCount + 1)
     return t('items.interruptionPreview', {
       count: String(interruptionMonthsCount),
       startMonth: fmtMonth(pausedFrom),

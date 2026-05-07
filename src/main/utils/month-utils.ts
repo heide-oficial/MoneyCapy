@@ -1,24 +1,14 @@
-export function addMonths(month: string, n: number): string {
-  const [y, m] = month.split('-').map(Number)
-  const total = (y * 12 + m - 1) + n
-  const ny = Math.floor(total / 12)
-  const nm = (total % 12) + 1
-  return `${ny}-${String(nm).padStart(2, '0')}`
-}
-
-export function monthDiff(a: string, b: string): number {
-  const [ay, am] = a.split('-').map(Number)
-  const [by, bm] = b.split('-').map(Number)
-  return (by - ay) * 12 + (bm - am)
-}
-
-export function monthLte(a: string, b: string): boolean {
-  return a <= b
-}
-
-export function monthGt(a: string, b: string): boolean {
-  return a > b
-}
+export {
+  addMonths,
+  getCurrentMonth,
+  isValidMonth,
+  monthDiff,
+  monthGt,
+  monthLte,
+  nextMonth,
+  parseMonth,
+  previousMonth
+} from '../../../shared/month-utils'
 
 /**
  * Get card_type for a card, with fallback if column doesn't exist.
