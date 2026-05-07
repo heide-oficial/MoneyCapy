@@ -269,7 +269,7 @@ export default function AccountsPage() {
         )}
         <Card
           hover
-          className={`group relative overflow-visible cursor-pointer transition-all duration-200 ease-out ${expanded ? 'z-50 rounded-b-none border-b-0 shadow-2xl' : ''}`}
+          className={`group relative overflow-visible cursor-pointer transition-all duration-200 ease-out hover:z-[60] ${expanded ? 'z-50 rounded-b-none border-b-0 shadow-2xl' : ''}`}
           onClick={() => setExpandedAccountId(current => current === account.id ? null : account.id)}
         >
       <div className="relative z-20 flex items-center gap-3 px-3 py-3 sm:px-4">
@@ -282,13 +282,10 @@ export default function AccountsPage() {
             <div className="min-w-0">
               <h3 className="truncate text-lg font-bold leading-tight text-foreground sm:text-xl">{account.name}</h3>
               <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
-                {account.nomeBanco && <span className="truncate">{account.nomeBanco}</span>}
-                {account.linkedCards > 0 && (
-                  <span className="inline-flex items-center gap-1 shrink-0">
-                    <CreditCard size={12} className="opacity-70" />
-                    {account.linkedCards} {account.linkedCards !== 1 ? t('accounts.cardsPlural') : t('accounts.cardSingular')}
-                  </span>
-                )}
+                <span className="inline-flex items-center gap-1 shrink-0">
+                  <CreditCard size={12} className="opacity-70" />
+                  {account.linkedCards} {account.linkedCards !== 1 ? t('accounts.cardsPlural') : t('accounts.cardSingular')}
+                </span>
               </div>
             </div>
 
@@ -480,7 +477,7 @@ export default function AccountsPage() {
           onReorder={handleReorder}
           className={`grid ${gridClass} gap-4`}
           renderItem={(account) => (
-            <SortableItem key={account.id} id={account.id} dragHandle={false}>
+            <SortableItem key={account.id} id={account.id} dragHandle={false} className="hover:z-[60]">
               {renderAccountTile(account)}
             </SortableItem>
           )}

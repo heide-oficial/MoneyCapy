@@ -309,6 +309,7 @@ export default function CardsPage() {
       { icon: Hash, label: t('cards.cardNumber'), value: !isUnlocked ? '**** **** **** ****' : (card.numberMasked && card.numberMasked !== '**** **** **** ****' ? card.numberMasked : '0000 0000 0000 0000') },
       { icon: CalendarDays, label: t('cards.expiration'), value: !isUnlocked ? '**/**' : (card.expirationMasked && card.expirationMasked !== '**/**' ? card.expirationMasked : '00/00') },
       { icon: User, label: t('cards.holderName'), value: !isUnlocked ? '*****' : (card.holderMasked && card.holderMasked !== '*****' ? card.holderMasked : t('cards.nameOnCard')) },
+      { icon: Landmark, label: t('cards.bankAccount'), value: card.bankAccountName || t('cards.noneOption') },
       { icon: CalendarDays, label: t('cards.billingCloseDay'), value: t('cards.closesDay', { day: card.billingCloseDay }) },
       { icon: CalendarDays, label: t('cards.dueDay'), value: t('cards.duesDay', { day: card.dueDay }) }
     ]
@@ -323,7 +324,7 @@ export default function CardsPage() {
         )}
         <Card
           hover
-          className={`group relative overflow-visible cursor-pointer transition-all duration-200 ease-out ${expanded ? 'z-50 rounded-b-none border-b-0 shadow-2xl' : ''}`}
+          className={`group relative overflow-visible cursor-pointer transition-all duration-200 ease-out hover:z-[60] ${expanded ? 'z-50 rounded-b-none border-b-0 shadow-2xl' : ''}`}
           onClick={() => setExpandedCardId(current => current === card.id ? null : card.id)}
         >
         <div className="relative z-20 flex items-center gap-3 px-3 py-3 sm:px-4">
@@ -536,7 +537,7 @@ export default function CardsPage() {
           onReorder={handleReorder}
           className={`grid ${gridClass} gap-4`}
           renderItem={(card) => (
-            <SortableItem key={card.id} id={card.id} dragHandle={false}>
+            <SortableItem key={card.id} id={card.id} dragHandle={false} className="hover:z-[60]">
               {renderCardTile(card)}
             </SortableItem>
           )}
