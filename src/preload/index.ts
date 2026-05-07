@@ -1,5 +1,26 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC_CHANNELS } from '../../shared/ipc-channels'
+import type {
+  CategoryCreateInput,
+  CategoryRecord,
+  CategoryUpdateInput,
+  PersonCreateInput,
+  PersonRecord,
+  PersonUpdateInput,
+  StoreCreateInput,
+  StoreRecord,
+  StoreUpdateInput,
+  SubcategoryCreateInput,
+  SubcategoryRecord,
+  SubcategoryUpdateInput,
+  TagCreateInput,
+  TagRecord,
+  TagUpdateInput
+} from '../../shared/api-types'
+
+function invoke<T>(channel: string, ...args: unknown[]): Promise<T> {
+  return ipcRenderer.invoke(channel, ...args) as Promise<T>
+}
 
 const api = {
   cards: {
@@ -12,22 +33,22 @@ const api = {
     payInvoice: (cardId: number, month: string) => ipcRenderer.invoke(IPC_CHANNELS.CARDS_PAY_INVOICE, cardId, month)
   },
   categories: {
-    list: () => ipcRenderer.invoke(IPC_CHANNELS.CATEGORIES_LIST),
-    create: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.CATEGORIES_CREATE, data),
-    update: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.CATEGORIES_UPDATE, data),
-    delete: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.CATEGORIES_DELETE, id)
+    list: () => invoke<CategoryRecord[]>(IPC_CHANNELS.CATEGORIES_LIST),
+    create: (data: CategoryCreateInput) => invoke<CategoryRecord>(IPC_CHANNELS.CATEGORIES_CREATE, data),
+    update: (data: CategoryUpdateInput) => invoke<CategoryRecord>(IPC_CHANNELS.CATEGORIES_UPDATE, data),
+    delete: (id: number) => invoke<void>(IPC_CHANNELS.CATEGORIES_DELETE, id)
   },
   subcategories: {
-    list: () => ipcRenderer.invoke(IPC_CHANNELS.SUBCATEGORIES_LIST),
-    create: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.SUBCATEGORIES_CREATE, data),
-    update: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.SUBCATEGORIES_UPDATE, data),
-    delete: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.SUBCATEGORIES_DELETE, id)
+    list: () => invoke<SubcategoryRecord[]>(IPC_CHANNELS.SUBCATEGORIES_LIST),
+    create: (data: SubcategoryCreateInput) => invoke<SubcategoryRecord>(IPC_CHANNELS.SUBCATEGORIES_CREATE, data),
+    update: (data: SubcategoryUpdateInput) => invoke<SubcategoryRecord>(IPC_CHANNELS.SUBCATEGORIES_UPDATE, data),
+    delete: (id: number) => invoke<void>(IPC_CHANNELS.SUBCATEGORIES_DELETE, id)
   },
   people: {
-    list: () => ipcRenderer.invoke(IPC_CHANNELS.PEOPLE_LIST),
-    create: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.PEOPLE_CREATE, data),
-    update: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.PEOPLE_UPDATE, data),
-    delete: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.PEOPLE_DELETE, id)
+    list: () => invoke<PersonRecord[]>(IPC_CHANNELS.PEOPLE_LIST),
+    create: (data: PersonCreateInput) => invoke<PersonRecord>(IPC_CHANNELS.PEOPLE_CREATE, data),
+    update: (data: PersonUpdateInput) => invoke<PersonRecord>(IPC_CHANNELS.PEOPLE_UPDATE, data),
+    delete: (id: number) => invoke<void>(IPC_CHANNELS.PEOPLE_DELETE, id)
   },
   personIncome: {
     listByMonth: (personId: number, month: string) => ipcRenderer.invoke(IPC_CHANNELS.PERSON_INCOME_LIST_BY_MONTH, personId, month),
@@ -72,16 +93,16 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.ITEMS_SEARCH, personId, query, filters)
   },
   stores: {
-    list: () => ipcRenderer.invoke(IPC_CHANNELS.STORES_LIST),
-    create: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.STORES_CREATE, data),
-    update: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.STORES_UPDATE, data),
-    delete: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.STORES_DELETE, id)
+    list: () => invoke<StoreRecord[]>(IPC_CHANNELS.STORES_LIST),
+    create: (data: StoreCreateInput) => invoke<StoreRecord>(IPC_CHANNELS.STORES_CREATE, data),
+    update: (data: StoreUpdateInput) => invoke<StoreRecord>(IPC_CHANNELS.STORES_UPDATE, data),
+    delete: (id: number) => invoke<void>(IPC_CHANNELS.STORES_DELETE, id)
   },
   tags: {
-    list: () => ipcRenderer.invoke(IPC_CHANNELS.TAGS_LIST),
-    create: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.TAGS_CREATE, data),
-    update: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.TAGS_UPDATE, data),
-    delete: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.TAGS_DELETE, id)
+    list: () => invoke<TagRecord[]>(IPC_CHANNELS.TAGS_LIST),
+    create: (data: TagCreateInput) => invoke<TagRecord>(IPC_CHANNELS.TAGS_CREATE, data),
+    update: (data: TagUpdateInput) => invoke<TagRecord>(IPC_CHANNELS.TAGS_UPDATE, data),
+    delete: (id: number) => invoke<void>(IPC_CHANNELS.TAGS_DELETE, id)
   },
   settings: {
     get: (key: string) => ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET, key),

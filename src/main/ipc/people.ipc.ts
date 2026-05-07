@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron'
 import { WrappedDatabase } from '../database/connection'
 import { IPC_CHANNELS } from '../../../shared/ipc-channels'
+import type { PersonCreateInput, PersonUpdateInput } from '../../../shared/api-types'
 import { PeopleRepository } from '../database/repositories/people.repo'
 
 export function registerPeopleHandlers(db: WrappedDatabase): void {
@@ -12,12 +13,12 @@ export function registerPeopleHandlers(db: WrappedDatabase): void {
     }))
   })
 
-  ipcMain.handle(IPC_CHANNELS.PEOPLE_CREATE, (_, data) => {
+  ipcMain.handle(IPC_CHANNELS.PEOPLE_CREATE, (_, data: PersonCreateInput) => {
     const p = repo.create({ name: data.name, color: data.color || '#3b82f6' }) as any
     return { id: p.id, name: p.name, color: p.color }
   })
 
-  ipcMain.handle(IPC_CHANNELS.PEOPLE_UPDATE, (_, data) => {
+  ipcMain.handle(IPC_CHANNELS.PEOPLE_UPDATE, (_, data: PersonUpdateInput) => {
     const p = repo.update(data.id, { name: data.name, color: data.color }) as any
     return { id: p.id, name: p.name, color: p.color }
   })

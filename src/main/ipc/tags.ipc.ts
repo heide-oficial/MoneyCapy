@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron'
 import { WrappedDatabase } from '../database/connection'
 import { IPC_CHANNELS } from '../../../shared/ipc-channels'
+import type { TagCreateInput, TagUpdateInput } from '../../../shared/api-types'
 import { TagsRepository } from '../database/repositories/tags.repo'
 
 export function registerTagsHandlers(db: WrappedDatabase): void {
@@ -12,13 +13,13 @@ export function registerTagsHandlers(db: WrappedDatabase): void {
     }))
   })
 
-  ipcMain.handle(IPC_CHANNELS.TAGS_CREATE, (_, data) => {
+  ipcMain.handle(IPC_CHANNELS.TAGS_CREATE, (_, data: TagCreateInput) => {
     const t = repo.create({ name: data.name, color: data.color }) as any
     return { id: t.id, name: t.name, color: t.color }
   })
 
-  ipcMain.handle(IPC_CHANNELS.TAGS_UPDATE, (_, data) => {
-    const updateData: Record<string, any> = {}
+  ipcMain.handle(IPC_CHANNELS.TAGS_UPDATE, (_, data: TagUpdateInput) => {
+    const updateData: Partial<TagCreateInput> = {}
     if (data.name !== undefined) updateData.name = data.name
     if (data.color !== undefined) updateData.color = data.color
     const t = repo.update(data.id, updateData) as any
