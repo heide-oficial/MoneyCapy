@@ -9,7 +9,6 @@ import { CurrencyInput } from '../../components/ui/CurrencyInput'
 import { Select } from '../../components/ui/Select'
 import { SearchInput } from '../../components/ui/SearchInput'
 import { CurrencyMonthNavigator } from '../../components/ui/CurrencyMonthNavigator'
-import { KebabMenu } from '../../components/ui/KebabMenu'
 import { SortableGrid } from '../../components/dnd/SortableGrid'
 import { SortableItem } from '../../components/dnd/SortableItem'
 import { useSortOrder } from '../../hooks/useSortOrder'
@@ -24,7 +23,7 @@ import { getCurrentMonth } from '../../lib/date'
 import { useColumnsPicker } from '../../components/ui/ColumnsPickerDropdown'
 import { SimpleDropdown } from '../../components/ui/SimpleDropdown'
 import { FilterGroup } from '../../components/ui/FilterGroup'
-import { Landmark, Plus, Pencil, Trash2, CreditCard, HandCoins, CircleDot, Layers, Repeat, ChevronDown, RotateCcw, Users, Receipt } from 'lucide-react'
+import { Landmark, Plus, CreditCard, HandCoins, CircleDot, Layers, Repeat, ChevronDown, Users, Receipt, Info, Settings } from 'lucide-react'
 import { toast } from 'sonner'
 import { useUndoableDelete } from '../../hooks/useUndoableDelete'
 import { useTranslation } from '../../contexts/LanguageContext'
@@ -192,6 +191,7 @@ export default function AccountsPage() {
   const totalBalance = accounts.reduce((sum, a) => sum + a.balance, 0)
   const bankNames = [...new Set(accounts.map(a => a.nomeBanco).filter(Boolean))] as string[]
   const hasFilters = !!(filterType || filterJuridicidade || filterBanco)
+  const editingAccount = editing ? accounts.find(account => account.id === editing) : null
 
   const openCreate = () => {
     setEditing(null)
@@ -252,59 +252,74 @@ export default function AccountsPage() {
     account.currencySymbol ? formatCurrencyWith(v, account.currencySymbol) : formatCurrency(v)
 
   const renderAccountTile = (account: BankAccountEnriched) => (
-    <Card hover className="p-5 cursor-pointer" onClick={() => navigate(`/items?bankAccountId=${account.id}`)}>
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-3 min-w-0 flex-1">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 shrink-0">
-            <Landmark size={20} className="text-primary" />
-          </div>
-          <div className="min-w-0">
-            <h3 className="font-semibold truncate">{account.name}</h3>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              {account.nomeBanco && <span className="truncate">{account.nomeBanco}</span>}
-              {account.linkedCards > 0 && (
-                <span className="inline-flex items-center gap-1 shrink-0">
-                  <CreditCard size={10} className="opacity-60" />
-                  {account.linkedCards} {account.linkedCards !== 1 ? t('accounts.cardsPlural') : t('accounts.cardSingular')}
-                </span>
-              )}
+    <Card hover className="group relative overflow-visible cursor-pointer transition-all duration-200 ease-out" onClick={() => navigate(`/items?bankAccountId=${account.id}`)}>
+      <div className="relative z-20 flex items-center gap-3 px-3 py-3 sm:px-4">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+          <Landmark size={20} className="text-primary" />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h3 className="truncate text-lg font-bold leading-tight text-foreground sm:text-xl">{account.name}</h3>
+              <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+                {account.nomeBanco && <span className="truncate">{account.nomeBanco}</span>}
+                {account.linkedCards > 0 && (
+                  <span className="inline-flex items-center gap-1 shrink-0">
+                    <CreditCard size={12} className="opacity-70" />
+                    {account.linkedCards} {account.linkedCards !== 1 ? t('accounts.cardsPlural') : t('accounts.cardSingular')}
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
-        </div>
-        <div onClick={e => e.stopPropagation()}>
-          <KebabMenu items={[
-            { label: t('common.edit'), icon: Pencil, onClick: () => openEdit(account) },
-            ...(account.hasMonthlyOverride ? [{ label: t('accounts.restoreInheritedBalance'), icon: RotateCcw, onClick: () => handleRestoreBalance(account.id) }] : []),
-            { label: t('common.delete'), icon: Trash2, onClick: () => requestDelete(account.id), destructive: true }
-          ]} />
-        </div>
-      </div>
 
-      <p className="text-xl font-bold mb-3" style={receitasStyle('accounts', 'itens')}>
-        {fmtAcct(account, account.balance)}
-      </p>
-
-      <div className="mt-3 border-t border-border/50 pt-3">
-        <div className="relative group/expenses inline-flex items-center gap-1.5 text-xs text-muted-foreground cursor-default" onClick={e => e.stopPropagation()}>
-          <Receipt size={12} className="shrink-0 opacity-60" />
-          <span className="font-medium">{t('cards.totalExpenses', { total: fmtAcct(account, accountTotalExpense(account)) })}</span>
-          <div className="tile-card-tooltip absolute bottom-full left-0 mb-2 hidden w-[22rem] rounded-lg border border-border p-3 text-left text-xs text-card-foreground group-hover/expenses:block">
-            <dl className="space-y-1.5">
-              {[
-                { icon: CircleDot, label: t('itemTypes.common'), value: t('accounts.commonCount', { count: account.commonCount, total: fmtAcct(account, account.commonTotal) }) },
-                { icon: Layers, label: t('itemTypes.installment'), value: t('accounts.installmentCount', { count: account.installmentCount, total: fmtAcct(account, account.installmentTotal) }) },
-                { icon: Repeat, label: t('itemTypes.subscription'), value: t('accounts.subscriptionCount', { count: account.subscriptionCount, total: fmtAcct(account, account.subscriptionTotal) }) },
-                { icon: HandCoins, label: t('itemTypes.emprestimo'), value: t('accounts.loanCount', { count: account.emprestimoCount, total: fmtAcct(account, account.emprestimoTotal) }) }
-              ].map(row => (
-                <div key={row.label} className="grid grid-cols-[16px_minmax(0,1fr)] gap-2">
-                  <row.icon size={14} className="mt-0.5 text-muted-foreground" />
-                  <div className="min-w-0">
-                    <dt className="text-muted-foreground">{row.label}:</dt>
-                    <dd className="whitespace-normal break-words text-foreground leading-snug">{row.value}</dd>
+            <div className="flex shrink-0 items-start gap-3 text-right">
+              <div>
+                <p className="text-lg font-bold leading-tight tabular-nums sm:text-xl" style={receitasStyle('accounts', 'itens')}>
+                  {fmtAcct(account, account.balance)}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">{t('accounts.totalBalance')}</p>
+              </div>
+              <div className="flex flex-col items-center gap-1 border-l border-border pl-2" onClick={event => event.stopPropagation()}>
+                <span className="relative group/expenses">
+                  <button
+                    type="button"
+                    className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    title={t('cards.totalExpenses', { total: fmtAcct(account, accountTotalExpense(account)) })}
+                  >
+                    <Info size={16} />
+                  </button>
+                  <div className="tile-card-tooltip absolute right-0 top-full mt-2 hidden w-[24rem] rounded-lg border border-border p-3 text-left text-xs text-card-foreground group-hover/expenses:block">
+                    <p className="font-semibold text-foreground">{t('accounts.expensesBreakdown')}</p>
+                    <dl className="mt-2 space-y-1.5">
+                      {[
+                        { icon: Receipt, label: t('accounts.totalExpenses'), value: fmtAcct(account, accountTotalExpense(account)) },
+                        { icon: CircleDot, label: t('itemTypes.common'), value: t('accounts.commonCount', { count: account.commonCount, total: fmtAcct(account, account.commonTotal) }) },
+                        { icon: Layers, label: t('itemTypes.installment'), value: t('accounts.installmentCount', { count: account.installmentCount, total: fmtAcct(account, account.installmentTotal) }) },
+                        { icon: Repeat, label: t('itemTypes.subscription'), value: t('accounts.subscriptionCount', { count: account.subscriptionCount, total: fmtAcct(account, account.subscriptionTotal) }) },
+                        { icon: HandCoins, label: t('itemTypes.emprestimo'), value: t('accounts.loanCount', { count: account.emprestimoCount, total: fmtAcct(account, account.emprestimoTotal) }) }
+                      ].map(row => (
+                        <div key={row.label} className="grid grid-cols-[16px_minmax(0,1fr)] gap-2">
+                          <row.icon size={14} className="mt-0.5 text-muted-foreground" />
+                          <div className="min-w-0">
+                            <dt className="text-muted-foreground">{row.label}:</dt>
+                            <dd className="whitespace-normal break-words text-foreground leading-snug">{row.value}</dd>
+                          </div>
+                        </div>
+                      ))}
+                    </dl>
                   </div>
-                </div>
-              ))}
-            </dl>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => openEdit(account)}
+                  className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  title={t('common.edit')}
+                >
+                  <Settings size={16} />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -466,9 +481,19 @@ export default function AccountsPage() {
               options={currencies.map(c => ({ value: String(c.id), label: `${c.code} — ${c.symbol}` }))}
             />
           )}
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setShowForm(false)}>{t('common.cancel')}</Button>
-            <Button onClick={handleSave}>{editing ? t('common.save') : t('common.create')}</Button>
+          <div className="flex flex-wrap justify-between gap-2 pt-2">
+            <div className="flex gap-2">
+              {editingAccount?.hasMonthlyOverride && (
+                <Button variant="outline" onClick={() => handleRestoreBalance(editingAccount.id)}>{t('accounts.restoreInheritedBalance')}</Button>
+              )}
+              {editing && (
+                <Button variant="destructive" onClick={() => { requestDelete(editing); setShowForm(false) }}>{t('common.delete')}</Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowForm(false)}>{t('common.cancel')}</Button>
+              <Button onClick={handleSave}>{editing ? t('common.save') : t('common.create')}</Button>
+            </div>
           </div>
         </div>
       </Modal>
