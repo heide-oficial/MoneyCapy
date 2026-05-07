@@ -7,9 +7,10 @@ interface SortableItemProps {
   id: string | number
   children: ReactNode
   className?: string
+  dragHandle?: boolean
 }
 
-export function SortableItem({ id, children, className }: SortableItemProps) {
+export function SortableItem({ id, children, className, dragHandle = true }: SortableItemProps) {
   const {
     attributes,
     listeners,
@@ -26,8 +27,14 @@ export function SortableItem({ id, children, className }: SortableItemProps) {
   }
 
   return (
-    <div ref={setNodeRef} style={style} className={`group/drag relative ${className ?? ''}`}>
-      <DragHandle listeners={listeners} attributes={attributes} />
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`group/drag relative ${!dragHandle ? 'cursor-grab active:cursor-grabbing' : ''} ${className ?? ''}`}
+      {...(!dragHandle ? attributes : {})}
+      {...(!dragHandle ? listeners : {})}
+    >
+      {dragHandle && <DragHandle listeners={listeners} attributes={attributes} />}
       {children}
     </div>
   )

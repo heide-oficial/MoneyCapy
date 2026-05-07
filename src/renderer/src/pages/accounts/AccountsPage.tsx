@@ -23,7 +23,7 @@ import { getCurrentMonth } from '../../lib/date'
 import { useColumnsPicker } from '../../components/ui/ColumnsPickerDropdown'
 import { SimpleDropdown } from '../../components/ui/SimpleDropdown'
 import { FilterGroup } from '../../components/ui/FilterGroup'
-import { Landmark, Plus, CreditCard, HandCoins, CircleDot, Layers, Repeat, ChevronDown, Users, Receipt, Info, Settings } from 'lucide-react'
+import { Landmark, Plus, CreditCard, HandCoins, CircleDot, Layers, Repeat, ChevronDown, Users, Receipt, Info, Settings, ExternalLink, Building2, Hash } from 'lucide-react'
 import { toast } from 'sonner'
 import { useUndoableDelete } from '../../hooks/useUndoableDelete'
 import { useTranslation } from '../../contexts/LanguageContext'
@@ -120,6 +120,7 @@ export default function AccountsPage() {
   const [filterJuridicidade, setFilterJuridicidade] = useState('')
   const [filterBanco, setFilterBanco] = useState('')
   const [search, setSearch] = useState('')
+  const [expandedAccountId, setExpandedAccountId] = useState<number | null>(null)
 
   // Dropdown refs/state
   const [showTypeMenu, setShowTypeMenu] = useState(false)
@@ -251,8 +252,18 @@ export default function AccountsPage() {
   const fmtAcct = (account: BankAccountEnriched, v: number) =>
     account.currencySymbol ? formatCurrencyWith(v, account.currencySymbol) : formatCurrency(v)
 
-  const renderAccountTile = (account: BankAccountEnriched) => (
-    <Card hover className="group relative overflow-visible cursor-pointer transition-all duration-200 ease-out" onClick={() => navigate(`/items?bankAccountId=${account.id}`)}>
+  const formatAccountType = (value: string) => value === 'poupanca' ? t('accounts.savings') : t('accounts.checking')
+  const formatJuridicidade = (value: string) => value === 'cnpj' ? 'CNPJ' : 'CPF'
+  const emptyValue = (value?: string | null) => value || t('common.notInformed')
+
+  const renderAccountTile = (account: BankAccountEnriched) => {
+    const expanded = expandedAccountId === account.id
+    return (
+    <Card
+      hover
+      className={`group relative overflow-visible cursor-pointer transition-all duration-200 ease-out ${expanded ? 'shadow-xl' : ''}`}
+      onClick={() => setExpandedAccountId(current => current === account.id ? null : account.id)}
+    >
       <div className="relative z-20 flex items-center gap-3 px-3 py-3 sm:px-4">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
           <Landmark size={20} className="text-primary" />
@@ -312,7 +323,10 @@ export default function AccountsPage() {
                 </span>
                 <button
                   type="button"
-                  onClick={() => openEdit(account)}
+                  onClick={event => {
+                    event.stopPropagation()
+                    openEdit(account)
+                  }}
                   className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                   title={t('common.edit')}
                 >
@@ -323,8 +337,38 @@ export default function AccountsPage() {
           </div>
         </div>
       </div>
+
+      {expanded && (
+        <div className="tile-card-panel border-t border-border px-4 pb-4 pt-3" onClick={event => event.stopPropagation()}>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {[
+              { icon: Building2, label: t('accounts.accountType'), value: formatAccountType(account.accountType) },
+              { icon: Users, label: t('accounts.juridicidade'), value: formatJuridicidade(account.juridicidade) },
+              { icon: Hash, label: t('accounts.agency'), value: emptyValue(account.agencia) },
+              { icon: Hash, label: t('accounts.accountNumber'), value: emptyValue(account.conta) },
+              { icon: Landmark, label: t('accounts.bankCode'), value: emptyValue(account.banco) },
+              { icon: Landmark, label: t('accounts.bankName'), value: emptyValue(account.nomeBanco) }
+            ].map(row => (
+              <div key={row.label} className="flex items-start gap-2 rounded-lg border border-border/70 bg-background/20 px-3 py-2">
+                <row.icon size={14} className="mt-0.5 shrink-0 text-muted-foreground" />
+                <div className="min-w-0">
+                  <p className="text-xs text-muted-foreground">{row.label}</p>
+                  <p className="truncate text-sm font-medium text-foreground">{row.value}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 flex justify-end">
+            <Button size="sm" variant="outline" onClick={() => navigate(`/items?bankAccountId=${account.id}`)}>
+              <ExternalLink size={14} />
+              {t('accounts.filterByAccountItems')}
+            </Button>
+          </div>
+        </div>
+      )}
     </Card>
   )
+  }
 
   return (
     <SectionLayout
@@ -427,7 +471,7 @@ export default function AccountsPage() {
           onReorder={handleReorder}
           className={`grid ${gridClass} gap-4`}
           renderItem={(account) => (
-            <SortableItem key={account.id} id={account.id}>
+            <SortableItem key={account.id} id={account.id} dragHandle={false}>
               {renderAccountTile(account)}
             </SortableItem>
           )}
@@ -441,8 +485,11 @@ export default function AccountsPage() {
       )}
 
       {/* Create/Edit Modal */}
-      <Modal open={showForm} onClose={() => setShowForm(false)} title={editing ? t('accounts.editAccount') : t('accounts.newAccountModal')}>
-        <div className="space-y-4">
+      <Modal open={showForm} onClose={() => setShowForm(false)} title={editing ? t('accounts.editAccount') : t('accounts.newAccountModal')} maxWidth="max-w-xl">
+        <div className="flex max-h-[70vh] flex-col overflow-hidden">
+          <div className="space-y-2 overflow-y-auto pr-1">
+            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('itemsForm.information')}</h4>
+            <div className="rounded-lg border border-border bg-card p-4 space-y-3">
           <Input label={t('common.name')} value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder={t('accounts.placeholder')} autoFocus />
           <div className="grid grid-cols-2 gap-3">
             <Select
@@ -481,7 +528,9 @@ export default function AccountsPage() {
               options={currencies.map(c => ({ value: String(c.id), label: `${c.code} — ${c.symbol}` }))}
             />
           )}
-          <div className="flex flex-wrap justify-between gap-2 pt-2">
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap justify-between gap-2 border-t border-border pt-4">
             <div className="flex gap-2">
               {editingAccount?.hasMonthlyOverride && (
                 <Button variant="outline" onClick={() => handleRestoreBalance(editingAccount.id)}>{t('accounts.restoreInheritedBalance')}</Button>
