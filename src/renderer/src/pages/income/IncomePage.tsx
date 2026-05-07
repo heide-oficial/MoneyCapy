@@ -13,6 +13,7 @@ import { formatCurrency, formatCurrencyWith } from '../../lib/currency'
 import { useDisplayCurrency } from '../../contexts/DisplayCurrencyContext'
 import { getCurrentMonth, useFormatDate } from '../../lib/date'
 import { addMonths, getActiveInterruption } from '../../lib/interruptions'
+import { getMonthlyIncomeValue } from '../../lib/monthly-finance'
 import { usePageMonth } from '../../contexts/DefaultMonthContext'
 import { useActivePerson } from '../../contexts/ActivePersonContext'
 import { useColorSettings } from '../../contexts/ColorSettingsContext'
@@ -264,7 +265,7 @@ export default function IncomePage() {
 
   const total = filteredIncomes
     .filter(i => !getActiveInterruption(i.interruptions, month))
-    .reduce((s, i) => s + i.effectiveValue * (i.exchangeRateSnapshot || 1.0), 0)
+    .reduce((s, i) => s + getMonthlyIncomeValue(i), 0)
   const receivedCount = filteredIncomes.filter(i => i.isReceived).length
   const unreceivedCount = filteredIncomes.length - receivedCount
 
@@ -289,7 +290,7 @@ export default function IncomePage() {
   const csvColumns: CsvColumn<Income>[] = [
     { id: 'description', label: t('csvExport.columns.description'), value: i => i.description },
     { id: 'type', label: t('csvExport.columns.type'), value: i => i.isRecurring ? t('income.recurring') : t('income.nonRecurring') },
-    { id: 'monthValue', label: t('csvExport.columns.monthValue'), value: i => formatCurrency(i.effectiveValue * (i.exchangeRateSnapshot || 1.0)) },
+    { id: 'monthValue', label: t('csvExport.columns.monthValue'), value: i => formatCurrency(getMonthlyIncomeValue(i)) },
     { id: 'baseValue', label: t('csvExport.columns.baseValue'), value: i => formatCurrency(i.value * (i.exchangeRateSnapshot || 1.0)) },
     { id: 'category', label: t('csvExport.columns.category'), value: i => i.categoryName || '' },
     { id: 'tags', label: t('csvExport.columns.tags'), value: i => i.tags?.map(tag => tag.name).join(', ') || '' },
@@ -904,7 +905,7 @@ export default function IncomePage() {
                       <p className="text-sm font-semibold text-foreground">{t('valueOverrides.currentMonthValue', { month: fmtMonth(month) })}</p>
                       <p className="text-xs text-muted-foreground">{t('valueOverrides.inheritsNearest')}</p>
                     </div>
-                    <span className="text-sm font-bold tabular-nums">{formatCurrency(editing.effectiveValue * (editing.exchangeRateSnapshot || 1.0))}</span>
+                    <span className="text-sm font-bold tabular-nums">{formatCurrency(getMonthlyIncomeValue(editing))}</span>
                   </div>
                   <Button size="sm" variant="outline" onClick={() => openValueOverrideModal()}>
                     <Plus size={14} /> {t('valueOverrides.modifyIncomeSpecificMonth')}

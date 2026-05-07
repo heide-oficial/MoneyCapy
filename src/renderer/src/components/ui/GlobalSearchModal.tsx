@@ -8,6 +8,7 @@ import {
 import { formatCurrency } from '../../lib/currency'
 import { getItemCardLabels } from '../../lib/card-utils'
 import { useFormatDate } from '../../lib/date'
+import { getMonthlyIncomeValue } from '../../lib/monthly-finance'
 import { useActivePerson } from '../../contexts/ActivePersonContext'
 import { useTranslation } from '../../contexts/LanguageContext'
 import { FilterDropdown } from './FilterDropdown'
@@ -583,7 +584,7 @@ export function GlobalSearchModal({ open, onClose }: GlobalSearchModalProps) {
                   {inc.categoryName && <><span>·</span><span className="inline-flex items-center gap-0.5 whitespace-nowrap"><Tags size={9} />{inc.categoryName}</span></>}
                 </div>
               </div>
-              <span className="text-sm font-semibold tabular-nums shrink-0">{formatCurrency(inc.effectiveValue * (inc.exchangeRateSnapshot || 1.0))}</span>
+              <span className="text-sm font-semibold tabular-nums shrink-0">{formatCurrency(getMonthlyIncomeValue(inc))}</span>
             </button>
           ))}
 

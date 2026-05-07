@@ -14,7 +14,12 @@ import { useColumnsPicker } from '../../components/ui/ColumnsPickerDropdown'
 import { formatCurrency } from '../../lib/currency'
 import { getItemCardLabels, formatCardLabel } from '../../lib/card-utils'
 import { getCurrentMonth, useFormatDate } from '../../lib/date'
-import { getActiveInterruption } from '../../lib/interruptions'
+import {
+  getNonInterruptedExpenses,
+  sumActiveMonthlyExpenses,
+  sumMonthlyIncomes,
+  uniqueById
+} from '../../lib/monthly-finance'
 import { usePageMonth } from '../../contexts/DefaultMonthContext'
 import {
   Bookmark, Plus, Pencil, Trash2, CheckCircle, Circle,
@@ -403,55 +408,13 @@ export default function TagsPage() {
     return raw * (item.exchangeRateSnapshot || 1.0)
   }
 
-  const getMonthlyExpenseValue = (i: SectionItem) => {
-    const rate = i.exchangeRateSnapshot || 1.0
-    if ((i.type === 'installment' || i.type === 'emprestimo') && i.totalInstallments) {
-      if (i.cardSplits && i.cardSplits.length > 0) {
-        return i.cardSplits.reduce((acc, sp) => {
-          const monthly = Math.round((sp.value / sp.totalInstallments) * 100) / 100
-          if ((sp.anticipatedThisMonth || 0) > 0 && sp.discountedTotalThisMonth != null) return acc + monthly + sp.discountedTotalThisMonth
-          return acc + monthly * (1 + (sp.anticipatedThisMonth || 0))
-        }, 0) * rate
-      }
-      const monthly = Math.round((i.value / i.totalInstallments) * 100) / 100
-      if ((i.anticipatedThisMonth || 0) > 0 && i.discountedTotalThisMonth != null) return (monthly + i.discountedTotalThisMonth) * rate
-      return monthly * (1 + (i.anticipatedThisMonth || 0)) * rate
-    }
-    return (i.type === 'subscription' ? (i.effectiveValue ?? i.value) : i.value) * rate
-  }
-
-  const computeGroupTotal = (groupItems: SectionItem[]) =>
-    groupItems.filter(i => i.isActive && !getActiveInterruption(i.interruptions, month)).reduce((s, i) => s + getMonthlyExpenseValue(i), 0)
-
-  const computeIncomeTotal = (incs: IncomeRecord[]) =>
-    incs.filter(i => !getActiveInterruption(i.interruptions, month)).reduce((s, i) => s + i.effectiveValue * (i.exchangeRateSnapshot || 1.0), 0)
-
   // Deduplicated totals (items/incomes can appear in multiple tag groups)
-  const uniqueFilteredItems = (() => {
-    const seen = new Set<number>()
-    const result: SectionItem[] = []
-    for (const g of groups) {
-      for (const i of g.items) {
-        if (!seen.has(i.id)) { seen.add(i.id); result.push(i) }
-      }
-    }
-    return result
-  })()
+  const uniqueFilteredItems = uniqueById(groups.flatMap(g => g.items))
+  const uniqueFilteredIncomes = uniqueById(groups.flatMap(g => g.incomes))
 
-  const uniqueFilteredIncomes = (() => {
-    const seen = new Set<number>()
-    const result: IncomeRecord[] = []
-    for (const g of groups) {
-      for (const i of g.incomes) {
-        if (!seen.has(i.id)) { seen.add(i.id); result.push(i) }
-      }
-    }
-    return result
-  })()
-
-  const grandTotalItems = computeGroupTotal(uniqueFilteredItems)
-  const grandTotalIncomes = computeIncomeTotal(uniqueFilteredIncomes)
-  const activeMonthlyItems = uniqueFilteredItems.filter(i => !getActiveInterruption(i.interruptions, month))
+  const grandTotalItems = sumActiveMonthlyExpenses(uniqueFilteredItems, month)
+  const grandTotalIncomes = sumMonthlyIncomes(uniqueFilteredIncomes, month)
+  const activeMonthlyItems = getNonInterruptedExpenses(uniqueFilteredItems, month)
   const interruptedItemsCount = uniqueFilteredItems.length - activeMonthlyItems.length
   const paidCount = activeMonthlyItems.filter(i => i.isPaid).length
   const receivedCount = uniqueFilteredIncomes.filter(i => i.isReceived).length
@@ -802,8 +765,8 @@ export default function TagsPage() {
   }
 
   const groupTotalValue = (group: typeof groups[number]) => {
-    const itemTotal = computeGroupTotal(group.items)
-    const incomeTotal = computeIncomeTotal(group.incomes)
+            const itemTotal = sumActiveMonthlyExpenses(group.items, month)
+            const incomeTotal = sumMonthlyIncomes(group.incomes, month)
     if (viewMode === 'gastos') return itemTotal
     if (viewMode === 'receitas') return incomeTotal
     return itemTotal + incomeTotal

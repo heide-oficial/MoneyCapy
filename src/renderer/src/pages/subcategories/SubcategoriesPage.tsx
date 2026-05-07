@@ -18,7 +18,12 @@ import { useColumnsPicker } from '../../components/ui/ColumnsPickerDropdown'
 import { TileFieldsPickerButton } from '../../components/ui/TileFieldsPickerButton'
 import { formatCurrency } from '../../lib/currency'
 import { PRESET_COLORS } from '../../lib/constants'
-import { getActiveInterruption } from '../../lib/interruptions'
+import {
+  getMonthlyIncomeValue,
+  getNonInterruptedExpenses,
+  sumActiveMonthlyExpenses,
+  sumMonthlyIncomes
+} from '../../lib/monthly-finance'
 import { usePageMonth } from '../../contexts/DefaultMonthContext'
 import { useActivePerson } from '../../contexts/ActivePersonContext'
 import { useColorMode } from '../../contexts/ColorModeContext'
@@ -352,30 +357,9 @@ export default function SubcategoriesPage() {
 
   const allFilteredItems = groups.flatMap(group => group.items)
   const allFilteredIncomes = groups.flatMap(group => group.incomes)
-  const getMonthlyExpenseValue = (item: SectionItem) => {
-    const rate = item.exchangeRateSnapshot || 1
-    if ((item.type === 'installment' || item.type === 'emprestimo') && item.totalInstallments) {
-      if (item.cardSplits && item.cardSplits.length > 0) {
-        return item.cardSplits.reduce((acc, split) => {
-          const monthly = Math.round((split.value / split.totalInstallments) * 100) / 100
-          if ((split.anticipatedThisMonth || 0) > 0 && split.discountedTotalThisMonth != null) return acc + monthly + split.discountedTotalThisMonth
-          return acc + monthly * (1 + (split.anticipatedThisMonth || 0))
-        }, 0) * rate
-      }
-      const monthly = Math.round((item.value / item.totalInstallments) * 100) / 100
-      if ((item.anticipatedThisMonth || 0) > 0 && item.discountedTotalThisMonth != null) return (monthly + item.discountedTotalThisMonth) * rate
-      return monthly * (1 + (item.anticipatedThisMonth || 0)) * rate
-    }
-    return (item.type === 'subscription' ? (item.effectiveValue ?? item.value) : item.value) * rate
-  }
-
-  const expenseTotal = allFilteredItems
-    .filter(item => item.isActive && !getActiveInterruption(item.interruptions, month))
-    .reduce((sum, item) => sum + getMonthlyExpenseValue(item), 0)
-  const incomeTotal = allFilteredIncomes
-    .filter(income => !getActiveInterruption(income.interruptions, month))
-    .reduce((sum, income) => sum + income.effectiveValue * (income.exchangeRateSnapshot || 1), 0)
-  const activeMonthlyItems = allFilteredItems.filter(item => !getActiveInterruption(item.interruptions, month))
+  const expenseTotal = sumActiveMonthlyExpenses(allFilteredItems, month)
+  const incomeTotal = sumMonthlyIncomes(allFilteredIncomes, month)
+  const activeMonthlyItems = getNonInterruptedExpenses(allFilteredItems, month)
   const interruptedItemsCount = allFilteredItems.length - activeMonthlyItems.length
   const paidCount = activeMonthlyItems.filter(item => item.isPaid).length
   const receivedCount = allFilteredIncomes.filter(income => income.isReceived).length
@@ -424,8 +408,7 @@ export default function SubcategoriesPage() {
   const itemTypeFilterItems = getEntityItemTypeOptions(t)
 
   const groupTotal = (group: typeof groups[number]) =>
-    group.items.reduce((sum, item) => sum + item.value * (item.exchangeRateSnapshot || 1), 0) +
-    group.incomes.reduce((sum, income) => sum + income.effectiveValue * (income.exchangeRateSnapshot || 1), 0)
+    sumActiveMonthlyExpenses(group.items, month) + sumMonthlyIncomes(group.incomes, month)
 
   const getLinkedCategoryNames = (subcat: Subcategory) => {
     const ids = new Set(subcat.categoryIds || [])
@@ -497,7 +480,7 @@ export default function SubcategoriesPage() {
         <div className="flex-1 p-4">
           <div className="flex items-baseline gap-2 mb-1">
             <span className="text-2xl font-bold tabular-nums" style={receitasStyle('subcategories', 'itens')}>
-              {formatCurrency(income.effectiveValue * (income.exchangeRateSnapshot || 1))}
+              {formatCurrency(getMonthlyIncomeValue(income))}
             </span>
           </div>
           {metaItems.length > 0 && (

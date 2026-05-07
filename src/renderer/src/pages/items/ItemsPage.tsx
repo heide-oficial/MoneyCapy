@@ -12,6 +12,7 @@ import { SectionLayout } from '../../components/layout/SectionLayout'
 import { formatCurrency } from '../../lib/currency'
 import { addMonths, useFormatDate } from '../../lib/date'
 import { getActiveInterruption } from '../../lib/interruptions'
+import { getMonthlyExpenseValue } from '../../lib/monthly-finance'
 import { usePageMonth } from '../../contexts/DefaultMonthContext'
 import {
   Plus, ChevronDown, Check, Filter, Receipt, Download,
@@ -371,30 +372,9 @@ export default function ItemsPage() {
     ]
   })()
 
-  const getItemMonthlyValue = (i: SectionItem) => {
-    const rate = i.exchangeRateSnapshot || 1.0
-    if ((i.type === 'installment' || i.type === 'emprestimo') && i.totalInstallments) {
-      if (i.cardSplits && i.cardSplits.length > 0) {
-        return i.cardSplits.reduce((acc, sp) => {
-          const monthly = Math.round((sp.value / sp.totalInstallments) * 100) / 100
-          if ((sp.anticipatedThisMonth || 0) > 0 && sp.discountedTotalThisMonth != null) {
-            return acc + monthly + sp.discountedTotalThisMonth
-          }
-          return acc + monthly * (1 + (sp.anticipatedThisMonth || 0))
-        }, 0) * rate
-      }
-      const monthly = Math.round((i.value / i.totalInstallments) * 100) / 100
-      if ((i.anticipatedThisMonth || 0) > 0 && i.discountedTotalThisMonth != null) {
-        return (monthly + i.discountedTotalThisMonth) * rate
-      }
-      return monthly * (1 + (i.anticipatedThisMonth || 0)) * rate
-    }
-    return (i.type === 'subscription' ? (i.effectiveValue ?? i.value) : i.value) * rate
-  }
-
   const total = filteredAndSortedItems
     .filter(i => i.isActive && !getActiveInterruption(i.interruptions, month))
-    .reduce((s, i) => s + getItemMonthlyValue(i), 0)
+    .reduce((s, i) => s + getMonthlyExpenseValue(i), 0)
   const interruptedItemsCount = filteredAndSortedItems.filter(i => getActiveInterruption(i.interruptions, month)).length
   const activeMonthlyItems = filteredAndSortedItems.filter(i => !getActiveInterruption(i.interruptions, month))
   const unpaidActiveItemsCount = activeMonthlyItems.filter(i => !i.isPaid).length
@@ -406,7 +386,7 @@ export default function ItemsPage() {
   const csvColumns: CsvColumn<SectionItem>[] = [
     { id: 'description', label: t('csvExport.columns.description'), value: i => i.description },
     { id: 'type', label: t('csvExport.columns.type'), value: i => t(`itemTypes.${i.type}`) },
-    { id: 'monthValue', label: t('csvExport.columns.monthValue'), value: i => formatCurrency(getItemMonthlyValue(i)) },
+    { id: 'monthValue', label: t('csvExport.columns.monthValue'), value: i => formatCurrency(getMonthlyExpenseValue(i)) },
     { id: 'totalValue', label: t('csvExport.columns.totalValue'), value: i => formatCurrency(i.value * (i.exchangeRateSnapshot || 1.0)) },
     { id: 'category', label: t('csvExport.columns.category'), value: i => i.categoryName || '' },
     { id: 'tags', label: t('csvExport.columns.tags'), value: i => i.tags?.map(tag => tag.name).join(', ') || '' },

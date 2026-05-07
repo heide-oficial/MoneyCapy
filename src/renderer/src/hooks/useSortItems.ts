@@ -1,4 +1,5 @@
 import type { SectionItem } from '../types/entities'
+import { getMonthlyExpenseValue } from '../lib/monthly-finance'
 
 export type ItemSortMode =
   | 'az' | 'za'
@@ -51,27 +52,6 @@ export function getItemSortOptions(t: (key: string) => string): { key: ItemSortM
 
 export function getSortLabelMap(t: (key: string) => string): Record<ItemSortMode, string> {
   return Object.fromEntries(getItemSortOptions(t).map(o => [o.key, o.label])) as Record<ItemSortMode, string>
-}
-
-function getMonthValue(item: SectionItem): number {
-  const rate = item.exchangeRateSnapshot || 1.0
-  if ((item.type === 'installment' || item.type === 'emprestimo') && item.totalInstallments) {
-    if (item.cardSplits && item.cardSplits.length > 0) {
-      return item.cardSplits.reduce((sum, split) => {
-        const monthly = Math.round((split.value / split.totalInstallments) * 100) / 100
-        if ((split.anticipatedThisMonth || 0) > 0 && split.discountedTotalThisMonth != null) {
-          return sum + monthly + split.discountedTotalThisMonth
-        }
-        return sum + monthly * (1 + (split.anticipatedThisMonth || 0))
-      }, 0) * rate
-    }
-    const monthly = Math.round((item.value / item.totalInstallments) * 100) / 100
-    if ((item.anticipatedThisMonth || 0) > 0 && item.discountedTotalThisMonth != null) {
-      return (monthly + item.discountedTotalThisMonth) * rate
-    }
-    return monthly * (1 + (item.anticipatedThisMonth || 0)) * rate
-  }
-  return (item.type === 'subscription' ? (item.effectiveValue ?? item.value) : item.value) * rate
 }
 
 function getDueSortValue(item: SectionItem, month?: string, farthest = false): number | null {
@@ -134,8 +114,8 @@ export function sortItems<T extends SectionItem>(
       case 'za': return b.description.localeCompare(a.description)
       case 'value-desc': return b.value - a.value
       case 'value-asc': return a.value - b.value
-      case 'installment-value-desc': return getMonthValue(b) - getMonthValue(a)
-      case 'installment-value-asc': return getMonthValue(a) - getMonthValue(b)
+      case 'installment-value-desc': return getMonthlyExpenseValue(b) - getMonthlyExpenseValue(a)
+      case 'installment-value-asc': return getMonthlyExpenseValue(a) - getMonthlyExpenseValue(b)
       case 'installments-desc': return compareNullableNumber(getRemainingInstallments(a), getRemainingInstallments(b), 'desc')
       case 'installments-asc': return compareNullableNumber(getRemainingInstallments(a), getRemainingInstallments(b), 'asc')
       case 'newest': return (b.createdAt || '').localeCompare(a.createdAt || '')
