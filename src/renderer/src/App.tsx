@@ -21,6 +21,7 @@ import { Toaster } from 'sonner'
 import { MainLayout } from './components/layout/MainLayout'
 import { ROUTES } from './lib/constants'
 import { GlobalSearchModal } from './components/ui/GlobalSearchModal'
+import { UpdateAvailableModal } from './components/ui/UpdateAvailableModal'
 
 // Pages
 import Dashboard from './pages/dashboard/Dashboard'
@@ -117,6 +118,7 @@ function App() {
           <HashRouter>
             <PositionedToaster />
             <GlobalSearchWrapper />
+            <UpdateAvailableModal />
             <Routes>
               <Route element={<MainLayout />}>
                 <Route path={ROUTES.DASHBOARD} element={<Dashboard />} />

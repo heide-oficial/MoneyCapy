@@ -121,5 +121,7 @@ export const IPC_CHANNELS = {
   // App
   APP_SET_AUTO_START: 'app:set-auto-start',
   APP_SET_MINIMIZE_TO_TRAY: 'app:set-minimize-to-tray',
+  APP_CHECK_FOR_UPDATES: 'app:check-for-updates',
+  APP_OPEN_EXTERNAL: 'app:open-external',
   APP_RELAUNCH: 'app:relaunch',
 } as const

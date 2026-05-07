@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC_CHANNELS } from '../../shared/ipc-channels'
+import type { AppUpdateInfo } from '../../shared/app-info'
 import type {
   CategoryCreateInput,
   CategoryRecord,
@@ -163,6 +164,8 @@ const api = {
   app: {
     setAutoStart: (enabled: boolean) => ipcRenderer.invoke(IPC_CHANNELS.APP_SET_AUTO_START, enabled),
     setMinimizeToTray: (enabled: boolean) => ipcRenderer.invoke(IPC_CHANNELS.APP_SET_MINIMIZE_TO_TRAY, enabled),
+    checkForUpdates: () => invoke<AppUpdateInfo>(IPC_CHANNELS.APP_CHECK_FOR_UPDATES),
+    openExternal: (url: string) => invoke<boolean>(IPC_CHANNELS.APP_OPEN_EXTERNAL, url),
     relaunch: () => ipcRenderer.invoke(IPC_CHANNELS.APP_RELAUNCH)
   }
 }

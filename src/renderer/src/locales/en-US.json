@@ -108,6 +108,14 @@
     "settings": "Settings",
     "createProfile": "Create new profile"
   },
+  "updates": {
+    "title": "New version available",
+    "versionAvailable": "MoneyCapy {{version}} is available.",
+    "description": "You are using version {{currentVersion}}. Download the latest GitHub release to update the app.",
+    "skipVersion": "Skip this version",
+    "remindLater": "Remind me later",
+    "goToDownload": "Go to download"
+  },
   "settings": {
     "title": "Settings",
     "appearance": "Appearance",

@@ -14,6 +14,7 @@ import { registerBackupHandlers } from './backup.ipc'
 import { registerBankAccountsHandlers } from './bank-accounts.ipc'
 import { registerInsightsHandlers } from './insights.ipc'
 import { registerCurrenciesHandlers } from './currencies.ipc'
+import { registerAppHandlers } from './app.ipc'
 
 export function registerAllIpcHandlers(db: WrappedDatabase): void {
   registerSettingsHandlers(db)
@@ -31,4 +32,5 @@ export function registerAllIpcHandlers(db: WrappedDatabase): void {
   registerBankAccountsHandlers(db)
   registerInsightsHandlers(db)
   registerCurrenciesHandlers(db)
+  registerAppHandlers()
 }
