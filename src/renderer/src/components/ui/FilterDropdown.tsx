@@ -1,7 +1,8 @@
-import { useState, useEffect, useLayoutEffect } from 'react'
+import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Check } from 'lucide-react'
 import { useTranslation } from '../../contexts/LanguageContext'
+import { useAnchoredPopover } from '../../hooks/useAnchoredPopover'
 
 interface FilterDropdownProps<T extends string | number> {
   anchorRef: React.RefObject<HTMLButtonElement | null>
@@ -19,36 +20,16 @@ export function FilterDropdown<T extends string | number>({
   anchorRef, dropRef, onClose, items, selected, onToggle, emptyText, searchable = true, searchPlaceholder
 }: FilterDropdownProps<T>) {
   const { t } = useTranslation()
-  const [pos, setPos] = useState({ top: 0, left: 0, ready: false })
   const [search, setSearch] = useState('')
   const filteredItems = search.trim()
     ? items.filter(item => item.name.toLowerCase().includes(search.trim().toLowerCase()))
     : items
-
-  useLayoutEffect(() => {
-    if (!anchorRef.current || !dropRef.current) return
-    const anchor = anchorRef.current.getBoundingClientRect()
-    const drop = dropRef.current.getBoundingClientRect()
-    let top = anchor.bottom + 4, left = anchor.left
-    if (left + drop.width > window.innerWidth) left = window.innerWidth - drop.width - 8
-    if (top + drop.height > window.innerHeight) top = anchor.top - drop.height - 4
-    if (left < 8) left = 8
-    if (top < 8) top = 8
-    setPos({ top, left, ready: true })
-  }, [anchorRef, dropRef, search])
-
-  useEffect(() => {
-    const handle = (e: MouseEvent) => {
-      const target = e.target as Node
-      if (anchorRef.current?.contains(target)) return
-      if (dropRef.current?.contains(target)) return
-      onClose()
-    }
-    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    document.addEventListener('mousedown', handle)
-    document.addEventListener('keydown', handleKey)
-    return () => { document.removeEventListener('mousedown', handle); document.removeEventListener('keydown', handleKey) }
-  }, [anchorRef, dropRef, onClose])
+  const pos = useAnchoredPopover({
+    anchorRef,
+    popoverRef: dropRef,
+    onClose,
+    deps: [search, filteredItems.length]
+  })
 
   return createPortal(
     <div

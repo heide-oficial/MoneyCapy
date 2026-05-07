@@ -1,8 +1,9 @@
-import React, { useState, useRef, useEffect, useLayoutEffect, type ReactNode } from 'react'
+import React, { useState, useRef, useEffect, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Filter } from 'lucide-react'
 import { useFilterDisplayMode } from '../../contexts/FilterDisplayModeContext'
 import { useTranslation } from '../../contexts/LanguageContext'
+import { useAnchoredPopover } from '../../hooks/useAnchoredPopover'
 
 interface FilterGroupProps {
   children: ReactNode
@@ -141,20 +142,12 @@ export function FilterGroup({ children, activeCount, onClear, primaryCount = 3 }
 }
 
 function PopoverPanel({ anchorRef, popoverRef, children }: { anchorRef: React.RefObject<HTMLElement | null>; popoverRef: React.RefObject<HTMLDivElement | null>; children: ReactNode }) {
-  const [pos, setPos] = useState({ top: 0, left: 0, ready: false })
-
-  useLayoutEffect(() => {
-    if (!anchorRef.current || !popoverRef.current) return
-    const anchor = anchorRef.current.getBoundingClientRect()
-    const drop = popoverRef.current.getBoundingClientRect()
-    let top = anchor.bottom + 4
-    let left = anchor.left
-    if (left + drop.width > window.innerWidth) left = window.innerWidth - drop.width - 8
-    if (top + drop.height > window.innerHeight) top = anchor.top - drop.height - 4
-    if (left < 8) left = 8
-    if (top < 8) top = 8
-    setPos({ top, left, ready: true })
-  }, [anchorRef, popoverRef])
+  const pos = useAnchoredPopover({
+    anchorRef,
+    popoverRef,
+    enabled: true,
+    deps: [React.Children.count(children)]
+  })
 
   return (
     <div

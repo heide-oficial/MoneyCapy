@@ -1,7 +1,8 @@
-import { useState, useEffect, useLayoutEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, LayoutGrid } from 'lucide-react'
 import { useTranslation } from '../../contexts/LanguageContext'
+import { useAnchoredPopover } from '../../hooks/useAnchoredPopover'
 
 const COLUMN_OPTIONS = [
   { value: 1, tKey: 'common.columnsPerRow1' },
@@ -17,32 +18,7 @@ function ColumnsDropdown({ anchorRef, dropRef, current, onChange, onClose }: {
   onClose: () => void
 }) {
   const { t } = useTranslation()
-  const [pos, setPos] = useState({ top: 0, left: 0, ready: false })
-
-  useLayoutEffect(() => {
-    if (!anchorRef.current || !dropRef.current) return
-    const anchor = anchorRef.current.getBoundingClientRect()
-    const drop = dropRef.current.getBoundingClientRect()
-    let top = anchor.bottom + 4, left = anchor.right - drop.width
-    if (left + drop.width > window.innerWidth) left = window.innerWidth - drop.width - 8
-    if (top + drop.height > window.innerHeight) top = anchor.top - drop.height - 4
-    if (left < 8) left = 8
-    if (top < 8) top = 8
-    setPos({ top, left, ready: true })
-  }, [anchorRef])
-
-  useEffect(() => {
-    const handle = (e: MouseEvent) => {
-      const target = e.target as Node
-      if (anchorRef.current?.contains(target)) return
-      if (dropRef.current?.contains(target)) return
-      onClose()
-    }
-    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    document.addEventListener('mousedown', handle)
-    document.addEventListener('keydown', handleKey)
-    return () => { document.removeEventListener('mousedown', handle); document.removeEventListener('keydown', handleKey) }
-  }, [anchorRef, dropRef, onClose])
+  const pos = useAnchoredPopover({ anchorRef, popoverRef: dropRef, onClose, align: 'end' })
 
   return (
     <div ref={dropRef} className="fixed z-[9999] rounded-md border border-border bg-card shadow-lg py-1 min-w-[160px]"
