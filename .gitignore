@@ -1,6 +1,7 @@
 node_modules/
 out/
 dist/
+design-test/
 *.db
 *.db-journal
 .env
