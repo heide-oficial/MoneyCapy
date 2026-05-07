@@ -21,7 +21,7 @@ export function FilterGroup({ children, activeCount, onClear, primaryCount = 3 }
   const popoverRef = useRef<HTMLDivElement>(null)
   const morePopoverRef = useRef<HTMLDivElement>(null)
 
-  const allChildren = React.Children.toArray(children)
+  const allChildren = flattenChildren(children)
 
   // Close popovers on click outside / Escape
   useEffect(() => {
@@ -169,4 +169,19 @@ function PopoverPanel({ anchorRef, popoverRef, children }: { anchorRef: React.Re
       ))}
     </div>
   )
+}
+
+function flattenChildren(children: ReactNode): ReactNode[] {
+  const result: ReactNode[] = []
+
+  React.Children.forEach(children, child => {
+    if (!child) return
+    if (React.isValidElement(child) && child.type === React.Fragment) {
+      result.push(...flattenChildren((child.props as { children?: ReactNode }).children))
+      return
+    }
+    result.push(child)
+  })
+
+  return result
 }

@@ -34,6 +34,13 @@ import { useDefaultSortMode } from '../../hooks/useDefaultSortMode'
 import { ItemsTile } from '../items/ItemsTile'
 import { IncomeTile } from '../income/IncomeTile'
 import { useFormatDate } from '../../lib/date'
+import {
+  ENTITY_ITEM_TYPE_FILTERS,
+  getEntityItemTypeOptions,
+  matchesExpenseType,
+  matchesIncomeType,
+  type EntityItemTypeFilter
+} from '../../lib/entity-item-type-filters'
 
 type ViewMode = 'all' | 'gastos' | 'receitas'
 type Scope = 'expense' | 'income' | 'both'
@@ -88,7 +95,7 @@ export default function SubcategoriesPage() {
   const [showViewMenu, setShowViewMenu] = useState(false)
   const viewBtnRef = useRef<HTMLButtonElement>(null)
   const viewDropRef = useRef<HTMLDivElement>(null)
-  const [filterItemType, setFilterItemType] = useState('all')
+  const [filterItemTypes, setFilterItemTypes] = useState<EntityItemTypeFilter[]>([...ENTITY_ITEM_TYPE_FILTERS])
   const [showItemTypeMenu, setShowItemTypeMenu] = useState(false)
   const itemTypeBtnRef = useRef<HTMLButtonElement>(null)
   const itemTypeDropRef = useRef<HTMLDivElement>(null)
@@ -249,7 +256,7 @@ export default function SubcategoriesPage() {
     if (filterActive === 'inactive' && item.isActive) return false
     if (filterPaid === 'paid' && !item.isPaid) return false
     if (filterPaid === 'unpaid' && item.isPaid) return false
-    if (filterItemType !== 'all' && viewMode === 'gastos' && item.type !== filterItemType) return false
+    if (!matchesExpenseType(filterItemTypes, item.type)) return false
     if (filterCategoryKeys.length > 0) {
       const none = filterCategoryKeys.includes('none')
       const ids = filterCategoryKeys.filter(id => id !== 'none')
@@ -292,10 +299,7 @@ export default function SubcategoriesPage() {
   }
 
   const filterIncome = (income: IncomeRecord) => {
-    if (filterItemType !== 'all' && viewMode === 'receitas') {
-      if (filterItemType === 'recurring' && !income.isRecurring) return false
-      if (filterItemType === 'non-recurring' && income.isRecurring) return false
-    }
+    if (!matchesIncomeType(filterItemTypes, !!income.isRecurring)) return false
     if (filterCategoryKeys.length > 0) {
       const none = filterCategoryKeys.includes('none')
       const ids = filterCategoryKeys.filter(id => id !== 'none')
@@ -417,6 +421,7 @@ export default function SubcategoriesPage() {
     { id: 'none', name: t('filters.noStore'), color: '#6b7280' },
     ...stores.map(store => ({ id: String(store.id), name: store.name, color: '#6366f1' }))
   ]
+  const itemTypeFilterItems = getEntityItemTypeOptions(t)
 
   const groupTotal = (group: typeof groups[number]) =>
     group.items.reduce((sum, item) => sum + item.value * (item.exchangeRateSnapshot || 1), 0) +
@@ -556,7 +561,7 @@ export default function SubcategoriesPage() {
           </button>
           <FilterGroup
             activeCount={
-              (viewMode !== 'all' ? 1 : 0) + (filterItemType !== 'all' ? 1 : 0) +
+              (viewMode !== 'all' ? 1 : 0) + (filterItemTypes.length < ENTITY_ITEM_TYPE_FILTERS.length ? 1 : 0) +
               (filterCategoryKeys.length > 0 ? 1 : 0) + (filterSubcategoryKeys.length > 0 ? 1 : 0) +
               (filterBankKeys.length > 0 ? 1 : 0) + (filterCardKeys.length > 0 ? 1 : 0) +
               (filterStoreKeys.length > 0 ? 1 : 0) +
@@ -564,7 +569,7 @@ export default function SubcategoriesPage() {
               (filterPayMethod !== 'all' ? 1 : 0)
             }
             onClear={() => {
-              setViewMode('all'); setFilterActive('all'); setFilterPaid('all'); setFilterPayMethod('all'); setFilterItemType('all')
+              setViewMode('all'); setFilterActive('all'); setFilterPaid('all'); setFilterPayMethod('all'); setFilterItemTypes([...ENTITY_ITEM_TYPE_FILTERS])
               setFilterCategoryKeys([]); setFilterSubcategoryKeys([]); setFilterCardKeys([]); setFilterBankKeys([]); setFilterStoreKeys([]); setHideEmpty(false)
             }}
             primaryCount={3}
@@ -585,42 +590,33 @@ export default function SubcategoriesPage() {
                     { key: 'receitas', label: t('filters.income') }
                   ]}
                   current={viewMode}
-                  onChange={value => { setViewMode(value as ViewMode); setFilterItemType('all'); setShowViewMenu(false) }}
+                  onChange={value => { setViewMode(value as ViewMode); setShowViewMenu(false) }}
                   onClose={() => setShowViewMenu(false)}
                 />
               )}
             </div>
-            {viewMode !== 'all' && (
-              <div className="relative">
-                <button ref={itemTypeBtnRef} type="button" onClick={() => setShowItemTypeMenu(v => !v)}
-                  className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border border-input hover:bg-accent transition-colors">
-                  <span data-filter-label>{viewMode === 'gastos' ? t('filters.expenseType') : t('filters.incomeType')}</span>
-                  <ChevronDown size={12} className="text-muted-foreground" />
-                </button>
-                {showItemTypeMenu && (
-                  <SimpleDropdown
-                    anchorRef={itemTypeBtnRef}
-                    dropRef={itemTypeDropRef}
-                    options={viewMode === 'gastos'
-                      ? [
-                          { key: 'all', label: t('filters.allTypes') },
-                          { key: 'common', label: t('filters.singles') },
-                          { key: 'installment', label: t('filters.installments') },
-                          { key: 'subscription', label: t('filters.recurring') },
-                          { key: 'emprestimo', label: t('filters.loans') }
-                        ]
-                      : [
-                          { key: 'all', label: t('filters.allTypes') },
-                          { key: 'recurring', label: t('filters.recurringOnly') },
-                          { key: 'non-recurring', label: t('filters.nonRecurringOnly') }
-                        ]}
-                    current={filterItemType}
-                    onChange={value => { setFilterItemType(value); setShowItemTypeMenu(false) }}
-                    onClose={() => setShowItemTypeMenu(false)}
-                  />
+            <div className="relative">
+              <button ref={itemTypeBtnRef} type="button" title={t('filters.itemType')} onClick={() => setShowItemTypeMenu(v => !v)}
+                className={`inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border transition-colors ${filterItemTypes.length < ENTITY_ITEM_TYPE_FILTERS.length ? 'bg-primary text-primary-foreground border-primary' : 'bg-transparent text-foreground border-input hover:bg-accent'}`}>
+                <Layers size={11} />
+                <span data-filter-label>{t('filters.itemType')}</span>
+                {filterItemTypes.length < ENTITY_ITEM_TYPE_FILTERS.length && (
+                  <span className="bg-primary-foreground text-primary text-[10px] rounded-full h-4 min-w-[16px] flex items-center justify-center font-bold">{filterItemTypes.length}</span>
                 )}
-              </div>
-            )}
+                <ChevronDown size={12} className="text-muted-foreground" />
+              </button>
+              {showItemTypeMenu && (
+                <FilterDropdown
+                  anchorRef={itemTypeBtnRef}
+                  dropRef={itemTypeDropRef}
+                  onClose={() => setShowItemTypeMenu(false)}
+                  items={itemTypeFilterItems}
+                  selected={filterItemTypes}
+                  onToggle={id => setFilterItemTypes(current => current.includes(id) ? (current.length === 1 ? current : current.filter(type => type !== id)) : [...current, id])}
+                  searchable={false}
+                />
+              )}
+            </div>
             <div className="relative">
               <button ref={categoryFilterRef} type="button" title={t('filters.category')}
                 onClick={() => { setShowCategoryFilter(v => !v); setShowSubcategoryFilter(false) }}
