@@ -11,7 +11,6 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { CurrencyMonthNavigator } from '../../components/ui/CurrencyMonthNavigator'
 import { SearchInput } from '../../components/ui/SearchInput'
 import { PasswordModal } from '../../components/ui/PasswordModal'
-import { KebabMenu } from '../../components/ui/KebabMenu'
 import { SortableGrid } from '../../components/dnd/SortableGrid'
 import { SortableItem } from '../../components/dnd/SortableItem'
 import { useSortOrder } from '../../hooks/useSortOrder'
@@ -27,7 +26,7 @@ import { getCurrentMonth } from '../../lib/date'
 import { useColumnsPicker } from '../../components/ui/ColumnsPickerDropdown'
 import { SimpleDropdown } from '../../components/ui/SimpleDropdown'
 import { FilterGroup } from '../../components/ui/FilterGroup'
-import { CreditCard, Plus, Pencil, Trash2, Landmark, ChevronDown, CheckCircle2, ExternalLink, CircleDot, Layers, Repeat, HandCoins, Receipt } from 'lucide-react'
+import { CreditCard, Plus, Landmark, ChevronDown, CheckCircle2, ExternalLink, CircleDot, Layers, Repeat, HandCoins, Receipt, Info, Settings, CalendarDays, User, Hash } from 'lucide-react'
 import { toast } from 'sonner'
 import { useUndoableDelete } from '../../hooks/useUndoableDelete'
 import { useTranslation } from '../../contexts/LanguageContext'
@@ -121,6 +120,7 @@ export default function CardsPage() {
   const [filterBanco, setFilterBanco] = useState<string>('')
   const [filterCardType, setFilterCardType] = useState('all')
   const [search, setSearch] = useState('')
+  const [expandedCardId, setExpandedCardId] = useState<number | null>(null)
 
   // Dropdown refs/state
   const [showBancoMenu, setShowBancoMenu] = useState(false)
@@ -303,115 +303,148 @@ export default function CardsPage() {
   const renderCardTile = (card: CardEnriched) => {
     const usedPct = card.totalLimit > 0 ? (card.usedLimit / card.totalLimit) * 100 : 0
     const fmtCard = (v: number) => card.currencySymbol ? formatCurrencyWith(v, card.currencySymbol) : formatCurrency(v)
+    const expanded = expandedCardId === card.id
+    const cardTypeLabel = card.cardType === 'credit' ? t('cards.credit') : card.cardType === 'debit' ? t('cards.debit') : t('cards.both')
+    const sensitiveRows = [
+      { icon: Hash, label: t('cards.cardNumber'), value: !isUnlocked ? '**** **** **** ****' : (card.numberMasked && card.numberMasked !== '**** **** **** ****' ? card.numberMasked : '0000 0000 0000 0000') },
+      { icon: CalendarDays, label: t('cards.expiration'), value: !isUnlocked ? '**/**' : (card.expirationMasked && card.expirationMasked !== '**/**' ? card.expirationMasked : '00/00') },
+      { icon: User, label: t('cards.holderName'), value: !isUnlocked ? '*****' : (card.holderMasked && card.holderMasked !== '*****' ? card.holderMasked : t('cards.nameOnCard')) },
+      { icon: CalendarDays, label: t('cards.billingCloseDay'), value: t('cards.closesDay', { day: card.billingCloseDay }) },
+      { icon: CalendarDays, label: t('cards.dueDay'), value: t('cards.duesDay', { day: card.dueDay }) }
+    ]
     return (
-      <Card className="p-5">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 shrink-0">
-              <CreditCard size={20} className="text-primary" />
-            </div>
-            <h3 className="font-semibold truncate">{card.name}</h3>
+      <Card
+        hover
+        className={`group relative overflow-visible cursor-pointer transition-all duration-200 ease-out ${expanded ? 'shadow-xl' : ''}`}
+        onClick={() => setExpandedCardId(current => current === card.id ? null : card.id)}
+      >
+        <div className="relative z-20 flex items-center gap-3 px-3 py-3 sm:px-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+            <CreditCard size={20} className="text-primary" />
           </div>
-          <KebabMenu items={[
-            { label: t('common.edit'), icon: Pencil, onClick: () => openEdit(card.id) },
-            { label: t('common.delete'), icon: Trash2, onClick: () => requestDelete(card.id), destructive: true }
-          ]} />
-        </div>
 
-        <div className="flex items-center gap-1.5 mb-3">
-          {card.bankAccountName && (
-            <>
-              <Landmark size={12} className="text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">{card.bankAccountName}</span>
-            </>
-          )}
-          {card.cardType !== 'both' && (
-            <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-              card.cardType === 'credit' ? 'bg-blue-500/15 text-blue-500' : 'bg-green-500/15 text-green-500'
-            }`}>
-              {card.cardType === 'credit' ? t('cards.credit') : t('cards.debit')}
-            </span>
-          )}
-        </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h3 className="truncate text-lg font-bold leading-tight text-foreground sm:text-xl">{card.name}</h3>
+                <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+                  {card.bankAccountName && (
+                    <span className="inline-flex min-w-0 items-center gap-1 truncate">
+                      <Landmark size={12} className="shrink-0 opacity-70" />
+                      <span className="truncate">{card.bankAccountName}</span>
+                    </span>
+                  )}
+                  <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                    card.cardType === 'credit' ? 'bg-blue-500/15 text-blue-500' : card.cardType === 'debit' ? 'bg-green-500/15 text-green-500' : 'bg-primary/15 text-primary'
+                  }`}>
+                    {cardTypeLabel}
+                  </span>
+                </div>
+              </div>
 
-        <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground font-mono">
-          <span className="tracking-widest shrink-0">{!isUnlocked ? '**** **** **** ****' : (card.numberMasked && card.numberMasked !== '**** **** **** ****' ? card.numberMasked : '0000 0000 0000 0000')}</span>
-          <span className="shrink-0">-</span>
-          <span className="shrink-0">{!isUnlocked ? '**/**' : (card.expirationMasked && card.expirationMasked !== '**/**' ? card.expirationMasked : '00/00')}</span>
-          <span className="shrink-0">-</span>
-          <span className="uppercase truncate">{!isUnlocked ? '*****' : (card.holderMasked && card.holderMasked !== '*****' ? card.holderMasked : t('cards.nameOnCard'))}</span>
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">{t('cards.usedOverLimit')}</span>
-            <span className="font-medium">{fmtCard(card.usedLimit)} / {card.totalLimit === 0 ? t('cards.unlimited') : fmtCard(card.totalLimit)}</span>
-          </div>
-          {card.totalLimit > 0 ? (
-          <div className="h-2 rounded-full bg-muted overflow-hidden">
-            <div className={`h-full rounded-full transition-all ${usedPct > 80 ? 'bg-destructive' : 'bg-primary'}`} style={{ width: `${Math.min(usedPct, 100)}%` }} />
-          </div>
-          ) : (
-          <div className="h-2 rounded-full overflow-hidden" style={{
-            backgroundImage: 'repeating-linear-gradient(135deg, hsl(var(--muted-foreground) / 0.18) 0px, hsl(var(--muted-foreground) / 0.18) 3px, transparent 3px, transparent 6px)',
-          }} />
-          )}
-          <div className="flex justify-between items-center text-xs text-muted-foreground">
-            <span>{t('cards.closesDay', { day: card.billingCloseDay })}</span>
-            {card.totalLimit > 0 && (
-              <span>{t('cards.available')}: <span className="font-medium">{fmtCard(card.availableLimit)}</span></span>
-            )}
-            <span>{t('cards.duesDay', { day: card.dueDay })}</span>
-          </div>
-        </div>
-
-        <div className="mt-3 pt-3 border-t border-border/50 flex items-center">
-          <div className="relative group/expenses inline-flex items-center gap-1.5 text-xs text-muted-foreground cursor-default">
-            <Receipt size={12} className="shrink-0 opacity-60" />
-            <span className="font-medium">
-              {t('cards.totalExpenses', { total: fmtCard(cardTotalExpense(card)) })}
-            </span>
-            <div className="tile-card-tooltip absolute bottom-full left-0 mb-2 hidden w-[22rem] rounded-lg border border-border p-3 text-left text-xs text-card-foreground group-hover/expenses:block">
-              <dl className="space-y-1.5">
-                {[
-                  { icon: CircleDot, label: t('itemTypes.common'), value: t('accounts.commonCount', { count: card.commonCount, total: fmtCard(card.commonTotal) }) },
-                  { icon: Layers, label: t('itemTypes.installment'), value: t('accounts.installmentCount', { count: card.installmentCount, total: fmtCard(card.installmentTotal) }) },
-                  { icon: Repeat, label: t('itemTypes.subscription'), value: t('accounts.subscriptionCount', { count: card.subscriptionCount, total: fmtCard(card.subscriptionTotal) }) },
-                  { icon: HandCoins, label: t('itemTypes.emprestimo'), value: t('accounts.loanCount', { count: card.emprestimoCount, total: fmtCard(card.emprestimoTotal) }) }
-                ].map(row => (
-                  <div key={row.label} className="grid grid-cols-[16px_minmax(0,1fr)] gap-2">
-                    <row.icon size={14} className="mt-0.5 text-muted-foreground" />
-                    <div className="min-w-0">
-                      <dt className="text-muted-foreground">{row.label}:</dt>
-                      <dd className="whitespace-normal break-words text-foreground leading-snug">{row.value}</dd>
+              <div className="flex shrink-0 items-start gap-3 text-right">
+                <div>
+                  <p className="text-lg font-bold leading-tight tabular-nums sm:text-xl" style={gastosStyle('cards', 'itens')}>
+                    {fmtCard(cardTotalExpense(card))}
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">{t('cards.monthlyUsage')}</p>
+                </div>
+                <div className="flex flex-col items-center gap-1 border-l border-border pl-2" onClick={event => event.stopPropagation()}>
+                  <span className="relative group/expenses">
+                    <button
+                      type="button"
+                      className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                      title={t('cards.totalExpenses', { total: fmtCard(cardTotalExpense(card)) })}
+                    >
+                      <Info size={16} />
+                    </button>
+                    <div className="tile-card-tooltip absolute right-0 top-full mt-2 hidden w-[24rem] rounded-lg border border-border p-3 text-left text-xs text-card-foreground group-hover/expenses:block">
+                      <p className="font-semibold text-foreground">{t('accounts.expensesBreakdown')}</p>
+                      <dl className="mt-2 space-y-1.5">
+                        {[
+                          { icon: Receipt, label: t('accounts.totalExpenses'), value: fmtCard(cardTotalExpense(card)) },
+                          { icon: CircleDot, label: t('itemTypes.common'), value: t('accounts.commonCount', { count: card.commonCount, total: fmtCard(card.commonTotal) }) },
+                          { icon: Layers, label: t('itemTypes.installment'), value: t('accounts.installmentCount', { count: card.installmentCount, total: fmtCard(card.installmentTotal) }) },
+                          { icon: Repeat, label: t('itemTypes.subscription'), value: t('accounts.subscriptionCount', { count: card.subscriptionCount, total: fmtCard(card.subscriptionTotal) }) },
+                          { icon: HandCoins, label: t('itemTypes.emprestimo'), value: t('accounts.loanCount', { count: card.emprestimoCount, total: fmtCard(card.emprestimoTotal) }) }
+                        ].map(row => (
+                          <div key={row.label} className="grid grid-cols-[16px_minmax(0,1fr)] gap-2">
+                            <row.icon size={14} className="mt-0.5 text-muted-foreground" />
+                            <div className="min-w-0">
+                              <dt className="text-muted-foreground">{row.label}:</dt>
+                              <dd className="whitespace-normal break-words text-foreground leading-snug">{row.value}</dd>
+                            </div>
+                          </div>
+                        ))}
+                      </dl>
                     </div>
-                  </div>
-                ))}
-              </dl>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => openEdit(card.id)}
+                    className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    title={t('common.edit')}
+                  >
+                    <Settings size={16} />
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-          <div className="ml-auto flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => navigate(`/items?cardId=${card.id}`)}
-              className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
-            >
-              <ExternalLink size={14} />
-              {t('cards.viewItems')}
-            </button>
-            {card.cardType !== 'debit' && (
-              <button
-                type="button"
-                onClick={() => setPayInvoiceCardId(card.id)}
-                disabled={card.invoiceAllPaid}
-                className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${card.invoiceAllPaid ? 'text-muted-foreground/50 cursor-not-allowed' : 'text-primary hover:text-primary/80'}`}
-              >
-                <CheckCircle2 size={14} />
-                {t('cards.payInvoice')}
-              </button>
-            )}
-          </div>
         </div>
+
+        {expanded && (
+          <div className="tile-card-panel border-t border-border px-4 pb-4 pt-3" onClick={event => event.stopPropagation()}>
+            <div className="mb-3 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">{t('cards.usedOverLimit')}</span>
+                <span className="font-medium">{fmtCard(card.usedLimit)} / {card.totalLimit === 0 ? t('cards.unlimited') : fmtCard(card.totalLimit)}</span>
+              </div>
+              {card.totalLimit > 0 ? (
+                <div className="h-2 overflow-hidden rounded-full bg-muted">
+                  <div className={`h-full rounded-full transition-all ${usedPct > 80 ? 'bg-destructive' : 'bg-primary'}`} style={{ width: `${Math.min(usedPct, 100)}%` }} />
+                </div>
+              ) : (
+                <div className="h-2 rounded-full overflow-hidden" style={{
+                  backgroundImage: 'repeating-linear-gradient(135deg, hsl(var(--muted-foreground) / 0.18) 0px, hsl(var(--muted-foreground) / 0.18) 3px, transparent 3px, transparent 6px)',
+                }} />
+              )}
+              {card.totalLimit > 0 && (
+                <p className="text-xs text-muted-foreground">{t('cards.available')}: <span className="font-medium">{fmtCard(card.availableLimit)}</span></p>
+              )}
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              {sensitiveRows.map(row => (
+                <div key={row.label} className="flex items-start gap-2 rounded-lg border border-border/70 bg-background/20 px-3 py-2">
+                  <row.icon size={14} className="mt-0.5 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">{row.label}</p>
+                    <p className="truncate text-sm font-medium text-foreground">{row.value}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-3 flex flex-wrap justify-end gap-2">
+              <Button size="sm" variant="outline" onClick={() => navigate(`/items?cardId=${card.id}`)}>
+                <ExternalLink size={14} />
+                {t('cards.viewItems')}
+              </Button>
+              {card.cardType !== 'debit' && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setPayInvoiceCardId(card.id)}
+                  disabled={card.invoiceAllPaid}
+                >
+                  <CheckCircle2 size={14} />
+                  {t('cards.payInvoice')}
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
       </Card>
     )
   }
@@ -516,8 +549,11 @@ export default function CardsPage() {
       )}
 
       {/* Create/Edit Modal */}
-      <Modal open={showForm} onClose={() => setShowForm(false)} title={editing ? t('cards.editCard') : t('cards.newCardModal')}>
-        <div className="space-y-4">
+      <Modal open={showForm} onClose={() => setShowForm(false)} title={editing ? t('cards.editCard') : t('cards.newCardModal')} maxWidth="max-w-xl">
+        <div className="flex max-h-[70vh] flex-col overflow-hidden">
+          <div className="space-y-2 overflow-y-auto pr-1">
+            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('itemsForm.information')}</h4>
+            <div className="rounded-lg border border-border bg-card p-4 space-y-3">
           <Input label={t('cards.cardName')} value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Ex: Nubank" autoFocus />
           <Input label={t('cards.cardNumber')} value={formData.number} onChange={e => {
             const digits = e.target.value.replace(/\D/g, '').slice(0, 16)
@@ -567,9 +603,18 @@ export default function CardsPage() {
               options={currencies.map(c => ({ value: String(c.id), label: `${c.code} — ${c.symbol}` }))}
             />
           )}
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setShowForm(false)}>{t('common.cancel')}</Button>
-            <Button onClick={handleSave}>{editing ? t('common.save') : t('common.create')}</Button>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap justify-between gap-2 border-t border-border pt-4">
+            <div>
+              {editing && (
+                <Button variant="destructive" onClick={() => { requestDelete(editing); setShowForm(false) }}>{t('common.delete')}</Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowForm(false)}>{t('common.cancel')}</Button>
+              <Button onClick={handleSave}>{editing ? t('common.save') : t('common.create')}</Button>
+            </div>
           </div>
         </div>
       </Modal>
