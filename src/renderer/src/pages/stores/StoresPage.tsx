@@ -11,6 +11,7 @@ import { FilterDropdown } from '../../components/ui/FilterDropdown'
 import { SimpleDropdown } from '../../components/ui/SimpleDropdown'
 import { useColumnsPicker } from '../../components/ui/ColumnsPickerDropdown'
 import { formatCurrency } from '../../lib/currency'
+import { getErrorMessage } from '../../lib/errors'
 import { getItemCardLabels, formatCardLabel } from '../../lib/card-utils'
 import { getCurrentMonth, useFormatDate } from '../../lib/date'
 import {
@@ -185,8 +186,8 @@ export default function StoresPage() {
       }
       setShowForm(false)
       loadData()
-    } catch (err: any) {
-      toast.error(err.message || t('stores.errorSaving'))
+    } catch (err) {
+      toast.error(getErrorMessage(err, t('stores.errorSaving')))
     }
   }
 

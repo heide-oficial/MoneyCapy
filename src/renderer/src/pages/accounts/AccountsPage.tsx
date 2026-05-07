@@ -17,6 +17,7 @@ import { usePageMonth } from '../../contexts/DefaultMonthContext'
 import { useActivePerson } from '../../contexts/ActivePersonContext'
 import { useColorSettings } from '../../contexts/ColorSettingsContext'
 import { formatCurrency, formatCurrencyWith } from '../../lib/currency'
+import { getErrorMessage } from '../../lib/errors'
 import { useCurrencySettings } from '../../contexts/CurrencySettingsContext'
 import { useDisplayCurrency } from '../../contexts/DisplayCurrencyContext'
 import { getCurrentMonth } from '../../lib/date'
@@ -238,8 +239,8 @@ export default function AccountsPage() {
       }
       setShowForm(false)
       loadData()
-    } catch (err: any) {
-      toast.error(err.message || t('accounts.errorSaving'))
+    } catch (err) {
+      toast.error(getErrorMessage(err, t('accounts.errorSaving')))
     }
   }
 

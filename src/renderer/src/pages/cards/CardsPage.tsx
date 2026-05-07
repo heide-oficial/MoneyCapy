@@ -20,6 +20,7 @@ import { useActivePerson } from '../../contexts/ActivePersonContext'
 import { useSession } from '../../contexts/SessionContext'
 import { useColorSettings } from '../../contexts/ColorSettingsContext'
 import { formatCurrency, formatCurrencyWith } from '../../lib/currency'
+import { getErrorMessage } from '../../lib/errors'
 import { useCurrencySettings } from '../../contexts/CurrencySettingsContext'
 import { useDisplayCurrency } from '../../contexts/DisplayCurrencyContext'
 import { getCurrentMonth } from '../../lib/date'
@@ -282,8 +283,8 @@ export default function CardsPage() {
       }
       setShowForm(false)
       loadData()
-    } catch (err: any) {
-      toast.error(err.message || t('cards.errorSaving'))
+    } catch (err) {
+      toast.error(getErrorMessage(err, t('cards.errorSaving')))
     }
   }
 
