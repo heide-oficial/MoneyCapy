@@ -28,6 +28,7 @@ import { ColorPicker } from '../../components/ui/ColorPicker'
 import { Settings, Lock, Moon, Sun, Download, Upload, Shield, FileSpreadsheet, Trash2, AlertTriangle, Calendar, CalendarClock, CalendarRange, Palette, RotateCcw, DollarSign, X, Briefcase, PanelLeftClose, Monitor, FolderOpen } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslation, useLocaleArray } from '../../contexts/LanguageContext'
+import { APP_VERSION } from '@shared/app-info'
 
 function getComputedColor(varName: string): string {
   const el = document.createElement('div')
@@ -966,7 +967,7 @@ export default function SettingsPage() {
       />
 
       <p className="text-center text-xs text-muted-foreground pt-2 pb-4">
-        MoneyCapy 1.0.1 — {t('settings.createdBy')} Matheus Heidemann
+        MoneyCapy {APP_VERSION} — {t('settings.createdBy')} Matheus Heidemann
       </p>
     </div>
   )
