@@ -259,11 +259,19 @@ export default function AccountsPage() {
   const renderAccountTile = (account: BankAccountEnriched) => {
     const expanded = expandedAccountId === account.id
     return (
-    <Card
-      hover
-      className={`group relative overflow-visible cursor-pointer transition-all duration-200 ease-out ${expanded ? 'shadow-xl' : ''}`}
-      onClick={() => setExpandedAccountId(current => current === account.id ? null : account.id)}
-    >
+      <>
+        {expanded && (
+          <div
+            aria-hidden="true"
+            className="tile-card-backdrop fixed inset-0 z-40 bg-black/60 backdrop-blur-[1px]"
+            onClick={() => setExpandedAccountId(null)}
+          />
+        )}
+        <Card
+          hover
+          className={`group relative overflow-visible cursor-pointer transition-all duration-200 ease-out ${expanded ? 'z-50 rounded-b-none border-b-0 shadow-2xl' : ''}`}
+          onClick={() => setExpandedAccountId(current => current === account.id ? null : account.id)}
+        >
       <div className="relative z-20 flex items-center gap-3 px-3 py-3 sm:px-4">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
           <Landmark size={20} className="text-primary" />
@@ -339,7 +347,7 @@ export default function AccountsPage() {
       </div>
 
       {expanded && (
-        <div className="tile-card-panel border-t border-border px-4 pb-4 pt-3" onClick={event => event.stopPropagation()}>
+        <div className="tile-card-panel absolute -left-px -right-px top-full z-10 -mt-px rounded-b-lg border border-t-0 border-border px-4 pb-4 pt-3 shadow-2xl" onClick={event => event.stopPropagation()}>
           <div className="grid gap-2 sm:grid-cols-2">
             {[
               { icon: Building2, label: t('accounts.accountType'), value: formatAccountType(account.accountType) },
@@ -366,8 +374,9 @@ export default function AccountsPage() {
           </div>
         </div>
       )}
-    </Card>
-  )
+        </Card>
+      </>
+    )
   }
 
   return (
@@ -529,8 +538,9 @@ export default function AccountsPage() {
             />
           )}
             </div>
+            <div className="sticky bottom-0 -mt-6 h-6 pointer-events-none bg-gradient-to-t from-background to-transparent" />
           </div>
-          <div className="mt-4 flex flex-wrap justify-between gap-2 border-t border-border pt-4">
+          <div className="mt-4 flex flex-wrap justify-between gap-2 pt-2">
             <div className="flex gap-2">
               {editingAccount?.hasMonthlyOverride && (
                 <Button variant="outline" onClick={() => handleRestoreBalance(editingAccount.id)}>{t('accounts.restoreInheritedBalance')}</Button>

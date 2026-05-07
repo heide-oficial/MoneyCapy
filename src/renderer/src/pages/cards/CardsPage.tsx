@@ -304,7 +304,7 @@ export default function CardsPage() {
     const usedPct = card.totalLimit > 0 ? (card.usedLimit / card.totalLimit) * 100 : 0
     const fmtCard = (v: number) => card.currencySymbol ? formatCurrencyWith(v, card.currencySymbol) : formatCurrency(v)
     const expanded = expandedCardId === card.id
-    const cardTypeLabel = card.cardType === 'credit' ? t('cards.credit') : card.cardType === 'debit' ? t('cards.debit') : t('cards.both')
+    const cardTypeLabel = card.cardType === 'credit' ? t('cards.credit') : card.cardType === 'debit' ? t('cards.debit') : t('cards.creditAndDebit')
     const sensitiveRows = [
       { icon: Hash, label: t('cards.cardNumber'), value: !isUnlocked ? '**** **** **** ****' : (card.numberMasked && card.numberMasked !== '**** **** **** ****' ? card.numberMasked : '0000 0000 0000 0000') },
       { icon: CalendarDays, label: t('cards.expiration'), value: !isUnlocked ? '**/**' : (card.expirationMasked && card.expirationMasked !== '**/**' ? card.expirationMasked : '00/00') },
@@ -313,11 +313,19 @@ export default function CardsPage() {
       { icon: CalendarDays, label: t('cards.dueDay'), value: t('cards.duesDay', { day: card.dueDay }) }
     ]
     return (
-      <Card
-        hover
-        className={`group relative overflow-visible cursor-pointer transition-all duration-200 ease-out ${expanded ? 'shadow-xl' : ''}`}
-        onClick={() => setExpandedCardId(current => current === card.id ? null : card.id)}
-      >
+      <>
+        {expanded && (
+          <div
+            aria-hidden="true"
+            className="tile-card-backdrop fixed inset-0 z-40 bg-black/60 backdrop-blur-[1px]"
+            onClick={() => setExpandedCardId(null)}
+          />
+        )}
+        <Card
+          hover
+          className={`group relative overflow-visible cursor-pointer transition-all duration-200 ease-out ${expanded ? 'z-50 rounded-b-none border-b-0 shadow-2xl' : ''}`}
+          onClick={() => setExpandedCardId(current => current === card.id ? null : card.id)}
+        >
         <div className="relative z-20 flex items-center gap-3 px-3 py-3 sm:px-4">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
             <CreditCard size={20} className="text-primary" />
@@ -327,19 +335,7 @@ export default function CardsPage() {
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <h3 className="truncate text-lg font-bold leading-tight text-foreground sm:text-xl">{card.name}</h3>
-                <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
-                  {card.bankAccountName && (
-                    <span className="inline-flex min-w-0 items-center gap-1 truncate">
-                      <Landmark size={12} className="shrink-0 opacity-70" />
-                      <span className="truncate">{card.bankAccountName}</span>
-                    </span>
-                  )}
-                  <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${
-                    card.cardType === 'credit' ? 'bg-blue-500/15 text-blue-500' : card.cardType === 'debit' ? 'bg-green-500/15 text-green-500' : 'bg-primary/15 text-primary'
-                  }`}>
-                    {cardTypeLabel}
-                  </span>
-                </div>
+                <p className="mt-1 truncate text-sm text-muted-foreground">{cardTypeLabel}</p>
               </div>
 
               <div className="flex shrink-0 items-start gap-3 text-right">
@@ -394,11 +390,18 @@ export default function CardsPage() {
         </div>
 
         {expanded && (
-          <div className="tile-card-panel border-t border-border px-4 pb-4 pt-3" onClick={event => event.stopPropagation()}>
+          <div className="tile-card-panel absolute -left-px -right-px top-full z-10 -mt-px rounded-b-lg border border-t-0 border-border px-4 pb-4 pt-3 shadow-2xl" onClick={event => event.stopPropagation()}>
             <div className="mb-3 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{t('cards.usedOverLimit')}</span>
-                <span className="font-medium">{fmtCard(card.usedLimit)} / {card.totalLimit === 0 ? t('cards.unlimited') : fmtCard(card.totalLimit)}</span>
+                <span className="relative font-medium group/limit">
+                  {fmtCard(card.usedLimit)} / {card.totalLimit === 0 ? t('cards.unlimited') : fmtCard(card.totalLimit)}
+                  {card.totalLimit > 0 && (
+                    <span className="tile-card-tooltip pointer-events-none absolute bottom-full right-0 mb-2 hidden w-max max-w-[16rem] rounded-lg border border-border px-3 py-2 text-xs text-card-foreground group-hover/limit:block">
+                      {t('cards.available')}: <span className="font-semibold text-foreground">{fmtCard(card.availableLimit)}</span>
+                    </span>
+                  )}
+                </span>
               </div>
               {card.totalLimit > 0 ? (
                 <div className="h-2 overflow-hidden rounded-full bg-muted">
@@ -408,9 +411,6 @@ export default function CardsPage() {
                 <div className="h-2 rounded-full overflow-hidden" style={{
                   backgroundImage: 'repeating-linear-gradient(135deg, hsl(var(--muted-foreground) / 0.18) 0px, hsl(var(--muted-foreground) / 0.18) 3px, transparent 3px, transparent 6px)',
                 }} />
-              )}
-              {card.totalLimit > 0 && (
-                <p className="text-xs text-muted-foreground">{t('cards.available')}: <span className="font-medium">{fmtCard(card.availableLimit)}</span></p>
               )}
             </div>
 
@@ -445,7 +445,8 @@ export default function CardsPage() {
             </div>
           </div>
         )}
-      </Card>
+        </Card>
+      </>
     )
   }
 
@@ -535,7 +536,7 @@ export default function CardsPage() {
           onReorder={handleReorder}
           className={`grid ${gridClass} gap-4`}
           renderItem={(card) => (
-            <SortableItem key={card.id} id={card.id}>
+            <SortableItem key={card.id} id={card.id} dragHandle={false}>
               {renderCardTile(card)}
             </SortableItem>
           )}
@@ -554,7 +555,18 @@ export default function CardsPage() {
           <div className="space-y-2 overflow-y-auto pr-1">
             <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('itemsForm.information')}</h4>
             <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-          <Input label={t('cards.cardName')} value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Ex: Nubank" autoFocus />
+          <div className="grid grid-cols-2 gap-3">
+            <Input label={t('cards.cardName')} value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Ex: Nubank" autoFocus />
+            <Select
+              label={t('cards.bankAccount')}
+              value={formData.bankAccountId !== null ? String(formData.bankAccountId) : ''}
+              onChange={e => setFormData({ ...formData, bankAccountId: e.target.value ? parseInt(e.target.value) : null })}
+              options={[
+                { value: '', label: t('cards.noneOption') },
+                ...accounts.map(a => ({ value: String(a.id), label: a.name }))
+              ]}
+            />
+          </div>
           <Input label={t('cards.cardNumber')} value={formData.number} onChange={e => {
             const digits = e.target.value.replace(/\D/g, '').slice(0, 16)
             setFormData({ ...formData, number: digits.replace(/(.{4})/g, '$1 ').trim() })
@@ -584,17 +596,6 @@ export default function CardsPage() {
               ))}
             </div>
           </div>
-          {accounts.length > 0 && (
-            <Select
-              label={t('cards.bankAccount')}
-              value={formData.bankAccountId !== null ? String(formData.bankAccountId) : ''}
-              onChange={e => setFormData({ ...formData, bankAccountId: e.target.value ? parseInt(e.target.value) : null })}
-              options={[
-                { value: '', label: t('cards.noneOption') },
-                ...accounts.map(a => ({ value: String(a.id), label: a.name }))
-              ]}
-            />
-          )}
           {currencies.length > 1 && (
             <Select
               label={t('common.currency')}
@@ -604,8 +605,9 @@ export default function CardsPage() {
             />
           )}
             </div>
+            <div className="sticky bottom-0 -mt-6 h-6 pointer-events-none bg-gradient-to-t from-background to-transparent" />
           </div>
-          <div className="mt-4 flex flex-wrap justify-between gap-2 border-t border-border pt-4">
+          <div className="mt-4 flex flex-wrap justify-between gap-2 pt-2">
             <div>
               {editing && (
                 <Button variant="destructive" onClick={() => { requestDelete(editing); setShowForm(false) }}>{t('common.delete')}</Button>
