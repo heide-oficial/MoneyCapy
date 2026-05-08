@@ -53,6 +53,12 @@ const WIDGET_FIELDS: Record<string, WidgetField[]> = {
     boolField('showValues', 'widgetSettings.valuesByCategory', false),
     boolField('truncateNames', 'widgetSettings.truncateLongNames', false),
   ],
+  'subcategory-distribution': [
+    boolField('progressBar', 'widgetSettings.distributionBar'),
+    boolField('showLegend', 'widgetSettings.legend'),
+    boolField('showValues', 'widgetSettings.valuesBySubcategory', false),
+    boolField('truncateNames', 'widgetSettings.truncateLongNames', false),
+  ],
   'tag-distribution': [
     boolField('progressBar', 'widgetSettings.distributionBar'),
     boolField('showLegend', 'widgetSettings.legend'),
@@ -71,8 +77,11 @@ const WIDGET_FIELDS: Record<string, WidgetField[]> = {
     boolField('showValues', 'widgetSettings.valuesByCategory', false),
     boolField('truncateNames', 'widgetSettings.truncateLongNames', false),
   ],
-  'overall-balance': [
-    boolField('includeBankAccounts', 'widgetSettings.includeBankMoney'),
+  'income-subcategory-distribution': [
+    boolField('progressBar', 'widgetSettings.distributionBar'),
+    boolField('showLegend', 'widgetSettings.legend'),
+    boolField('showValues', 'widgetSettings.valuesBySubcategory', false),
+    boolField('truncateNames', 'widgetSettings.truncateLongNames', false),
   ],
   'upcoming-expenses': [LIST_PAGE_SIZE],
   'unpaid-items': [LIST_PAGE_SIZE],

@@ -54,6 +54,7 @@ function getWidgetId(w: WidgetType): string {
     case 'ending-installments': return 'ending-installments'
 
     case 'month-comparison': return 'month-comparison'
+    case 'next-month-comparison': return 'next-month-comparison'
     case 'overdue-items': return 'overdue-items'
     case 'payment-summary': return 'payment-summary'
     case 'financial-health': return 'financial-health'
@@ -64,9 +65,11 @@ function getWidgetId(w: WidgetType): string {
     case 'overall-balance': return 'overall-balance'
     case 'balance-with-accounts': return 'balance-with-accounts'
     case 'category-distribution': return 'category-distribution'
+    case 'subcategory-distribution': return 'subcategory-distribution'
     case 'tag-distribution': return 'tag-distribution'
     case 'income-type-distribution': return 'income-type-distribution'
     case 'income-category-distribution': return 'income-category-distribution'
+    case 'income-subcategory-distribution': return 'income-subcategory-distribution'
     case 'upcoming-billing': return 'upcoming-billing'
   }
 }
@@ -98,6 +101,9 @@ function getWidgetLabel(id: string, summary: Summary, t: (key: string, params?: 
   if (id === 'income-type-distribution') return t('dashboard.widgetIncomeTypeDistribution')
   if (id === 'income-category-distribution') return t('dashboard.widgetIncomeCategoryDistribution')
   if (id === 'upcoming-billing') return t('dashboard.widgetUpcomingBilling')
+  if (id === 'next-month-comparison') return t('dashboard.widgetNextMonthComparison')
+  if (id === 'subcategory-distribution') return t('dashboard.widgetSubcategoryDistribution')
+  if (id === 'income-subcategory-distribution') return t('dashboard.widgetIncomeSubcategoryDistribution')
   if (id.startsWith('type-')) {
     const type = id.replace('type-', '')
     const tt = summary.typeTotals.find(t => t.type === type)
@@ -362,9 +368,7 @@ export default function Dashboard() {
     { id: 'expenses-total', type: { kind: 'expenses-total' as const }, category: t('dashboard.categorySummary') },
     { id: 'income-total', type: { kind: 'income-total' as const }, category: t('dashboard.categorySummary') },
     { id: 'balance-total', type: { kind: 'balance-total' as const }, category: t('dashboard.categorySummary') },
-    { id: 'balance-with-accounts', type: { kind: 'balance-with-accounts' as const }, category: t('dashboard.categorySummary') },
     { id: 'bank-accounts-total', type: { kind: 'bank-accounts-total' as const }, category: t('dashboard.categorySummary') },
-    { id: 'overall-balance', type: { kind: 'overall-balance' as const }, category: t('dashboard.categorySummary') },
     ...summary.typeTotals.map(tt => ({
       id: getWidgetId({ kind: 'type-total' as const, type: tt.type }),
       type: { kind: 'type-total' as const, type: tt.type },
@@ -390,13 +394,14 @@ export default function Dashboard() {
     { id: 'overdue-items', type: { kind: 'overdue-items' as const }, category: t('dashboard.categoryLists') },
     { id: 'upcoming-billing', type: { kind: 'upcoming-billing' as const }, category: t('dashboard.categoryLists') },
     { id: 'month-comparison', type: { kind: 'month-comparison' as const }, category: t('dashboard.categoryAnalyses') },
-    { id: 'payment-summary', type: { kind: 'payment-summary' as const }, category: t('dashboard.categoryAnalyses') },
-    { id: 'financial-health', type: { kind: 'financial-health' as const }, category: t('dashboard.categoryAnalyses') },
+    { id: 'next-month-comparison', type: { kind: 'next-month-comparison' as const }, category: t('dashboard.categoryAnalyses') },
     { id: 'type-distribution', type: { kind: 'type-distribution' as const }, category: t('dashboard.categoryAnalyses') },
     { id: 'category-distribution', type: { kind: 'category-distribution' as const }, category: t('dashboard.categoryAnalyses') },
+    { id: 'subcategory-distribution', type: { kind: 'subcategory-distribution' as const }, category: t('dashboard.categoryAnalyses') },
     { id: 'tag-distribution', type: { kind: 'tag-distribution' as const }, category: t('dashboard.categoryAnalyses') },
     { id: 'income-type-distribution', type: { kind: 'income-type-distribution' as const }, category: t('dashboard.categoryAnalyses') },
     { id: 'income-category-distribution', type: { kind: 'income-category-distribution' as const }, category: t('dashboard.categoryAnalyses') },
+    { id: 'income-subcategory-distribution', type: { kind: 'income-subcategory-distribution' as const }, category: t('dashboard.categoryAnalyses') },
     { id: 'current-month-summary', type: { kind: 'current-month-summary' as const }, category: t('dashboard.categoryAnalyses') },
     { id: 'previous-month-summary', type: { kind: 'previous-month-summary' as const }, category: t('dashboard.categoryAnalyses') },
     { id: 'next-month-summary', type: { kind: 'next-month-summary' as const }, category: t('dashboard.categoryAnalyses') }

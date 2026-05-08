@@ -35,15 +35,17 @@ export type WidgetType =
   | { kind: 'bank-accounts-total' } | { kind: 'bank-account'; accountId: number }
   | { kind: 'upcoming-expenses' } | { kind: 'unpaid-items' } | { kind: 'top-expenses' }
   | { kind: 'pending-incomes' } | { kind: 'ending-installments' }
-  | { kind: 'month-comparison' } | { kind: 'overdue-items' } | { kind: 'payment-summary' }
+  | { kind: 'month-comparison' } | { kind: 'next-month-comparison' } | { kind: 'overdue-items' } | { kind: 'payment-summary' }
   | { kind: 'financial-health' } | { kind: 'type-distribution' }
   | { kind: 'current-month-summary' } | { kind: 'previous-month-summary' } | { kind: 'next-month-summary' }
   | { kind: 'overall-balance' }
   | { kind: 'balance-with-accounts' }
   | { kind: 'category-distribution' }
+  | { kind: 'subcategory-distribution' }
   | { kind: 'tag-distribution' }
   | { kind: 'income-type-distribution' }
   | { kind: 'income-category-distribution' }
+  | { kind: 'income-subcategory-distribution' }
   | { kind: 'upcoming-billing' }
 
 export interface AvailableWidget {
@@ -180,6 +182,19 @@ function billingDayDiff(item: DashboardListItem, month: string): number | null {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   return Math.round((billingDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+}
+
+function shiftMonth(month: string, offset: number): string {
+  const [year, monthIndex] = month.split('-').map(Number)
+  const total = year * 12 + monthIndex - 1 + offset
+  const nextYear = Math.floor(total / 12)
+  const nextMonth = (total % 12) + 1
+  return `${nextYear}-${String(nextMonth).padStart(2, '0')}`
+}
+
+function formatMonthRef(month: string): string {
+  const [year, monthIndex] = month.split('-')
+  return `${monthIndex}/${year}`
 }
 
 function formatBillingMeta(item: DashboardListItem, month: string, t: (key: string, params?: Record<string, string | number>) => string): string {
@@ -375,6 +390,7 @@ export function renderWidgetContent(
 
   const SENTINEL_KEYS: Record<string, string> = {
     '__no_category__': 'categories.noCategory',
+    '__no_subcategory__': 'subcategories.noSubcategory',
     '__no_tag__': 'tags.noTag',
     '__recurring__': 'income.recurring',
     '__non_recurring__': 'income.nonRecurring',
@@ -686,16 +702,58 @@ export function renderWidgetContent(
           </div>
           <div className="flex items-end gap-3">
             <div className="flex-1 min-w-0">
-              <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.currentMonth')}</p>
+              <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.currentMonth')} - {formatMonthRef(month)}</p>
               <p className="text-xl font-bold tabular-nums">{formatCurrency(cmp.currentTotal)}</p>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.previousMonth')}</p>
+              <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.previousMonth')} - {formatMonthRef(shiftMonth(month, -1))}</p>
               <p className="text-xl font-bold tabular-nums text-muted-foreground">{formatCurrency(cmp.previousTotal)}</p>
             </div>
             <div className="shrink-0 text-right">
               <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.difference')}</p>
               <p className={`text-xl font-bold tabular-nums ${deltaColor}`}>{isUp ? '+' : ''}{formatCurrency(cmp.delta)}</p>
+            </div>
+          </div>
+        </Card>
+      )
+    }
+
+    case 'next-month-comparison': {
+      const cmp = widgetsData?.nextMonthComparison
+      if (!cmp) return null
+      const isUp = cmp.delta > 0
+      const isDown = cmp.delta < 0
+      const DeltaIcon = isUp ? TrendingUp : isDown ? TrendingDown : Minus
+      const deltaColorStyle = isUp ? { color: 'var(--color-gastos, #ef4444)' } : isDown ? { color: 'var(--color-receitas, #22c55e)' } : {}
+      const deltaBgStyle = isUp
+        ? { backgroundColor: 'color-mix(in srgb, var(--color-gastos, #ef4444) 10%, transparent)' }
+        : isDown ? { backgroundColor: 'color-mix(in srgb, var(--color-receitas, #22c55e) 10%, transparent)' }
+        : {}
+      const deltaBgClass = !isUp && !isDown ? 'bg-muted/50' : ''
+      const percentText = cmp.currentTotal !== 0 ? `${isUp ? '+' : ''}${cmp.deltaPercent.toFixed(1)}%` : null
+      return (
+        <Card className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <BarChart3 size={16} className="text-primary shrink-0" />
+            <h3 className="text-sm font-semibold">{tr('widgetRenderer.nextMonthComparisonTitle')}</h3>
+            {percentText && (
+              <span className={`text-xs font-semibold ml-auto px-2 py-0.5 rounded-full ${deltaBgClass}`} style={{ ...deltaBgStyle, ...deltaColorStyle }}>
+                <DeltaIcon size={12} className="inline -mt-0.5 mr-0.5" />{percentText}
+              </span>
+            )}
+          </div>
+          <div className="flex items-end gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.currentMonth')} - {formatMonthRef(month)}</p>
+              <p className="text-xl font-bold tabular-nums">{formatCurrency(cmp.currentTotal)}</p>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.nextMonth')} - {formatMonthRef(shiftMonth(month, 1))}</p>
+              <p className="text-xl font-bold tabular-nums text-muted-foreground">{formatCurrency(cmp.previousTotal)}</p>
+            </div>
+            <div className="shrink-0 text-right">
+              <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.difference')}</p>
+              <p className="text-xl font-bold tabular-nums">{isUp ? '+' : ''}{formatCurrency(cmp.delta)}</p>
             </div>
           </div>
         </Card>
@@ -842,6 +900,39 @@ export function renderWidgetContent(
       )
     }
 
+    case 'subcategory-distribution': {
+      const othersLabel = tr('widgetRenderer.others')
+      const rawItems = widgetsData?.subcategoryDistribution ?? []
+      const total = rawItems.reduce((s, e) => s + e.total, 0)
+      const items = groupSmallEntries(rawItems, total, othersLabel)
+      const showValues = vis('showValues', false)
+      const showLegend = vis('showLegend')
+      const truncate = vis('truncateNames', false)
+      const segs = items.map(e => ({ key: e.name, name: tName(e.name), pct: total > 0 ? (e.total / total) * 100 : 0, color: e.color, total: e.total }))
+      const onSubcatClick = (key: string) => { if (key !== othersLabel) navigate(ROUTES.ITEMS, { state: { subcategoryName: key } }) }
+      return (
+        <Card className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <PieChart size={16} className="text-primary shrink-0" />
+            <h3 className="text-sm font-semibold">{tr('widgetRenderer.subcategoryDistributionTitle')}</h3>
+          </div>
+          {vis('progressBar') && total > 0 && <DistributionBar segments={segs} showMarginBottom={showLegend} onSegmentClick={onSubcatClick} />}
+          {showLegend && (
+            <div className="flex items-center gap-4 flex-wrap">
+              {segs.map(s => (
+                <div key={s.key} className={`flex items-center gap-1.5 ${s.key !== othersLabel ? 'cursor-pointer' : ''}`} title={s.name} onClick={() => onSubcatClick(s.key)}>
+                  <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
+                  <span className={`text-xs text-muted-foreground ${truncate ? 'max-w-[80px] truncate' : ''}`}>{s.name}</span>
+                  <span className="text-xs font-bold tabular-nums shrink-0">{s.pct.toFixed(0)}%</span>
+                  {showValues && <span className="text-xs tabular-nums text-muted-foreground shrink-0">({formatCurrency(s.total)})</span>}
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )
+    }
+
     case 'tag-distribution': {
       const items = widgetsData?.tagDistribution ?? []
       const total = items.reduce((s, e) => s + e.total, 0)
@@ -926,6 +1017,39 @@ export function renderWidgetContent(
             <div className="flex items-center gap-4 flex-wrap">
               {segs.map(s => (
                 <div key={s.key} className={`flex items-center gap-1.5 ${s.key !== othersLabel ? 'cursor-pointer' : ''}`} title={s.name} onClick={() => onIncCatClick(s.key)}>
+                  <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
+                  <span className={`text-xs text-muted-foreground ${truncate ? 'max-w-[80px] truncate' : ''}`}>{s.name}</span>
+                  <span className="text-xs font-bold tabular-nums shrink-0">{s.pct.toFixed(0)}%</span>
+                  {showValues && <span className="text-xs tabular-nums text-muted-foreground shrink-0">({formatCurrency(s.total)})</span>}
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )
+    }
+
+    case 'income-subcategory-distribution': {
+      const othersLabel = tr('widgetRenderer.others')
+      const rawItems = widgetsData?.incomeSubcategoryDistribution ?? []
+      const total = rawItems.reduce((s, e) => s + e.total, 0)
+      const items = groupSmallEntries(rawItems, total, othersLabel)
+      const showValues = vis('showValues', false)
+      const showLegend = vis('showLegend')
+      const truncate = vis('truncateNames', false)
+      const segs = items.map(e => ({ key: e.name, name: tName(e.name), pct: total > 0 ? (e.total / total) * 100 : 0, color: e.color, total: e.total }))
+      const onIncSubcatClick = (key: string) => { if (key !== othersLabel) navigate(ROUTES.INCOME, { state: { subcategoryName: key } }) }
+      return (
+        <Card className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <PieChart size={16} className="text-primary shrink-0" />
+            <h3 className="text-sm font-semibold">{tr('widgetRenderer.incomeSubcategoryDistributionTitle')}</h3>
+          </div>
+          {vis('progressBar') && total > 0 && <DistributionBar segments={segs} showMarginBottom={showLegend} onSegmentClick={onIncSubcatClick} />}
+          {showLegend && (
+            <div className="flex items-center gap-4 flex-wrap">
+              {segs.map(s => (
+                <div key={s.key} className={`flex items-center gap-1.5 ${s.key !== othersLabel ? 'cursor-pointer' : ''}`} title={s.name} onClick={() => onIncSubcatClick(s.key)}>
                   <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
                   <span className={`text-xs text-muted-foreground ${truncate ? 'max-w-[80px] truncate' : ''}`}>{s.name}</span>
                   <span className="text-xs font-bold tabular-nums shrink-0">{s.pct.toFixed(0)}%</span>

@@ -103,6 +103,10 @@ export class SectionItemsRepository {
     return false
   }
 
+  isPausedInMonth(itemId: number, month: string): boolean {
+    return this.isMonthPaused(this.getInterruptions(itemId), month)
+  }
+
   /**
    * Check if a subscription item is visible in a given month (multi-interruption)
    */

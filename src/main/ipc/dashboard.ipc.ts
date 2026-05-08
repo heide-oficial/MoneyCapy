@@ -50,6 +50,8 @@ function mapToDashboardItem(
     isPaid,
     categoryName: item.category_name || null,
     categoryColor: item.category_color || null,
+    subcategoryName: item.subcategory_name || null,
+    subcategoryColor: item.subcategory_color || null,
     cardName: item.card_name || null,
     cardType: db ? getCardType(db, item.card_id) : null,
     paymentMethod: item.payment_method || null,
@@ -190,15 +192,18 @@ export function registerDashboardHandlers(db: WrappedDatabase): void {
         pendingIncomes: [],
         endingInstallments: [],
         monthComparison: { currentTotal: 0, previousTotal: 0, delta: 0, deltaPercent: 0 },
+        nextMonthComparison: { currentTotal: 0, previousTotal: 0, delta: 0, deltaPercent: 0 },
         overdueItems: [],
         paymentSummary: { totalItems: 0, paidItems: 0, paidValue: 0, pendingValue: 0 },
         previousMonthSummary: { month: addMonths(month, -1), expensesTotal: 0, incomeTotal: 0, balance: 0, bankAccountsTotal: 0 },
         nextMonthSummary: { month: addMonths(month, 1), expensesTotal: 0, incomeTotal: 0, balance: 0, bankAccountsTotal: 0 },
         cardDetails: [],
         categoryDistribution: [],
+        subcategoryDistribution: [],
         tagDistribution: [],
         incomeTypeDistribution: [],
         incomeCategoryDistribution: [],
+        incomeSubcategoryDistribution: [],
         upcomingBilling: []
       }
       return emptyResult
@@ -215,12 +220,12 @@ export function registerDashboardHandlers(db: WrappedDatabase): void {
 
     // --- Fetch all items for this month ---
     const allItems = sectionItemsRepo.findByPersonAndMonth(personId, month) as any[]
-    const itemIds = allItems.filter((i: any) => i.is_active === 1).map((i: any) => i.id)
+    const activeItems = allItems.filter((i: any) => i.is_active === 1 && !sectionItemsRepo.isPausedInMonth(i.id, month))
+    const itemIds = activeItems.map((i: any) => i.id)
     const paidMap = itemStatusRepo.getPaidStatusBatch(itemIds, month)
 
     // Build dashboard items from active items
-    const dashItems: DashboardListItem[] = allItems
-      .filter((i: any) => i.is_active === 1)
+    const dashItems: DashboardListItem[] = activeItems
       .map((item: any) => {
         const status = paidMap.get(item.id)
         const isPaid = status?.isPaid ?? false
@@ -327,7 +332,8 @@ export function registerDashboardHandlers(db: WrappedDatabase): void {
       .sort((a, b) => (a.remainingInstallments ?? 0) - (b.remainingInstallments ?? 0))
 
     // --- Widget 4: Receitas pendentes ---
-    const incomes = incomeRepo.findByPersonAndMonth(personId, month) as any[]
+    const incomes = (incomeRepo.findByPersonAndMonth(personId, month) as any[])
+      .filter((inc: any) => !incomeRepo.isPausedInMonth(inc.id, month))
     const pendingIncomes = incomes
       .filter((inc: any) => !incomeStatusRepo.isReceived(inc.id, month))
       .map((inc: any) => ({
@@ -336,7 +342,9 @@ export function registerDashboardHandlers(db: WrappedDatabase): void {
         effectiveValue: incomeRepo.getEffectiveValue(inc, month) * (inc.exchange_rate_snapshot || 1.0),
         isReceived: false,
         categoryName: inc.category_name || null,
-        categoryColor: inc.category_color || null
+        categoryColor: inc.category_color || null,
+        subcategoryName: inc.subcategory_name || null,
+        subcategoryColor: inc.subcategory_color || null
       }))
       .sort((a, b) => b.effectiveValue - a.effectiveValue)
 
@@ -347,6 +355,12 @@ export function registerDashboardHandlers(db: WrappedDatabase): void {
     const delta = currentTotal - previousTotal
     const deltaPercent = previousTotal !== 0 ? (delta / previousTotal) * 100 : 0
 
+    // --- Widget: Comparativo mes posterior ---
+    const nextMonth = addMonths(month, 1)
+    const nextTotalForComparison = isMonthBeforeStart(nextMonth, scm) ? 0 : sectionItemsRepo.getTotalByPersonAndMonth(personId, nextMonth)
+    const nextDelta = nextTotalForComparison - currentTotal
+    const nextDeltaPercent = currentTotal !== 0 ? (nextDelta / currentTotal) * 100 : 0
+
     // --- Previous month summary ---
     const prevMonthExpenses = previousTotal
     const prevMonthIncome = isMonthBeforeStart(previousMonth, scm) ? 0 : incomeRepo.getTotalByPersonAndMonth(personId, previousMonth)
@@ -354,8 +368,7 @@ export function registerDashboardHandlers(db: WrappedDatabase): void {
     const prevMonthBankAccountsTotal = bankAccountsRepo.getTotalByPersonForMonth(personId, previousMonth)
 
     // --- Next month summary ---
-    const nextMonth = addMonths(month, 1)
-    const nextMonthExpenses = isMonthBeforeStart(nextMonth, scm) ? 0 : sectionItemsRepo.getTotalByPersonAndMonth(personId, nextMonth)
+    const nextMonthExpenses = nextTotalForComparison
     const nextMonthIncome = isMonthBeforeStart(nextMonth, scm) ? 0 : incomeRepo.getTotalByPersonAndMonth(personId, nextMonth)
     const nextMonthBalance = nextMonthIncome - nextMonthExpenses
     const nextMonthBankAccountsTotal = bankAccountsRepo.getTotalByPersonForMonth(personId, nextMonth)
@@ -417,6 +430,24 @@ export function registerDashboardHandlers(db: WrappedDatabase): void {
       .map(([name, { color, total }]) => ({ name, color, total }))
       .sort((a, b) => b.total - a.total)
 
+    // --- Subcategory distribution ---
+    const subcatMap = new Map<string, { color: string; total: number }>()
+    for (const item of dashItems) {
+      const name = item.subcategoryName || '__no_subcategory__'
+      const color = item.subcategoryColor || '#6b7280'
+      const val = effectiveValue(item)
+      const entry = subcatMap.get(name)
+      if (entry) { entry.total += val } else { subcatMap.set(name, { color, total: val }) }
+    }
+    const subcatEntries = [...subcatMap.entries()]
+    const uniqueSubcatColors = new Set(subcatEntries.map(([, v]) => v.color))
+    if (uniqueSubcatColors.size === 1 && subcatEntries.length > 1) {
+      subcatEntries.forEach(([, v], i) => { v.color = DIST_COLORS[i % DIST_COLORS.length] })
+    }
+    const subcategoryDistribution: DashboardDistributionEntry[] = subcatEntries
+      .map(([name, { color, total }]) => ({ name, color, total }))
+      .sort((a, b) => b.total - a.total)
+
     // --- Tag distribution ---
     const tagMap = new Map<string, { color: string; total: number }>()
     for (const item of dashItems) {
@@ -469,6 +500,24 @@ export function registerDashboardHandlers(db: WrappedDatabase): void {
       .map(([name, { color, total }]) => ({ name, color, total }))
       .sort((a, b) => b.total - a.total)
 
+    // --- Income subcategory distribution ---
+    const incomeSubcatMap = new Map<string, { color: string; total: number }>()
+    for (const inc of incomes as any[]) {
+      const name = inc.subcategory_name || '__no_subcategory__'
+      const color = inc.subcategory_color || '#6b7280'
+      const val = incomeRepo.getEffectiveValue(inc, month) * (inc.exchange_rate_snapshot || 1.0)
+      const entry = incomeSubcatMap.get(name)
+      if (entry) { entry.total += val } else { incomeSubcatMap.set(name, { color, total: val }) }
+    }
+    const incomeSubcatEntries = [...incomeSubcatMap.entries()]
+    const uniqueIncomeSubcatColors = new Set(incomeSubcatEntries.map(([, v]) => v.color))
+    if (uniqueIncomeSubcatColors.size === 1 && incomeSubcatEntries.length > 1) {
+      incomeSubcatEntries.forEach(([, v], i) => { v.color = DIST_COLORS[i % DIST_COLORS.length] })
+    }
+    const incomeSubcategoryDistribution: DashboardDistributionEntry[] = incomeSubcatEntries
+      .map(([name, { color, total }]) => ({ name, color, total }))
+      .sort((a, b) => b.total - a.total)
+
     const result: DashboardWidgetsData = {
       upcomingExpenses,
       unpaidItems,
@@ -476,15 +525,18 @@ export function registerDashboardHandlers(db: WrappedDatabase): void {
       pendingIncomes,
       endingInstallments,
       monthComparison: { currentTotal, previousTotal, delta, deltaPercent },
+      nextMonthComparison: { currentTotal, previousTotal: nextTotalForComparison, delta: nextDelta, deltaPercent: nextDeltaPercent },
       overdueItems,
       paymentSummary: { totalItems: dashItems.length, paidItems: paidCount, paidValue, pendingValue },
       previousMonthSummary: { month: previousMonth, expensesTotal: prevMonthExpenses, incomeTotal: prevMonthIncome, balance: prevMonthBalance, bankAccountsTotal: prevMonthBankAccountsTotal, isBeforeStart: isMonthBeforeStart(previousMonth, scm) },
       nextMonthSummary: { month: nextMonth, expensesTotal: nextMonthExpenses, incomeTotal: nextMonthIncome, balance: nextMonthBalance, bankAccountsTotal: nextMonthBankAccountsTotal, isBeforeStart: isMonthBeforeStart(nextMonth, scm) },
       cardDetails,
       categoryDistribution,
+      subcategoryDistribution,
       tagDistribution,
       incomeTypeDistribution,
       incomeCategoryDistribution,
+      incomeSubcategoryDistribution,
       upcomingBilling
     }
 

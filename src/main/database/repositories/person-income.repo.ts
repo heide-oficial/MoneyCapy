@@ -23,6 +23,10 @@ export class PersonIncomeRepository {
     return false
   }
 
+  isPausedInMonth(incomeId: number, month: string): boolean {
+    return this.isMonthPaused(this.getIncomeInterruptions(incomeId), month)
+  }
+
   /** Check if an income is visible in a given month (considering interruptions) */
   private isIncomeVisibleInMonth(income: any, month: string): boolean {
     if (!monthLte(income.start_month, month)) return false

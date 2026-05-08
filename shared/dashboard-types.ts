@@ -16,6 +16,8 @@ export interface DashboardListItem {
   isPaid: boolean
   categoryName: string | null
   categoryColor: string | null
+  subcategoryName: string | null
+  subcategoryColor: string | null
   cardName: string | null
   cardType: string | null
   paymentMethod: string | null
@@ -33,6 +35,8 @@ export interface DashboardIncomeItem {
   isReceived: boolean
   categoryName: string | null
   categoryColor: string | null
+  subcategoryName: string | null
+  subcategoryColor: string | null
 }
 
 export interface DashboardComparison {
@@ -91,14 +95,17 @@ export interface DashboardWidgetsData {
   pendingIncomes: DashboardIncomeItem[]
   endingInstallments: DashboardListItem[]
   monthComparison: DashboardComparison
+  nextMonthComparison: DashboardComparison
   overdueItems: DashboardListItem[]
   paymentSummary: DashboardPaymentSummary
   previousMonthSummary: DashboardMonthSummary
   nextMonthSummary: DashboardMonthSummary
   cardDetails: DashboardCardEnriched[]
   categoryDistribution: DashboardDistributionEntry[]
+  subcategoryDistribution: DashboardDistributionEntry[]
   tagDistribution: DashboardDistributionEntry[]
   incomeTypeDistribution: DashboardDistributionEntry[]
   incomeCategoryDistribution: DashboardDistributionEntry[]
+  incomeSubcategoryDistribution: DashboardDistributionEntry[]
   upcomingBilling: DashboardListItem[]
 }
