@@ -332,7 +332,7 @@ export interface WidgetRenderContext {
 
 // ── Month Summary Widget (with bank accounts toggle) ──
 
-function MonthSummaryWidget({ icon: Icon, title, monthLabel, expensesTotal, incomeTotal, balance, bankAccountsTotal, accountProjectedBalance, gastosStyle, receitasStyle, saldoStyle, tr, formatMoney }: {
+function MonthSummaryWidget({ icon: Icon, title, monthLabel, expensesTotal, incomeTotal, balance, bankAccountsTotal, accountProjectedBalance, gastosStyle, receitasStyle, saldoStyle, tr, formatMoney = formatCurrency }: {
   icon: typeof CalendarDays
   title: string
   monthLabel: string
@@ -345,7 +345,7 @@ function MonthSummaryWidget({ icon: Icon, title, monthLabel, expensesTotal, inco
   receitasStyle: (page: string, section: string) => React.CSSProperties
   saldoStyle: (page: string, section: string, value: number) => React.CSSProperties
   tr: (key: string, params?: Record<string, string | number>) => string
-  formatMoney: (value: number) => string
+  formatMoney?: (value: number) => string
 }) {
   const [includeAccounts, setIncludeAccounts] = useState(false)
   const displayBalance = includeAccounts ? accountProjectedBalance : balance
@@ -1086,6 +1086,7 @@ export function renderWidgetContent(
           receitasStyle={receitasStyle}
           saldoStyle={saldoStyle}
           tr={tr}
+          formatMoney={formatMoney}
         />
       )
     }
@@ -1121,6 +1122,7 @@ export function renderWidgetContent(
           receitasStyle={receitasStyle}
           saldoStyle={saldoStyle}
           tr={tr}
+          formatMoney={formatMoney}
         />
       )
     }
@@ -1156,6 +1158,7 @@ export function renderWidgetContent(
           receitasStyle={receitasStyle}
           saldoStyle={saldoStyle}
           tr={tr}
+          formatMoney={formatMoney}
         />
       )
     }
