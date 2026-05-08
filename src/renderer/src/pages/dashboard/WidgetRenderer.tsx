@@ -81,7 +81,7 @@ function groupSmallEntries(items: { name: string; color: string; total: number }
   return main
 }
 
-function DistributionBar({ segments, showMarginBottom, onSegmentClick }: { segments: { key: string; name: string; pct: number; color: string; total: number }[]; showMarginBottom: boolean; onSegmentClick?: (key: string) => void }) {
+function DistributionBar({ segments, showMarginBottom, onSegmentClick, formatMoney = formatCurrency }: { segments: { key: string; name: string; pct: number; color: string; total: number }[]; showMarginBottom: boolean; onSegmentClick?: (key: string) => void; formatMoney?: (value: number) => string }) {
   const [hover, setHover] = useState<{ key: string; x: number; y: number } | null>(null)
   const barRef = useRef<HTMLDivElement>(null)
 
@@ -118,7 +118,7 @@ function DistributionBar({ segments, showMarginBottom, onSegmentClick }: { segme
               <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: activeSeg.color }} />
               <span className="font-semibold">{activeSeg.name}</span>
             </div>
-            <div className="text-zinc-400 mt-0.5">{formatCurrency(activeSeg.total)} · {activeSeg.pct.toFixed(0)}%</div>
+            <div className="text-zinc-400 mt-0.5">{formatMoney(activeSeg.total)} · {activeSeg.pct.toFixed(0)}%</div>
           </div>
         </div>
       )}
@@ -238,12 +238,12 @@ function formatUpcomingMeta(item: DashboardListItem, month: string, t: (key: str
   return base ? `${base} · ${label}` : label
 }
 
-export function effectiveValue(item: DashboardListItem): string {
+export function effectiveValue(item: DashboardListItem, formatMoney: (value: number) => string = formatCurrency): string {
   const snapshot = (item as any).exchangeRateSnapshot || 1.0
   if ((item.type === 'installment' || item.type === 'emprestimo') && item.totalInstallments) {
-    return formatCurrency(Math.round((item.value / item.totalInstallments) * 100) / 100 * snapshot)
+    return formatMoney(Math.round((item.value / item.totalInstallments) * 100) / 100 * snapshot)
   }
-  return formatCurrency(item.value * snapshot)
+  return formatMoney(item.value * snapshot)
 }
 
 function getSpanFromWidth(widthPercent: number): number {
@@ -323,11 +323,12 @@ export interface WidgetRenderContext {
   startCountingMonth: string | null
   availableWidgets: AvailableWidget[]
   t: (key: string, params?: Record<string, string | number>) => string
+  formatMoney: (value: number) => string
 }
 
 // ── Month Summary Widget (with bank accounts toggle) ──
 
-function MonthSummaryWidget({ icon: Icon, title, monthLabel, expensesTotal, incomeTotal, balance, bankAccountsTotal, gastosStyle, receitasStyle, saldoStyle, tr }: {
+function MonthSummaryWidget({ icon: Icon, title, monthLabel, expensesTotal, incomeTotal, balance, bankAccountsTotal, gastosStyle, receitasStyle, saldoStyle, tr, formatMoney }: {
   icon: typeof CalendarDays
   title: string
   monthLabel: string
@@ -339,6 +340,7 @@ function MonthSummaryWidget({ icon: Icon, title, monthLabel, expensesTotal, inco
   receitasStyle: (page: string, section: string) => React.CSSProperties
   saldoStyle: (page: string, section: string, value: number) => React.CSSProperties
   tr: (key: string, params?: Record<string, string | number>) => string
+  formatMoney: (value: number) => string
 }) {
   const [includeAccounts, setIncludeAccounts] = useState(false)
   const displayBalance = includeAccounts ? balance + bankAccountsTotal : balance
@@ -352,15 +354,15 @@ function MonthSummaryWidget({ icon: Icon, title, monthLabel, expensesTotal, inco
       <div className="flex items-end gap-3">
         <div className="flex-1 min-w-0">
           <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.expensesLabel')}</p>
-          <p className="text-xl font-bold tabular-nums" style={gastosStyle('dashboard', 'widgets')}>{formatCurrency(expensesTotal)}</p>
+          <p className="text-xl font-bold tabular-nums" style={gastosStyle('dashboard', 'widgets')}>{formatMoney(expensesTotal)}</p>
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.incomeLabel')}</p>
-          <p className="text-xl font-bold tabular-nums" style={receitasStyle('dashboard', 'widgets')}>{formatCurrency(incomeTotal)}</p>
+          <p className="text-xl font-bold tabular-nums" style={receitasStyle('dashboard', 'widgets')}>{formatMoney(incomeTotal)}</p>
         </div>
         <div className="shrink-0 text-right">
           <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.balanceLabel')}</p>
-          <p className="text-xl font-bold tabular-nums" style={saldoStyle('dashboard', 'widgets', displayBalance)}>{formatCurrency(displayBalance)}</p>
+          <p className="text-xl font-bold tabular-nums" style={saldoStyle('dashboard', 'widgets', displayBalance)}>{formatMoney(displayBalance)}</p>
         </div>
       </div>
       <div className="mt-2 flex items-center justify-end">
@@ -371,7 +373,7 @@ function MonthSummaryWidget({ icon: Icon, title, monthLabel, expensesTotal, inco
           title={tr('widgetRenderer.balanceWithAccountsTooltip')}
         >
           <Landmark size={10} />
-          {includeAccounts ? formatCurrency(bankAccountsTotal) : tr('widgetRenderer.balanceWithAccountsTooltip')}
+          {includeAccounts ? formatMoney(bankAccountsTotal) : tr('widgetRenderer.balanceWithAccountsTooltip')}
         </button>
       </div>
     </Card>
@@ -386,7 +388,7 @@ export function renderWidgetContent(
   ctx: WidgetRenderContext,
   displayPrefs?: Record<string, any>
 ): React.ReactNode {
-  const { summary, widgetsData, expenseTotal, month, navigate, gastosStyle, receitasStyle, saldoStyle, startCountingMonth, availableWidgets, t: tr } = ctx
+  const { summary, widgetsData, expenseTotal, month, navigate, gastosStyle, receitasStyle, saldoStyle, startCountingMonth, availableWidgets, t: tr, formatMoney } = ctx
 
   const SENTINEL_KEYS: Record<string, string> = {
     '__no_category__': 'categories.noCategory',
@@ -408,20 +410,20 @@ export function renderWidgetContent(
     case 'expenses-total':
       return widgetCard(span, {
         icon: Receipt, label: tr('dashboard.widgetExpensesTotal'),
-        value: formatCurrency(expenseTotal), valueStyle: gastosStyle('dashboard', 'widgets'),
+        value: formatMoney(expenseTotal), valueStyle: gastosStyle('dashboard', 'widgets'),
         onClick: () => navigate(ROUTES.ITEMS)
       })
     case 'income-total':
       return widgetCard(span, {
         icon: Wallet, label: tr('dashboard.widgetIncome'),
-        value: formatCurrency(summary.incomeTotal), valueStyle: receitasStyle('dashboard', 'widgets'),
+        value: formatMoney(summary.incomeTotal), valueStyle: receitasStyle('dashboard', 'widgets'),
         onClick: () => navigate(ROUTES.INCOME)
       })
     case 'balance-total': {
       const balance = summary.incomeTotal - expenseTotal
       return widgetCard(span, {
         icon: Wallet, iconBg: 'color-mix(in srgb, var(--color-saldo, #10b981) 12%, transparent)', iconColor: 'var(--color-saldo, #10b981)',
-        label: tr('dashboard.widgetBalance'), value: formatCurrency(balance),
+        label: tr('dashboard.widgetBalance'), value: formatMoney(balance),
         valueStyle: saldoStyle('dashboard', 'widgets', balance)
       })
     }
@@ -433,7 +435,7 @@ export function renderWidgetContent(
       const tab = TYPE_TAB_MAP[tt.type] || 'all'
       return widgetCard(span, {
         icon: Icon, iconBg: `${color}20`, iconColor: color,
-        label: tr('itemTypes.' + tt.type), value: formatCurrency(tt.total),
+        label: tr('itemTypes.' + tt.type), value: formatMoney(tt.total),
         onClick: () => navigate(ROUTES.ITEMS, { state: { tab } })
       })
     }
@@ -459,7 +461,7 @@ export function renderWidgetContent(
             )}
           </div>
           {vis('totalUsed') && (
-            <p className="text-2xl font-bold tabular-nums mb-2" style={gastosStyle('dashboard', 'widgets')}>{formatCurrency(totalUsed)}</p>
+            <p className="text-2xl font-bold tabular-nums mb-2" style={gastosStyle('dashboard', 'widgets')}>{formatMoney(totalUsed)}</p>
           )}
           {vis('progressBar') && totalLimitSum > 0 && (
             <div className="h-2 rounded-full bg-muted overflow-hidden mb-1">
@@ -469,9 +471,9 @@ export function renderWidgetContent(
           {(vis('totalLimit') || vis('availableLimit') || vis('usagePercent')) && (
             <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
               <span>
-                {vis('totalLimit') && tr('widgetRenderer.limit', { value: formatCurrency(totalLimitSum) })}
+                {vis('totalLimit') && tr('widgetRenderer.limit', { value: formatMoney(totalLimitSum) })}
                 {vis('totalLimit') && vis('availableLimit') && ' · '}
-                {vis('availableLimit') && tr('widgetRenderer.available', { value: formatCurrency(totalAvail) })}
+                {vis('availableLimit') && tr('widgetRenderer.available', { value: formatMoney(totalAvail) })}
               </span>
               {vis('usagePercent') && totalLimitSum > 0 && (
                 <span className={`font-semibold tabular-nums ${pctColor}`}>{usedPct.toFixed(0)}%</span>
@@ -491,7 +493,7 @@ export function renderWidgetContent(
                         <div className={`h-full rounded-full ${cBar}`} style={{ width: `${Math.min(cPct, 100)}%` }} />
                       </div>
                     )}
-                    <span className="text-xs tabular-nums text-muted-foreground shrink-0">{formatCurrency(c.usedLimit)}</span>
+                    <span className="text-xs tabular-nums text-muted-foreground shrink-0">{formatMoney(c.usedLimit)}</span>
                   </div>
                 )
               })}
@@ -525,7 +527,7 @@ export function renderWidgetContent(
             <div className="flex justify-between text-sm mb-1">
               <span className="text-muted-foreground">{tr('widgetRenderer.usedOverLimit')}</span>
               <span className="font-medium tabular-nums">
-                {formatCurrency(card.usedLimit)} / {card.totalLimit === 0 ? tr('widgetRenderer.unlimited') : formatCurrency(card.totalLimit)}
+                {formatMoney(card.usedLimit)} / {card.totalLimit === 0 ? tr('widgetRenderer.unlimited') : formatMoney(card.totalLimit)}
               </span>
             </div>
           )}
@@ -547,7 +549,7 @@ export function renderWidgetContent(
           )}
           {vis('availableLimit') && card.totalLimit > 0 && (
             <p className="text-xs text-muted-foreground mb-2">
-              {tr('widgetRenderer.availableLabel')} <span className="font-medium">{formatCurrency(card.availableLimit)}</span>
+              {tr('widgetRenderer.availableLabel')} <span className="font-medium">{formatMoney(card.availableLimit)}</span>
             </p>
           )}
           {(vis('dueDay') || vis('closeDay')) && (
@@ -566,17 +568,17 @@ export function renderWidgetContent(
             <div className="border-t border-border/50 pt-2 mt-1 space-y-1">
               {vis('commonItems') && (
                 <p className="text-xs text-muted-foreground">
-                  {card.commonCount !== 1 ? tr('widgetRenderer.uniqueCountPlural', { count: card.commonCount }) : tr('widgetRenderer.uniqueCount', { count: card.commonCount })} ({formatCurrency(card.commonTotal)})
+                  {card.commonCount !== 1 ? tr('widgetRenderer.uniqueCountPlural', { count: card.commonCount }) : tr('widgetRenderer.uniqueCount', { count: card.commonCount })} ({formatMoney(card.commonTotal)})
                 </p>
               )}
               {vis('installmentItems') && (
                 <p className="text-xs text-muted-foreground">
-                  {card.installmentCount !== 1 ? tr('widgetRenderer.installmentCountPlural', { count: card.installmentCount }) : tr('widgetRenderer.installmentCount', { count: card.installmentCount })} ({formatCurrency(card.installmentTotal)})
+                  {card.installmentCount !== 1 ? tr('widgetRenderer.installmentCountPlural', { count: card.installmentCount }) : tr('widgetRenderer.installmentCount', { count: card.installmentCount })} ({formatMoney(card.installmentTotal)})
                 </p>
               )}
               {vis('subscriptionItems') && (
                 <p className="text-xs text-muted-foreground">
-                  {card.subscriptionCount !== 1 ? tr('widgetRenderer.recurringCountPlural', { count: card.subscriptionCount }) : tr('widgetRenderer.recurringCount', { count: card.subscriptionCount })} ({formatCurrency(card.subscriptionTotal)})
+                  {card.subscriptionCount !== 1 ? tr('widgetRenderer.recurringCountPlural', { count: card.subscriptionCount }) : tr('widgetRenderer.recurringCount', { count: card.subscriptionCount })} ({formatMoney(card.subscriptionTotal)})
                 </p>
               )}
             </div>
@@ -587,7 +589,7 @@ export function renderWidgetContent(
     case 'bank-accounts-total':
       return widgetCard(span, {
         icon: Landmark, label: tr('dashboard.widgetBankMoney'),
-        value: formatCurrency(summary.bankAccountsTotal),
+        value: formatMoney(summary.bankAccountsTotal),
         valueStyle: saldoStyle('dashboard', 'widgets', summary.bankAccountsTotal),
         onClick: () => navigate(ROUTES.ACCOUNTS)
       })
@@ -596,7 +598,7 @@ export function renderWidgetContent(
       if (!ba) return null
       return widgetCard(span, {
         icon: Landmark, iconBg: `${ba.color}20`, iconColor: ba.color,
-        label: ba.name, value: formatCurrency(ba.balance),
+        label: ba.name, value: formatMoney(ba.balance),
         valueStyle: saldoStyle('dashboard', 'widgets', ba.balance),
         onClick: () => navigate(`${ROUTES.ITEMS}?bankAccountId=${ba.id}`)
       })
@@ -610,7 +612,7 @@ export function renderWidgetContent(
           items={widgetsData?.upcomingExpenses ?? []} paginated pageSize={ps}
           emptyMessage={tr('widgetRenderer.upcomingExpensesEmpty')}
           renderItem={(item) => (
-            <ListWidgetRow key={item.id} description={item.description} meta={formatUpcomingMeta(item, month, tr)} value={effectiveValue(item)} />
+            <ListWidgetRow key={item.id} description={item.description} meta={formatUpcomingMeta(item, month, tr)} value={effectiveValue(item, formatMoney)} />
           )}
         />
       )
@@ -624,7 +626,7 @@ export function renderWidgetContent(
           items={widgetsData?.unpaidItems ?? []} paginated pageSize={ps}
           emptyMessage={tr('widgetRenderer.unpaidItemsEmpty')}
           renderItem={(item) => (
-            <ListWidgetRow key={item.id} description={item.description} meta={formatItemMeta(item, month, tr)} value={effectiveValue(item)} />
+            <ListWidgetRow key={item.id} description={item.description} meta={formatItemMeta(item, month, tr)} value={effectiveValue(item, formatMoney)} />
           )}
         />
       )
@@ -638,7 +640,7 @@ export function renderWidgetContent(
           items={widgetsData?.topExpenses ?? []} paginated pageSize={ps}
           emptyMessage={tr('widgetRenderer.topExpensesEmpty')}
           renderItem={(item, idx) => (
-            <ListWidgetRow key={item.id} rank={idx + 1} description={item.description} meta={formatItemMeta(item, month, tr)} value={effectiveValue(item)} />
+            <ListWidgetRow key={item.id} rank={idx + 1} description={item.description} meta={formatItemMeta(item, month, tr)} value={effectiveValue(item, formatMoney)} />
           )}
         />
       )
@@ -653,7 +655,7 @@ export function renderWidgetContent(
           emptyMessage={tr('widgetRenderer.pendingIncomesEmpty')}
           renderItem={(item) => (
             <ListWidgetRow key={item.id} description={item.description} meta={item.categoryName || undefined}
-              value={formatCurrency(item.effectiveValue)} valueStyle={receitasStyle('dashboard', 'widgets')} rankColor="var(--color-receitas)" />
+              value={formatMoney(item.effectiveValue)} valueStyle={receitasStyle('dashboard', 'widgets')} rankColor="var(--color-receitas)" />
           )}
         />
       )
@@ -669,7 +671,7 @@ export function renderWidgetContent(
           renderItem={(item) => (
             <ListWidgetRow key={item.id} description={item.description}
               meta={item.remainingInstallments != null ? (item.remainingInstallments !== 1 ? tr('widgetRenderer.remainingCountPlural', { count: item.remainingInstallments }) : tr('widgetRenderer.remainingCount', { count: item.remainingInstallments })) : undefined}
-              value={effectiveValue(item)} />
+              value={effectiveValue(item, formatMoney)} />
           )}
         />
       )
@@ -703,15 +705,15 @@ export function renderWidgetContent(
           <div className="flex items-end gap-3">
             <div className="flex-1 min-w-0">
               <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.currentMonth')} - {formatMonthRef(month)}</p>
-              <p className="text-xl font-bold tabular-nums">{formatCurrency(cmp.currentTotal)}</p>
+              <p className="text-xl font-bold tabular-nums">{formatMoney(cmp.currentTotal)}</p>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.previousMonth')} - {formatMonthRef(shiftMonth(month, -1))}</p>
-              <p className="text-xl font-bold tabular-nums text-muted-foreground">{formatCurrency(cmp.previousTotal)}</p>
+              <p className="text-xl font-bold tabular-nums text-muted-foreground">{formatMoney(cmp.previousTotal)}</p>
             </div>
             <div className="shrink-0 text-right">
               <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.difference')}</p>
-              <p className={`text-xl font-bold tabular-nums ${deltaColor}`}>{isUp ? '+' : ''}{formatCurrency(cmp.delta)}</p>
+              <p className={`text-xl font-bold tabular-nums ${deltaColor}`}>{isUp ? '+' : ''}{formatMoney(cmp.delta)}</p>
             </div>
           </div>
         </Card>
@@ -745,15 +747,15 @@ export function renderWidgetContent(
           <div className="flex items-end gap-3">
             <div className="flex-1 min-w-0">
               <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.currentMonth')} - {formatMonthRef(month)}</p>
-              <p className="text-xl font-bold tabular-nums">{formatCurrency(cmp.currentTotal)}</p>
+              <p className="text-xl font-bold tabular-nums">{formatMoney(cmp.currentTotal)}</p>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.nextMonth')} - {formatMonthRef(shiftMonth(month, 1))}</p>
-              <p className="text-xl font-bold tabular-nums text-muted-foreground">{formatCurrency(cmp.previousTotal)}</p>
+              <p className="text-xl font-bold tabular-nums text-muted-foreground">{formatMoney(cmp.previousTotal)}</p>
             </div>
             <div className="shrink-0 text-right">
               <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.difference')}</p>
-              <p className="text-xl font-bold tabular-nums">{isUp ? '+' : ''}{formatCurrency(cmp.delta)}</p>
+              <p className="text-xl font-bold tabular-nums">{isUp ? '+' : ''}{formatMoney(cmp.delta)}</p>
             </div>
           </div>
         </Card>
@@ -768,7 +770,7 @@ export function renderWidgetContent(
           items={widgetsData?.overdueItems ?? []} paginated pageSize={ps}
           emptyMessage={tr('widgetRenderer.overdueItemsEmpty')}
           renderItem={(item) => (
-            <ListWidgetRow key={item.id} description={item.description} meta={formatOverdueMeta(item, month, tr)} value={effectiveValue(item)} valueStyle={gastosStyle('dashboard', 'widgets')} />
+            <ListWidgetRow key={item.id} description={item.description} meta={formatOverdueMeta(item, month, tr)} value={effectiveValue(item, formatMoney)} valueStyle={gastosStyle('dashboard', 'widgets')} />
           )}
         />
       )
@@ -790,11 +792,11 @@ export function renderWidgetContent(
           <div className="flex items-end gap-3">
             <div className="flex-1 min-w-0">
               <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.paidLabel')}</p>
-              <p className="text-xl font-bold tabular-nums" style={receitasStyle('dashboard', 'widgets')}>{formatCurrency(ps.paidValue)}</p>
+              <p className="text-xl font-bold tabular-nums" style={receitasStyle('dashboard', 'widgets')}>{formatMoney(ps.paidValue)}</p>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.pendingLabel')}</p>
-              <p className="text-xl font-bold tabular-nums" style={gastosStyle('dashboard', 'widgets')}>{formatCurrency(ps.pendingValue)}</p>
+              <p className="text-xl font-bold tabular-nums" style={gastosStyle('dashboard', 'widgets')}>{formatMoney(ps.pendingValue)}</p>
             </div>
             <div className="shrink-0 text-right">
               <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.progressLabel')}</p>
@@ -821,11 +823,11 @@ export function renderWidgetContent(
           <div className="flex items-end gap-3">
             <div className="flex-1 min-w-0">
               <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.revenueLabel')}</p>
-              <p className="text-xl font-bold tabular-nums" style={receitasStyle('dashboard', 'widgets')}>{formatCurrency(income)}</p>
+              <p className="text-xl font-bold tabular-nums" style={receitasStyle('dashboard', 'widgets')}>{formatMoney(income)}</p>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.expensesLabel')}</p>
-              <p className="text-xl font-bold tabular-nums" style={gastosStyle('dashboard', 'widgets')}>{formatCurrency(expenseTotal)}</p>
+              <p className="text-xl font-bold tabular-nums" style={gastosStyle('dashboard', 'widgets')}>{formatMoney(expenseTotal)}</p>
             </div>
             <div className="shrink-0 text-right">
               <p className="text-[11px] text-muted-foreground mb-0.5">{tr('widgetRenderer.committedLabel')}</p>
@@ -850,7 +852,7 @@ export function renderWidgetContent(
             <PieChart size={16} className="text-primary shrink-0" />
             <h3 className="text-sm font-semibold">{tr('widgetRenderer.typeDistributionTitle')}</h3>
           </div>
-          {vis('progressBar') && <DistributionBar segments={segs} showMarginBottom={showLegend} onSegmentClick={onTypeClick} />}
+          {vis('progressBar') && <DistributionBar segments={segs} showMarginBottom={showLegend} formatMoney={formatMoney} onSegmentClick={onTypeClick} />}
           {showLegend && (
             <div className="flex items-center gap-4 flex-wrap">
               {segs.map(s => (
@@ -858,7 +860,7 @@ export function renderWidgetContent(
                   <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
                   <span className={`text-xs text-muted-foreground ${truncate ? 'max-w-[80px] truncate' : ''}`}>{s.name}</span>
                   <span className="text-xs font-bold tabular-nums shrink-0">{s.pct.toFixed(0)}%</span>
-                  {showValues && <span className="text-xs tabular-nums text-muted-foreground shrink-0">({formatCurrency(s.total)})</span>}
+                  {showValues && <span className="text-xs tabular-nums text-muted-foreground shrink-0">({formatMoney(s.total)})</span>}
                 </div>
               ))}
             </div>
@@ -883,7 +885,7 @@ export function renderWidgetContent(
             <PieChart size={16} className="text-primary shrink-0" />
             <h3 className="text-sm font-semibold">{tr('widgetRenderer.categoryDistributionTitle')}</h3>
           </div>
-          {vis('progressBar') && total > 0 && <DistributionBar segments={segs} showMarginBottom={showLegend} onSegmentClick={onCatClick} />}
+          {vis('progressBar') && total > 0 && <DistributionBar segments={segs} showMarginBottom={showLegend} formatMoney={formatMoney} onSegmentClick={onCatClick} />}
           {showLegend && (
             <div className="flex items-center gap-4 flex-wrap">
               {segs.map(s => (
@@ -891,7 +893,7 @@ export function renderWidgetContent(
                   <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
                   <span className={`text-xs text-muted-foreground ${truncate ? 'max-w-[80px] truncate' : ''}`}>{s.name}</span>
                   <span className="text-xs font-bold tabular-nums shrink-0">{s.pct.toFixed(0)}%</span>
-                  {showValues && <span className="text-xs tabular-nums text-muted-foreground shrink-0">({formatCurrency(s.total)})</span>}
+                  {showValues && <span className="text-xs tabular-nums text-muted-foreground shrink-0">({formatMoney(s.total)})</span>}
                 </div>
               ))}
             </div>
@@ -916,7 +918,7 @@ export function renderWidgetContent(
             <PieChart size={16} className="text-primary shrink-0" />
             <h3 className="text-sm font-semibold">{tr('widgetRenderer.subcategoryDistributionTitle')}</h3>
           </div>
-          {vis('progressBar') && total > 0 && <DistributionBar segments={segs} showMarginBottom={showLegend} onSegmentClick={onSubcatClick} />}
+          {vis('progressBar') && total > 0 && <DistributionBar segments={segs} showMarginBottom={showLegend} formatMoney={formatMoney} onSegmentClick={onSubcatClick} />}
           {showLegend && (
             <div className="flex items-center gap-4 flex-wrap">
               {segs.map(s => (
@@ -924,7 +926,7 @@ export function renderWidgetContent(
                   <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
                   <span className={`text-xs text-muted-foreground ${truncate ? 'max-w-[80px] truncate' : ''}`}>{s.name}</span>
                   <span className="text-xs font-bold tabular-nums shrink-0">{s.pct.toFixed(0)}%</span>
-                  {showValues && <span className="text-xs tabular-nums text-muted-foreground shrink-0">({formatCurrency(s.total)})</span>}
+                  {showValues && <span className="text-xs tabular-nums text-muted-foreground shrink-0">({formatMoney(s.total)})</span>}
                 </div>
               ))}
             </div>
@@ -947,7 +949,7 @@ export function renderWidgetContent(
             <PieChart size={16} className="text-primary shrink-0" />
             <h3 className="text-sm font-semibold">{tr('widgetRenderer.tagDistributionTitle')}</h3>
           </div>
-          {vis('progressBar') && total > 0 && <DistributionBar segments={segs} showMarginBottom={showLegend} onSegmentClick={onTagClick} />}
+          {vis('progressBar') && total > 0 && <DistributionBar segments={segs} showMarginBottom={showLegend} formatMoney={formatMoney} onSegmentClick={onTagClick} />}
           {showLegend && (
             <div className="flex items-center gap-4 flex-wrap">
               {segs.map(s => (
@@ -955,7 +957,7 @@ export function renderWidgetContent(
                   <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
                   <span className={`text-xs text-muted-foreground ${truncate ? 'max-w-[80px] truncate' : ''}`}>{s.name}</span>
                   <span className="text-xs font-bold tabular-nums shrink-0">{s.pct.toFixed(0)}%</span>
-                  {showValues && <span className="text-xs tabular-nums text-muted-foreground shrink-0">({formatCurrency(s.total)})</span>}
+                  {showValues && <span className="text-xs tabular-nums text-muted-foreground shrink-0">({formatMoney(s.total)})</span>}
                 </div>
               ))}
             </div>
@@ -979,7 +981,7 @@ export function renderWidgetContent(
             <PieChart size={16} className="text-primary shrink-0" />
             <h3 className="text-sm font-semibold">{tr('widgetRenderer.incomeTypeDistributionTitle')}</h3>
           </div>
-          {vis('progressBar') && total > 0 && <DistributionBar segments={segs} showMarginBottom={showLegend} onSegmentClick={onIncTypeClick} />}
+          {vis('progressBar') && total > 0 && <DistributionBar segments={segs} showMarginBottom={showLegend} formatMoney={formatMoney} onSegmentClick={onIncTypeClick} />}
           {showLegend && (
             <div className="flex items-center gap-4 flex-wrap">
               {segs.map(s => (
@@ -987,7 +989,7 @@ export function renderWidgetContent(
                   <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
                   <span className={`text-xs text-muted-foreground ${truncate ? 'max-w-[80px] truncate' : ''}`}>{s.name}</span>
                   <span className="text-xs font-bold tabular-nums shrink-0">{s.pct.toFixed(0)}%</span>
-                  {showValues && <span className="text-xs tabular-nums text-muted-foreground shrink-0">({formatCurrency(s.total)})</span>}
+                  {showValues && <span className="text-xs tabular-nums text-muted-foreground shrink-0">({formatMoney(s.total)})</span>}
                 </div>
               ))}
             </div>
@@ -1012,7 +1014,7 @@ export function renderWidgetContent(
             <PieChart size={16} className="text-primary shrink-0" />
             <h3 className="text-sm font-semibold">{tr('widgetRenderer.incomeCategoryDistributionTitle')}</h3>
           </div>
-          {vis('progressBar') && total > 0 && <DistributionBar segments={segs} showMarginBottom={showLegend} onSegmentClick={onIncCatClick} />}
+          {vis('progressBar') && total > 0 && <DistributionBar segments={segs} showMarginBottom={showLegend} formatMoney={formatMoney} onSegmentClick={onIncCatClick} />}
           {showLegend && (
             <div className="flex items-center gap-4 flex-wrap">
               {segs.map(s => (
@@ -1020,7 +1022,7 @@ export function renderWidgetContent(
                   <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
                   <span className={`text-xs text-muted-foreground ${truncate ? 'max-w-[80px] truncate' : ''}`}>{s.name}</span>
                   <span className="text-xs font-bold tabular-nums shrink-0">{s.pct.toFixed(0)}%</span>
-                  {showValues && <span className="text-xs tabular-nums text-muted-foreground shrink-0">({formatCurrency(s.total)})</span>}
+                  {showValues && <span className="text-xs tabular-nums text-muted-foreground shrink-0">({formatMoney(s.total)})</span>}
                 </div>
               ))}
             </div>
@@ -1045,7 +1047,7 @@ export function renderWidgetContent(
             <PieChart size={16} className="text-primary shrink-0" />
             <h3 className="text-sm font-semibold">{tr('widgetRenderer.incomeSubcategoryDistributionTitle')}</h3>
           </div>
-          {vis('progressBar') && total > 0 && <DistributionBar segments={segs} showMarginBottom={showLegend} onSegmentClick={onIncSubcatClick} />}
+          {vis('progressBar') && total > 0 && <DistributionBar segments={segs} showMarginBottom={showLegend} formatMoney={formatMoney} onSegmentClick={onIncSubcatClick} />}
           {showLegend && (
             <div className="flex items-center gap-4 flex-wrap">
               {segs.map(s => (
@@ -1053,7 +1055,7 @@ export function renderWidgetContent(
                   <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
                   <span className={`text-xs text-muted-foreground ${truncate ? 'max-w-[80px] truncate' : ''}`}>{s.name}</span>
                   <span className="text-xs font-bold tabular-nums shrink-0">{s.pct.toFixed(0)}%</span>
-                  {showValues && <span className="text-xs tabular-nums text-muted-foreground shrink-0">({formatCurrency(s.total)})</span>}
+                  {showValues && <span className="text-xs tabular-nums text-muted-foreground shrink-0">({formatMoney(s.total)})</span>}
                 </div>
               ))}
             </div>
@@ -1152,7 +1154,7 @@ export function renderWidgetContent(
       const bal = summary.incomeTotal - expenseTotal + summary.bankAccountsTotal
       return widgetCard(span, {
         icon: Landmark, iconBg: 'color-mix(in srgb, var(--color-saldo, #10b981) 12%, transparent)', iconColor: 'var(--color-saldo, #10b981)',
-        label: tr('widgetRenderer.balanceWithAccountsLabel'), value: formatCurrency(bal),
+        label: tr('widgetRenderer.balanceWithAccountsLabel'), value: formatMoney(bal),
         valueStyle: saldoStyle('dashboard', 'widgets', bal)
       })
     }
@@ -1170,21 +1172,21 @@ export function renderWidgetContent(
             <h3 className="text-sm font-semibold">{tr('widgetRenderer.overallBalanceTitle')}</h3>
           </div>
           <p className="text-2xl font-bold tabular-nums mb-2" style={saldoStyle('dashboard', 'widgets', overallBalance)}>
-            {formatCurrency(overallBalance)}
+            {formatMoney(overallBalance)}
           </p>
           <div className="space-y-1 text-xs text-muted-foreground">
             <div className="flex justify-between">
               <span>{tr('widgetRenderer.incomeLabel')}</span>
-              <span className="font-medium tabular-nums" style={receitasStyle('dashboard', 'widgets')}>{formatCurrency(summary.incomeTotal)}</span>
+              <span className="font-medium tabular-nums" style={receitasStyle('dashboard', 'widgets')}>{formatMoney(summary.incomeTotal)}</span>
             </div>
             <div className="flex justify-between">
               <span>{tr('widgetRenderer.expensesLabel')}</span>
-              <span className="font-medium tabular-nums" style={gastosStyle('dashboard', 'widgets')}>{formatCurrency(expenseTotal)}</span>
+              <span className="font-medium tabular-nums" style={gastosStyle('dashboard', 'widgets')}>{formatMoney(expenseTotal)}</span>
             </div>
             {includeBankAccounts && (
               <div className="flex justify-between">
                 <span>{tr('widgetRenderer.bankMoneyLabel')}</span>
-                <span className="font-medium tabular-nums">{formatCurrency(summary.bankAccountsTotal)}</span>
+                <span className="font-medium tabular-nums">{formatMoney(summary.bankAccountsTotal)}</span>
               </div>
             )}
           </div>
@@ -1212,7 +1214,7 @@ export function renderWidgetContent(
           items={filtered} paginated pageSize={ps}
           emptyMessage={tr('widgetRenderer.upcomingBillingEmpty')}
           renderItem={(item) => (
-            <ListWidgetRow key={item.id} description={item.description} meta={formatBillingMeta(item, month, tr)} value={effectiveValue(item)} />
+            <ListWidgetRow key={item.id} description={item.description} meta={formatBillingMeta(item, month, tr)} value={effectiveValue(item, formatMoney)} />
           )}
         />
       )

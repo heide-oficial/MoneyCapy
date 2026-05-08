@@ -9,6 +9,7 @@ import { usePageMonth } from '../../contexts/DefaultMonthContext'
 import { ROUTES } from '../../lib/constants'
 import { useActivePerson } from '../../contexts/ActivePersonContext'
 import { useColorSettings } from '../../contexts/ColorSettingsContext'
+import { useDisplayCurrency } from '../../contexts/DisplayCurrencyContext'
 import { useStartCountingMonth } from '../../contexts/StartCountingMonthContext'
 import { useTranslation } from '../../contexts/LanguageContext'
 import { RowCreatorModal } from './components/RowCreatorModal'
@@ -164,6 +165,7 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const { activePerson, people } = useActivePerson()
   const { gastosStyle, receitasStyle, saldoStyle } = useColorSettings()
+  const { formatDisplayCurrency } = useDisplayCurrency()
   const { startCountingMonth } = useStartCountingMonth()
   const { t } = useTranslation()
   const [summary, setSummary] = useState<Summary | null>(null)
@@ -424,7 +426,7 @@ export default function Dashboard() {
   const widgetCtx: WidgetRenderContext = {
     summary, widgetsData, expenseTotal, month, navigate,
     gastosStyle, receitasStyle, saldoStyle, startCountingMonth,
-    availableWidgets, t
+    availableWidgets, t, formatMoney: formatDisplayCurrency
   }
 
   const renderWidgetContent = (widgetId: string, widthPercent: number, displayPrefs?: Record<string, any>) =>
