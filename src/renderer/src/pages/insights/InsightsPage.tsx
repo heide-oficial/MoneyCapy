@@ -277,7 +277,7 @@ export default function InsightsPage() {
           <InsightsLineChart
             mode="temporal"
             data={includeBankAccounts
-              ? temporalData.timeline.map(p => ({ ...p, balance: p.balance + p.bankAccountBalance }))
+              ? temporalData.timeline.map(p => ({ ...p, operationalBalance: p.balance, balance: p.bankAccountBalance }))
               : temporalData.timeline}
             dataKey="balance"
             title={t('insights.balanceEvolution')}
@@ -361,10 +361,10 @@ export default function InsightsPage() {
           <InsightsLineChart
             mode="comparative"
             dataA={includeBankAccounts
-              ? comparativeData.a.timeline.map(p => ({ ...p, balance: p.balance + p.bankAccountBalance }))
+              ? comparativeData.a.timeline.map(p => ({ ...p, operationalBalance: p.balance, balance: p.bankAccountBalance }))
               : comparativeData.a.timeline}
             dataB={includeBankAccounts
-              ? comparativeData.b.timeline.map(p => ({ ...p, balance: p.balance + p.bankAccountBalance }))
+              ? comparativeData.b.timeline.map(p => ({ ...p, operationalBalance: p.balance, balance: p.bankAccountBalance }))
               : comparativeData.b.timeline}
             labelA={comparativeData.periodALabel}
             labelB={comparativeData.periodBLabel}

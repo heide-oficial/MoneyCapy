@@ -99,7 +99,7 @@ function TemporalTooltip({ active, payload, label, dataKey, grouping, fmtDate, f
           <p style={{ color: lineColor }} className="font-semibold">{t('insights.balanceLabel')}: {formatCurrency(point.balance)}</p>
           {showBankBalance && point.bankAccountBalance !== undefined && (
             <div className="border-t border-border mt-1.5 pt-1.5 space-y-0.5">
-              <p className="text-xs text-muted-foreground">{t('insights.operationalBalance')} {formatCurrency(point.balance - point.bankAccountBalance)}</p>
+              <p className="text-xs text-muted-foreground">{t('insights.operationalBalance')} {formatCurrency((point as any).operationalBalance ?? point.balance)}</p>
               <p className="text-xs text-muted-foreground">{t('insights.cashInAccount')} {formatCurrency(point.bankAccountBalance)}</p>
             </div>
           )}

@@ -55,8 +55,8 @@ export function InsightsSummaryCards(props: Props) {
   if (props.mode === 'temporal') {
     const { data, includeAccountBalance, onToggleAccountBalance } = props
     const accountBalance = data.timeline.length > 0 ? data.timeline[data.timeline.length - 1].bankAccountBalance : 0
-    const displayIncome = includeAccountBalance ? data.totalIncome + accountBalance : data.totalIncome
-    const displayBalance = includeAccountBalance ? data.totalBalance + accountBalance : data.totalBalance
+    const displayIncome = data.totalIncome
+    const displayBalance = includeAccountBalance ? accountBalance : data.totalBalance
     return (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="p-4">
@@ -130,8 +130,8 @@ export function InsightsSummaryCards(props: Props) {
       icon: Wallet,
       iconStyle: { color: 'var(--color-receitas, #22c55e)' } as React.CSSProperties,
       iconBgStyle: { backgroundColor: 'color-mix(in srgb, var(--color-receitas, #10b981) 10%, transparent)' } as React.CSSProperties,
-      valA: includeAccountBalance ? data.a.totalIncome + balA : data.a.totalIncome,
-      valB: includeAccountBalance ? data.b.totalIncome + balB : data.b.totalIncome,
+      valA: data.a.totalIncome,
+      valB: data.b.totalIncome,
       invertColor: false,
       showAccountToggle: true,
     },
@@ -140,8 +140,8 @@ export function InsightsSummaryCards(props: Props) {
       icon: Scale,
       iconStyle: { color: 'var(--color-saldo, #3b82f6)' } as React.CSSProperties,
       iconBgStyle: { backgroundColor: 'color-mix(in srgb, var(--color-saldo, #3b82f6) 10%, transparent)' } as React.CSSProperties,
-      valA: includeAccountBalance ? data.a.totalBalance + balA : data.a.totalBalance,
-      valB: includeAccountBalance ? data.b.totalBalance + balB : data.b.totalBalance,
+      valA: includeAccountBalance ? balA : data.a.totalBalance,
+      valB: includeAccountBalance ? balB : data.b.totalBalance,
       invertColor: false,
       colorBySign: true,
     },

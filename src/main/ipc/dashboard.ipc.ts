@@ -100,6 +100,17 @@ function mapToDashboardItem(
   return result
 }
 
+const emptyMonthSummary = (month: string): DashboardWidgetsData['previousMonthSummary'] => ({
+  month,
+  expensesTotal: 0,
+  incomeTotal: 0,
+  balance: 0,
+  bankAccountsTotal: 0,
+  pendingExpensesTotal: 0,
+  pendingIncomeTotal: 0,
+  accountProjectedBalance: 0
+})
+
 export function registerDashboardHandlers(db: WrappedDatabase): void {
   const sectionItemsRepo = new SectionItemsRepository(db)
   const cardsRepo = new CardsRepository(db)
@@ -195,8 +206,8 @@ export function registerDashboardHandlers(db: WrappedDatabase): void {
         nextMonthComparison: { currentTotal: 0, previousTotal: 0, delta: 0, deltaPercent: 0 },
         overdueItems: [],
         paymentSummary: { totalItems: 0, paidItems: 0, paidValue: 0, pendingValue: 0 },
-        previousMonthSummary: { month: addMonths(month, -1), expensesTotal: 0, incomeTotal: 0, balance: 0, bankAccountsTotal: 0 },
-        nextMonthSummary: { month: addMonths(month, 1), expensesTotal: 0, incomeTotal: 0, balance: 0, bankAccountsTotal: 0 },
+        previousMonthSummary: emptyMonthSummary(addMonths(month, -1)),
+        nextMonthSummary: emptyMonthSummary(addMonths(month, 1)),
         cardDetails: [],
         categoryDistribution: [],
         subcategoryDistribution: [],
@@ -278,6 +289,46 @@ export function registerDashboardHandlers(db: WrappedDatabase): void {
         return Math.round((item.value / item.totalInstallments) * 100) / 100 * snapshot
       }
       return item.value * snapshot
+    }
+
+    function getPendingExpenseTotal(targetMonth: string): number {
+      if (isMonthBeforeStart(targetMonth, scm)) return 0
+      const items = (sectionItemsRepo.findByPersonAndMonth(personId, targetMonth) as any[])
+        .filter((item: any) => item.is_active === 1 && !sectionItemsRepo.isPausedInMonth(item.id, targetMonth))
+      const statuses = itemStatusRepo.getPaidStatusBatch(items.map((item: any) => item.id), targetMonth)
+      return items.reduce((sum, item) => {
+        const status = statuses.get(item.id)
+        if (status?.isPaid) return sum
+        const dashItem = mapToDashboardItem(item, false, anticipationsRepo, targetMonth, sectionItemsRepo, db)
+        return sum + effectiveValue(dashItem)
+      }, 0)
+    }
+
+    function getPendingIncomeTotal(targetMonth: string): number {
+      if (isMonthBeforeStart(targetMonth, scm)) return 0
+      const incomes = (incomeRepo.findByPersonAndMonth(personId, targetMonth) as any[])
+        .filter((inc: any) => !incomeRepo.isPausedInMonth(inc.id, targetMonth))
+      return incomes.reduce((sum, inc) => {
+        if (incomeStatusRepo.isReceived(inc.id, targetMonth)) return sum
+        return sum + incomeRepo.getEffectiveValue(inc, targetMonth) * (inc.exchange_rate_snapshot || 1.0)
+      }, 0)
+    }
+
+    function buildMonthSummary(targetMonth: string, expensesTotal: number, incomeTotal: number) {
+      const bankAccountsTotal = bankAccountsRepo.getTotalByPersonForMonth(personId, targetMonth)
+      const pendingExpensesTotal = getPendingExpenseTotal(targetMonth)
+      const pendingIncomeTotal = getPendingIncomeTotal(targetMonth)
+      return {
+        month: targetMonth,
+        expensesTotal,
+        incomeTotal,
+        balance: incomeTotal - expensesTotal,
+        bankAccountsTotal,
+        pendingExpensesTotal,
+        pendingIncomeTotal,
+        accountProjectedBalance: bankAccountsTotal + pendingIncomeTotal - pendingExpensesTotal,
+        isBeforeStart: isMonthBeforeStart(targetMonth, scm)
+      }
     }
 
     // --- Today's date for due_day comparisons ---
@@ -364,14 +415,10 @@ export function registerDashboardHandlers(db: WrappedDatabase): void {
     // --- Previous month summary ---
     const prevMonthExpenses = previousTotal
     const prevMonthIncome = isMonthBeforeStart(previousMonth, scm) ? 0 : incomeRepo.getTotalByPersonAndMonth(personId, previousMonth)
-    const prevMonthBalance = prevMonthIncome - prevMonthExpenses
-    const prevMonthBankAccountsTotal = bankAccountsRepo.getTotalByPersonForMonth(personId, previousMonth)
 
     // --- Next month summary ---
     const nextMonthExpenses = nextTotalForComparison
     const nextMonthIncome = isMonthBeforeStart(nextMonth, scm) ? 0 : incomeRepo.getTotalByPersonAndMonth(personId, nextMonth)
-    const nextMonthBalance = nextMonthIncome - nextMonthExpenses
-    const nextMonthBankAccountsTotal = bankAccountsRepo.getTotalByPersonForMonth(personId, nextMonth)
 
     // --- Payment summary (compact widget) ---
     const paidCount = dashItems.filter(i => i.isPaid).length
@@ -528,8 +575,8 @@ export function registerDashboardHandlers(db: WrappedDatabase): void {
       nextMonthComparison: { currentTotal, previousTotal: nextTotalForComparison, delta: nextDelta, deltaPercent: nextDeltaPercent },
       overdueItems,
       paymentSummary: { totalItems: dashItems.length, paidItems: paidCount, paidValue, pendingValue },
-      previousMonthSummary: { month: previousMonth, expensesTotal: prevMonthExpenses, incomeTotal: prevMonthIncome, balance: prevMonthBalance, bankAccountsTotal: prevMonthBankAccountsTotal, isBeforeStart: isMonthBeforeStart(previousMonth, scm) },
-      nextMonthSummary: { month: nextMonth, expensesTotal: nextMonthExpenses, incomeTotal: nextMonthIncome, balance: nextMonthBalance, bankAccountsTotal: nextMonthBankAccountsTotal, isBeforeStart: isMonthBeforeStart(nextMonth, scm) },
+      previousMonthSummary: buildMonthSummary(previousMonth, prevMonthExpenses, prevMonthIncome),
+      nextMonthSummary: buildMonthSummary(nextMonth, nextMonthExpenses, nextMonthIncome),
       cardDetails,
       categoryDistribution,
       subcategoryDistribution,

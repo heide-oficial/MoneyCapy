@@ -239,11 +239,15 @@ function formatUpcomingMeta(item: DashboardListItem, month: string, t: (key: str
 }
 
 export function effectiveValue(item: DashboardListItem, formatMoney: (value: number) => string = formatCurrency): string {
+  return formatMoney(effectiveValueAmount(item))
+}
+
+function effectiveValueAmount(item: DashboardListItem): number {
   const snapshot = (item as any).exchangeRateSnapshot || 1.0
   if ((item.type === 'installment' || item.type === 'emprestimo') && item.totalInstallments) {
-    return formatMoney(Math.round((item.value / item.totalInstallments) * 100) / 100 * snapshot)
+    return Math.round((item.value / item.totalInstallments) * 100) / 100 * snapshot
   }
-  return formatMoney(item.value * snapshot)
+  return item.value * snapshot
 }
 
 function getSpanFromWidth(widthPercent: number): number {
@@ -328,7 +332,7 @@ export interface WidgetRenderContext {
 
 // ── Month Summary Widget (with bank accounts toggle) ──
 
-function MonthSummaryWidget({ icon: Icon, title, monthLabel, expensesTotal, incomeTotal, balance, bankAccountsTotal, gastosStyle, receitasStyle, saldoStyle, tr, formatMoney }: {
+function MonthSummaryWidget({ icon: Icon, title, monthLabel, expensesTotal, incomeTotal, balance, bankAccountsTotal, accountProjectedBalance, gastosStyle, receitasStyle, saldoStyle, tr, formatMoney }: {
   icon: typeof CalendarDays
   title: string
   monthLabel: string
@@ -336,6 +340,7 @@ function MonthSummaryWidget({ icon: Icon, title, monthLabel, expensesTotal, inco
   incomeTotal: number
   balance: number
   bankAccountsTotal: number
+  accountProjectedBalance: number
   gastosStyle: (page: string, section: string) => React.CSSProperties
   receitasStyle: (page: string, section: string) => React.CSSProperties
   saldoStyle: (page: string, section: string, value: number) => React.CSSProperties
@@ -343,7 +348,7 @@ function MonthSummaryWidget({ icon: Icon, title, monthLabel, expensesTotal, inco
   formatMoney: (value: number) => string
 }) {
   const [includeAccounts, setIncludeAccounts] = useState(false)
-  const displayBalance = includeAccounts ? balance + bankAccountsTotal : balance
+  const displayBalance = includeAccounts ? accountProjectedBalance : balance
   return (
     <Card className="p-4">
       <div className="flex items-center gap-2 mb-3">
@@ -1065,6 +1070,8 @@ export function renderWidgetContent(
     }
 
     case 'current-month-summary': {
+      const pendingExpensesTotal = (widgetsData?.unpaidItems ?? []).reduce((sum, item) => sum + effectiveValueAmount(item), 0)
+      const pendingIncomeTotal = (widgetsData?.pendingIncomes ?? []).reduce((sum, item) => sum + item.effectiveValue, 0)
       return (
         <MonthSummaryWidget
           icon={CalendarDays}
@@ -1074,6 +1081,7 @@ export function renderWidgetContent(
           incomeTotal={summary.incomeTotal}
           balance={summary.incomeTotal - expenseTotal}
           bankAccountsTotal={summary.bankAccountsTotal}
+          accountProjectedBalance={summary.bankAccountsTotal + pendingIncomeTotal - pendingExpensesTotal}
           gastosStyle={gastosStyle}
           receitasStyle={receitasStyle}
           saldoStyle={saldoStyle}
@@ -1108,6 +1116,7 @@ export function renderWidgetContent(
           incomeTotal={ms.incomeTotal}
           balance={ms.balance}
           bankAccountsTotal={ms.bankAccountsTotal}
+          accountProjectedBalance={ms.accountProjectedBalance}
           gastosStyle={gastosStyle}
           receitasStyle={receitasStyle}
           saldoStyle={saldoStyle}
@@ -1142,6 +1151,7 @@ export function renderWidgetContent(
           incomeTotal={ms.incomeTotal}
           balance={ms.balance}
           bankAccountsTotal={ms.bankAccountsTotal}
+          accountProjectedBalance={ms.accountProjectedBalance}
           gastosStyle={gastosStyle}
           receitasStyle={receitasStyle}
           saldoStyle={saldoStyle}

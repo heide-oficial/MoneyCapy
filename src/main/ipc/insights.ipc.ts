@@ -194,7 +194,7 @@ export function registerInsightsHandlers(db: WrappedDatabase): void {
 
     for (const item of rawItems) {
       const globalActive = item.is_active === 1
-      const isActive = itemStatusRepo.isActiveInMonth(item.id, month, globalActive)
+      const isActive = itemStatusRepo.isActiveInMonth(item.id, month, globalActive) && !sectionItemsRepo.isPausedInMonth(item.id, month)
       let effectiveValue = 0
 
       if (isActive) {
@@ -256,7 +256,7 @@ export function registerInsightsHandlers(db: WrappedDatabase): void {
   ): IncomeEntry[] {
     const rawIncomes = incomeRepo.findByPersonAndMonth(personId, month) as any[]
     const entries: IncomeEntry[] = []
-    for (const inc of rawIncomes) {
+    for (const inc of rawIncomes.filter((income: any) => !incomeRepo.isPausedInMonth(income.id, month))) {
       const val = incomeRepo.getEffectiveValue(inc, month)
       const snapshot = inc.exchange_rate_snapshot || 1.0
       entries.push({
