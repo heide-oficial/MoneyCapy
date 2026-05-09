@@ -143,12 +143,17 @@ export class CardsRepository {
     let total = 0
 
     // Common items with this card in this exact month (credit only)
-    const commonRow = this.db.prepare(
-      `SELECT COALESCE(SUM(value * COALESCE(exchange_rate_snapshot, 1.0)), 0) as total FROM section_items
+    const commonItems = this.db.prepare(
+      `SELECT id, value, exchange_rate_snapshot FROM section_items
        WHERE card_id = ? AND type = 'common' AND start_month = ? AND is_active = 1
        AND (payment_method IS NULL OR payment_method = 'credit')`
-    ).get(cardId, month) as any
-    total += commonRow.total / cardRate
+    ).all(cardId, month) as any[]
+    for (const item of commonItems) {
+      if (this.isItemInterrupted(item.id, month)) continue
+      if (this.isItemPaid(item.id, month)) continue
+      const snapshot = item.exchange_rate_snapshot || 1.0
+      total += item.value * snapshot / cardRate
+    }
 
     // Subscription items with this card visible in this month (credit only)
     const subs = this.db.prepare(
@@ -158,6 +163,7 @@ export class CardsRepository {
     ).all(cardId, month, month) as any[]
     for (const sub of subs) {
       if (this.isItemInterrupted(sub.id, month)) continue
+      if (this.isItemPaid(sub.id, month)) continue
       const snapshot = sub.exchange_rate_snapshot || 1.0
       total += this.getEffectiveValueForSubscription(sub.id, sub.value, month) * snapshot / cardRate
     }
@@ -205,8 +211,10 @@ export class CardsRepository {
       const isCredit = sp.payment_method === null || sp.payment_method === 'credit'
       const snapshot = sp.exchange_rate_snapshot || 1.0
       if (sp.type === 'common' && sp.start_month === month && isCredit) {
+        if (this.isItemPaid(sp.item_id, month)) continue
         total += sp.value * snapshot / cardRate
       } else if (sp.type === 'subscription' && sp.start_month <= month && (sp.end_month === null || sp.end_month >= month) && isCredit) {
+        if (this.isItemPaid(sp.item_id, month)) continue
         total += sp.value * snapshot / cardRate
       } else if ((sp.type === 'installment' || sp.type === 'emprestimo') && sp.start_month <= month) {
         const instCount = sp.total_installments || 0
