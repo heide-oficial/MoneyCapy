@@ -179,7 +179,7 @@ export class CardsRepository {
       }
       const snapshot = item.exchange_rate_snapshot || 1.0
       const monthlyValue = item.value / instCount
-      const monthsElapsed = monthDiff(item.start_month, month)
+      const monthsElapsed = monthDiff(item.start_month, month) + 1
       const totalAnticipated = this.getTotalAnticipated(item.id)
       const anticipatedInMonth = this.getAnticipatedInMonth(item.id, month)
       const pastAnticipations = totalAnticipated - anticipatedInMonth
@@ -219,7 +219,7 @@ export class CardsRepository {
         }
         if (visible) {
           const monthlyValue = sp.value / instCount
-          const monthsElapsed = monthDiff(sp.start_month, month)
+          const monthsElapsed = monthDiff(sp.start_month, month) + 1
           const totalAnticipated = this.getTotalAnticipatedForSplit(sp.split_id)
           const anticipatedInMonth = this.getAnticipatedInMonthForSplit(sp.split_id, month)
           const pastAnticipations = totalAnticipated - anticipatedInMonth
