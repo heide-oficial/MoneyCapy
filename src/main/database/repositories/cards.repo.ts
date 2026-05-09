@@ -32,13 +32,6 @@ export class CardsRepository {
     return row ? row.count : 0
   }
 
-  private isItemPaid(itemId: number, month: string): boolean {
-    const row = this.db.prepare(
-      'SELECT is_paid FROM item_monthly_status WHERE item_id = ? AND month = ?'
-    ).get(itemId, month) as any
-    return row ? row.is_paid === 1 : false
-  }
-
   private isItemInterrupted(itemId: number, month: string): boolean {
     const rows = this.db.prepare(
       'SELECT end_month, resume_month FROM item_interruptions WHERE item_id = ?'
@@ -150,7 +143,6 @@ export class CardsRepository {
     ).all(cardId, month) as any[]
     for (const item of commonItems) {
       if (this.isItemInterrupted(item.id, month)) continue
-      if (this.isItemPaid(item.id, month)) continue
       const snapshot = item.exchange_rate_snapshot || 1.0
       total += item.value * snapshot / cardRate
     }
@@ -163,7 +155,6 @@ export class CardsRepository {
     ).all(cardId, month, month) as any[]
     for (const sub of subs) {
       if (this.isItemInterrupted(sub.id, month)) continue
-      if (this.isItemPaid(sub.id, month)) continue
       const snapshot = sub.exchange_rate_snapshot || 1.0
       total += this.getEffectiveValueForSubscription(sub.id, sub.value, month) * snapshot / cardRate
     }
@@ -192,8 +183,7 @@ export class CardsRepository {
       const totalAnticipated = this.getTotalAnticipated(item.id)
       const anticipatedInMonth = this.getAnticipatedInMonth(item.id, month)
       const pastAnticipations = totalAnticipated - anticipatedInMonth
-      let remaining = instCount - monthsElapsed - pastAnticipations
-      if (this.isItemPaid(item.id, month)) remaining--
+      const remaining = instCount - monthsElapsed - pastAnticipations
       total += Math.max(0, remaining) * monthlyValue * snapshot / cardRate
     }
 
@@ -211,10 +201,8 @@ export class CardsRepository {
       const isCredit = sp.payment_method === null || sp.payment_method === 'credit'
       const snapshot = sp.exchange_rate_snapshot || 1.0
       if (sp.type === 'common' && sp.start_month === month && isCredit) {
-        if (this.isItemPaid(sp.item_id, month)) continue
         total += sp.value * snapshot / cardRate
       } else if (sp.type === 'subscription' && sp.start_month <= month && (sp.end_month === null || sp.end_month >= month) && isCredit) {
-        if (this.isItemPaid(sp.item_id, month)) continue
         total += sp.value * snapshot / cardRate
       } else if ((sp.type === 'installment' || sp.type === 'emprestimo') && sp.start_month <= month) {
         const instCount = sp.total_installments || 0
@@ -235,8 +223,7 @@ export class CardsRepository {
           const totalAnticipated = this.getTotalAnticipatedForSplit(sp.split_id)
           const anticipatedInMonth = this.getAnticipatedInMonthForSplit(sp.split_id, month)
           const pastAnticipations = totalAnticipated - anticipatedInMonth
-          let remaining = instCount - monthsElapsed - pastAnticipations
-          if (this.isItemPaid(sp.item_id, month)) remaining--
+          const remaining = instCount - monthsElapsed - pastAnticipations
           total += Math.max(0, remaining) * monthlyValue * snapshot / cardRate
         }
       }
