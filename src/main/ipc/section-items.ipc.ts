@@ -313,12 +313,13 @@ export function registerSectionItemsHandlers(db: WrappedDatabase): void {
     statusRepo.setPaid(itemId, month, isPaid, paidAt || null)
   })
 
-  ipcMain.handle(IPC_CHANNELS.ITEMS_INTERRUPT, (_, itemId: number, currentMonth: string, pauseMonths?: number) => {
+  ipcMain.handle(IPC_CHANNELS.ITEMS_INTERRUPT, (_, itemId: number, currentMonth: string, pauseMonths?: number | null) => {
     const item = repo.findById(itemId) as any
     if (!item) throw new Error('Item not found')
     if (item.type !== 'installment' && item.type !== 'emprestimo' && item.type !== 'subscription') throw new Error('Only installment/emprestimo/subscription items can be interrupted')
-    if (!pauseMonths && interruptionsRepo.hasPermanent(itemId)) throw new Error('Item already has a permanent interruption')
-    const resumeMonth = pauseMonths ? addMonths(currentMonth, pauseMonths + 1) : undefined
+    const temporaryMonths = typeof pauseMonths === 'number' && pauseMonths > 0 ? pauseMonths : null
+    if (temporaryMonths === null && interruptionsRepo.hasPermanent(itemId)) throw new Error('Item already has a permanent interruption')
+    const resumeMonth = temporaryMonths !== null ? addMonths(currentMonth, temporaryMonths + 1) : null
     interruptionsRepo.create(itemId, currentMonth, resumeMonth)
   })
 

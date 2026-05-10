@@ -9,7 +9,7 @@ export class ItemInterruptionsRepository {
     ).all(itemId) as any[]
   }
 
-  create(itemId: number, endMonth: string, resumeMonth?: string): void {
+  create(itemId: number, endMonth: string, resumeMonth?: string | null): void {
     this.db.prepare(
       'INSERT INTO item_interruptions (item_id, end_month, resume_month) VALUES (?, ?, ?)'
     ).run(itemId, endMonth, resumeMonth ?? null)

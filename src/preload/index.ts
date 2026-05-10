@@ -63,8 +63,8 @@ const api = {
     listMonthValues: (incomeId: number) => ipcRenderer.invoke(IPC_CHANNELS.PERSON_INCOME_LIST_MONTH_VALUES, incomeId),
     search: (personId: number, query: string, filters?: { isRecurring?: boolean; categoryId?: number; tagId?: number }) =>
       ipcRenderer.invoke(IPC_CHANNELS.PERSON_INCOME_SEARCH, personId, query, filters),
-    interrupt: (incomeId: number, month: string, pauseMonths?: number) =>
-      ipcRenderer.invoke(IPC_CHANNELS.INCOME_INTERRUPT, incomeId, month, pauseMonths),
+    interrupt: (incomeId: number, month: string, pauseMonths?: number | null) =>
+      ipcRenderer.invoke(IPC_CHANNELS.INCOME_INTERRUPT, incomeId, month, pauseMonths ?? null),
     updateInterruption: (interruptionId: number, endMonth: string, resumeMonth?: string | null) =>
       ipcRenderer.invoke(IPC_CHANNELS.INCOME_UPDATE_INTERRUPTION, interruptionId, endMonth, resumeMonth),
     reactivate: (interruptionId: number) =>
@@ -78,7 +78,7 @@ const api = {
     toggleActive: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.ITEMS_TOGGLE_ACTIVE, id),
     togglePaid: (id: number, month: string) => ipcRenderer.invoke(IPC_CHANNELS.ITEMS_TOGGLE_PAID, id, month),
     setPaid: (id: number, month: string, isPaid: boolean, paidAt?: string) => ipcRenderer.invoke(IPC_CHANNELS.ITEMS_SET_PAID, id, month, isPaid, paidAt),
-    interrupt: (itemId: number, month: string, pauseMonths?: number) => ipcRenderer.invoke(IPC_CHANNELS.ITEMS_INTERRUPT, itemId, month, pauseMonths),
+    interrupt: (itemId: number, month: string, pauseMonths?: number | null) => ipcRenderer.invoke(IPC_CHANNELS.ITEMS_INTERRUPT, itemId, month, pauseMonths ?? null),
     updateInterruption: (interruptionId: number, endMonth: string, resumeMonth?: string | null) => ipcRenderer.invoke(IPC_CHANNELS.ITEMS_UPDATE_INTERRUPTION, interruptionId, endMonth, resumeMonth),
     reactivate: (interruptionId: number) => ipcRenderer.invoke(IPC_CHANNELS.ITEMS_REACTIVATE, interruptionId),
     anticipate: (itemId: number, month: string, count: number, splitId?: number, discountedTotal?: number) =>

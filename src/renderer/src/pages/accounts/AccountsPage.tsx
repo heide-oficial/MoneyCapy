@@ -345,7 +345,7 @@ export default function AccountsPage() {
       </div>
 
       {expanded && (
-        <div className="tile-card-panel absolute -left-px -right-px top-full z-10 -mt-px rounded-b-lg border border-t-0 border-border px-4 pb-4 pt-3 shadow-2xl" onClick={event => event.stopPropagation()}>
+        <div className="tile-card-panel absolute -left-px -right-px top-full z-30 -mt-px rounded-b-lg border border-t-0 border-border px-4 pb-4 pt-3 shadow-2xl" onClick={event => event.stopPropagation()}>
           <div className="grid gap-2 sm:grid-cols-2">
             {[
               { icon: Building2, label: t('accounts.accountType'), value: formatAccountType(account.accountType) },

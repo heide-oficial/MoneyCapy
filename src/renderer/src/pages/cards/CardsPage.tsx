@@ -392,14 +392,14 @@ export default function CardsPage() {
         </div>
 
         {expanded && (
-          <div className="tile-card-panel absolute -left-px -right-px top-full z-10 -mt-px rounded-b-lg border border-t-0 border-border px-4 pb-4 pt-3 shadow-2xl" onClick={event => event.stopPropagation()}>
+          <div className="tile-card-panel absolute -left-px -right-px top-full z-30 -mt-px rounded-b-lg border border-t-0 border-border px-4 pb-4 pt-3 shadow-2xl" onClick={event => event.stopPropagation()}>
             <div className="mb-3 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{t('cards.usedOverLimit')}</span>
                 <span className="relative font-medium group/limit">
                   {fmtCard(card.usedLimit)} / {card.totalLimit === 0 ? t('cards.unlimited') : fmtCard(card.totalLimit)}
                   {card.totalLimit > 0 && (
-                    <span className="tile-card-tooltip pointer-events-none absolute bottom-full right-0 mb-2 hidden w-max max-w-[16rem] rounded-lg border border-border px-3 py-2 text-xs text-card-foreground group-hover/limit:block">
+                    <span className="tile-card-tooltip pointer-events-none absolute bottom-full right-0 z-[100] mb-2 hidden w-max max-w-[16rem] rounded-lg border border-border px-3 py-2 text-xs text-card-foreground group-hover/limit:block">
                       {t('cards.available')}: <span className="font-semibold text-foreground">{fmtCard(card.availableLimit)}</span>
                     </span>
                   )}

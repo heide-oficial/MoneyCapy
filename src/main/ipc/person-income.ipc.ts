@@ -157,11 +157,12 @@ export function registerPersonIncomeHandlers(db: WrappedDatabase): void {
     return items
   })
 
-  ipcMain.handle(IPC_CHANNELS.INCOME_INTERRUPT, (_, incomeId: number, currentMonth: string, pauseMonths?: number) => {
+  ipcMain.handle(IPC_CHANNELS.INCOME_INTERRUPT, (_, incomeId: number, currentMonth: string, pauseMonths?: number | null) => {
     const income = repo.findById(incomeId) as any
     if (!income) throw new Error('Income not found')
-    if (!pauseMonths && interruptionsRepo.hasPermanent(incomeId)) throw new Error('Income already has a permanent interruption')
-    const resumeMonth = pauseMonths ? addMonths(currentMonth, pauseMonths + 1) : undefined
+    const temporaryMonths = typeof pauseMonths === 'number' && pauseMonths > 0 ? pauseMonths : null
+    if (temporaryMonths === null && interruptionsRepo.hasPermanent(incomeId)) throw new Error('Income already has a permanent interruption')
+    const resumeMonth = temporaryMonths !== null ? addMonths(currentMonth, temporaryMonths + 1) : null
     interruptionsRepo.create(incomeId, currentMonth, resumeMonth)
   })
 
