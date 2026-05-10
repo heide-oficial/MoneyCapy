@@ -41,6 +41,89 @@ export class CardsRepository {
     return row?.count || 0
   }
 
+  private isItemPaid(itemId: number, month: string): boolean {
+    const row = this.db.prepare(
+      'SELECT is_paid FROM item_monthly_status WHERE item_id = ? AND month = ?'
+    ).get(itemId, month) as any
+    return row ? row.is_paid === 1 : false
+  }
+
+  private isInvoiceMarkedPaid(cardId: number, month: string): boolean | null {
+    const row = this.db.prepare(
+      'SELECT is_paid FROM card_invoice_status WHERE card_id = ? AND month = ?'
+    ).get(cardId, month) as any
+    if (!row) return null
+    return row.is_paid === 1
+  }
+
+  private getCreditInvoiceItemIds(cardId: number, month: string): number[] {
+    const ids = new Set<number>()
+    const rows = this.db.prepare(
+      `SELECT si.id, si.type, si.start_month, si.end_month, si.total_installments, si.is_active,
+              si.payment_method, NULL as split_id, NULL as split_installments
+       FROM section_items si
+       WHERE si.card_id = ? AND si.is_active = 1 AND (si.payment_method IS NULL OR si.payment_method = 'credit')
+       UNION ALL
+       SELECT si.id, si.type, si.start_month, si.end_month, ics.total_installments, si.is_active,
+              COALESCE(ics.payment_method, si.payment_method) as payment_method,
+              ics.id as split_id, ics.total_installments as split_installments
+       FROM item_card_splits ics
+       JOIN section_items si ON si.id = ics.item_id
+       WHERE ics.card_id = ? AND si.is_active = 1 AND (COALESCE(ics.payment_method, si.payment_method) IS NULL OR COALESCE(ics.payment_method, si.payment_method) = 'credit')`
+    ).all(cardId, cardId) as any[]
+
+    for (const row of rows) {
+      if (this.isItemInterrupted(row.id, month)) continue
+      if (row.type === 'common') {
+        if (row.start_month === month) ids.add(row.id)
+      } else if (row.type === 'subscription') {
+        if (row.start_month <= month && (!row.end_month || row.end_month >= month)) ids.add(row.id)
+      } else if (row.type === 'installment' || row.type === 'emprestimo') {
+        if (row.start_month > month) continue
+        const instCount = row.split_id ? (row.split_installments || 0) : (row.total_installments || 0)
+        if (instCount <= 0) continue
+        if (row.end_month) {
+          if (row.end_month >= month) ids.add(row.id)
+        } else {
+          const anticipated = row.split_id
+            ? this.getTotalAnticipatedForSplit(row.split_id)
+            : this.getTotalAnticipated(row.id)
+          const effectiveInst = instCount - anticipated
+          if (effectiveInst > 0 && addMonths(row.start_month, effectiveInst) > month) ids.add(row.id)
+        }
+      }
+    }
+
+    return Array.from(ids)
+  }
+
+  isInvoicePaid(cardId: number, month: string): boolean {
+    const marked = this.isInvoiceMarkedPaid(cardId, month)
+    if (marked !== null) return marked
+
+    const itemIds = this.getCreditInvoiceItemIds(cardId, month)
+    if (itemIds.length === 0) return false
+    const placeholders = itemIds.map(() => '?').join(',')
+    const row = this.db.prepare(
+      `SELECT COUNT(*) as paid_count
+       FROM item_monthly_status
+       WHERE item_id IN (${placeholders}) AND month = ? AND is_paid = 1`
+    ).get(...itemIds, month) as any
+    return (row?.paid_count || 0) === itemIds.length
+  }
+
+  setInvoicePaid(cardId: number, month: string, isPaid: boolean, paidAt?: string | null): void {
+    const date = isPaid ? (paidAt || new Date().toISOString().substring(0, 10)) : null
+    this.db.prepare(`
+      INSERT INTO card_invoice_status (card_id, month, is_paid, paid_at, updated_at)
+      VALUES (?, ?, ?, ?, datetime('now'))
+      ON CONFLICT(card_id, month) DO UPDATE SET
+        is_paid = excluded.is_paid,
+        paid_at = excluded.paid_at,
+        updated_at = excluded.updated_at
+    `).run(cardId, month, isPaid ? 1 : 0, date)
+  }
+
   private isItemInterrupted(itemId: number, month: string): boolean {
     const rows = this.db.prepare(
       'SELECT end_month, resume_month FROM item_interruptions WHERE item_id = ?'
@@ -139,6 +222,7 @@ export class CardsRepository {
   }
 
   delete(id: number) {
+    this.db.prepare('DELETE FROM card_invoice_status WHERE card_id = ?').run(id)
     this.db.prepare('DELETE FROM cards WHERE id = ?').run(id)
   }
 
@@ -163,6 +247,7 @@ export class CardsRepository {
       const limitStartMonth = this.getLimitStartMonth(item.start_month, item.billing_day_month_offset)
       if (limitStartMonth !== month) continue
       if (this.isItemInterrupted(item.id, item.start_month)) continue
+      if (this.isItemPaid(item.id, item.start_month) || this.isInvoicePaid(cardId, item.start_month)) continue
       const snapshot = item.exchange_rate_snapshot || 1.0
       total += item.value * snapshot / cardRate
     }
@@ -178,6 +263,7 @@ export class CardsRepository {
       if (sub.start_month > invoiceMonth) continue
       if (sub.end_month && sub.end_month < invoiceMonth) continue
       if (this.isItemInterrupted(sub.id, invoiceMonth)) continue
+      if (this.isItemPaid(sub.id, invoiceMonth) || this.isInvoicePaid(cardId, invoiceMonth)) continue
       const snapshot = sub.exchange_rate_snapshot || 1.0
       total += this.getEffectiveValueForSubscription(sub.id, sub.value, invoiceMonth) * snapshot / cardRate
     }
@@ -231,12 +317,14 @@ export class CardsRepository {
         const limitStartMonth = this.getLimitStartMonth(sp.start_month, sp.billing_day_month_offset)
         if (limitStartMonth !== month) continue
         if (this.isItemInterrupted(sp.item_id, sp.start_month)) continue
+        if (this.isItemPaid(sp.item_id, sp.start_month) || this.isInvoicePaid(cardId, sp.start_month)) continue
         total += sp.value * snapshot / cardRate
       } else if (sp.type === 'subscription' && isCredit) {
         const invoiceMonth = this.getInvoiceMonthForLimitMonth(month, sp.billing_day_month_offset)
         if (sp.start_month > invoiceMonth) continue
         if (sp.end_month && sp.end_month < invoiceMonth) continue
         if (this.isItemInterrupted(sp.item_id, invoiceMonth)) continue
+        if (this.isItemPaid(sp.item_id, invoiceMonth) || this.isInvoicePaid(cardId, invoiceMonth)) continue
         total += sp.value * snapshot / cardRate
       } else if ((sp.type === 'installment' || sp.type === 'emprestimo') && sp.start_month <= maxInvoiceMonth && isCredit) {
         const limitStartMonth = this.getLimitStartMonth(sp.start_month, sp.billing_day_month_offset)

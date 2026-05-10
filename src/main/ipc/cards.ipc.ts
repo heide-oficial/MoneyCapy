@@ -160,6 +160,7 @@ export function registerCardsHandlers(db: WrappedDatabase): void {
       // Check if all credit items for this card are already paid
       let invoiceAllPaid = false
       if (!beforeStart && base.cardType !== 'debit') {
+        invoiceAllPaid = repo.isInvoicePaid(card.id, m)
         const cardItems = itemsRepo.findByCardIdAndMonth(card.id, m) as any[]
         const isInterrupted = (itemId: number) => {
           const rows = db.prepare('SELECT end_month, resume_month FROM item_interruptions WHERE item_id = ?').all(itemId) as any[]
@@ -170,7 +171,7 @@ export function registerCardsHandlers(db: WrappedDatabase): void {
           if (item.type === 'installment' || item.type === 'emprestimo') return true
           return item.payment_method === 'credit'
         })
-        invoiceAllPaid = creditItems.length === 0 || creditItems.every((item: any) => statusRepo.isPaid(item.id, m))
+        invoiceAllPaid = invoiceAllPaid || creditItems.length === 0 || creditItems.every((item: any) => statusRepo.isPaid(item.id, m))
       }
 
       return {
@@ -220,6 +221,7 @@ export function registerCardsHandlers(db: WrappedDatabase): void {
     for (const item of unpaid) {
       statusRepo.setPaid(item.id, month, true, today)
     }
+    repo.setInvoicePaid(cardId, month, true, today)
 
     return {
       paidCount: unpaid.length,

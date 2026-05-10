@@ -127,7 +127,7 @@ export class BackupService {
     const monthlyTables = [
       'item_monthly_status', 'income_monthly_status',
       'item_monthly_values', 'item_monthly_active',
-      'bank_account_monthly_balance'
+      'bank_account_monthly_balance', 'card_invoice_status'
     ]
     for (const t of monthlyTables) {
       try {
