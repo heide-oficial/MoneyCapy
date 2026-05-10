@@ -137,7 +137,7 @@ export function ItemsForm({
   const [showValueOverrideModal, setShowValueOverrideModal] = useState(false)
   const [valueOverrideMonth, setValueOverrideMonth] = useState('')
   const [valueOverrideValue, setValueOverrideValue] = useState(0)
-  const [currentPaymentStates, setCurrentPaymentStates] = useState<Record<string, { mode: 'total' | 'perParcel' | 'percent'; total: number; paidAt: string }>>({})
+  const [currentPaymentStates, setCurrentPaymentStates] = useState<Record<string, { mode: 'total' | 'percent'; total: number; paidAt: string }>>({})
 
   // Inline creation modals
   const INLINE_COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316', '#14b8a6', '#6366f1']
@@ -837,22 +837,18 @@ export function ItemsForm({
               )}
             </div>
             <div className="flex rounded-md border border-input p-0.5 bg-muted/30">
-              {(['total', 'perParcel', 'percent'] as const).map(m => (
+              {(['total', 'percent'] as const).map(m => (
                 <button key={m} type="button"
                   onClick={() => updateCurrentPaymentState({ mode: m })}
                   className={`flex-1 py-1 text-xs font-medium rounded transition-all ${
                     currentPaymentState.mode === m ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
                   }`}>
-                  {m === 'total' ? t('itemsForm.discountTotal') : m === 'perParcel' ? t('itemsForm.discountPerInstallment') : t('itemsForm.discountPercent')}
+                  {m === 'total' ? t('itemsForm.discountTotal') : t('itemsForm.discountPercent')}
                 </button>
               ))}
             </div>
             {currentPaymentState.mode === 'total' && (
               <CurrencyInput label={t('itemsForm.paidInstallmentValue')} value={currentPaymentState.total}
-                onChange={v => updateCurrentPaymentState({ total: v })} symbol={currencySymbol} />
-            )}
-            {currentPaymentState.mode === 'perParcel' && (
-              <CurrencyInput label={t('itemsForm.valuePerInstallment')} value={currentPaymentState.total}
                 onChange={v => updateCurrentPaymentState({ total: v })} symbol={currencySymbol} />
             )}
             {currentPaymentState.mode === 'percent' && (
@@ -879,9 +875,8 @@ export function ItemsForm({
             </button>
           </div>
 
-          <div className="pt-1">
-            <p className="mb-2 text-xs font-semibold text-muted-foreground">{t('itemsForm.futureInstallmentsAnticipation')}</p>
-          </div>
+          <div className="rounded-md border border-border/60 bg-muted/20 p-3 space-y-3">
+            <p className="text-xs font-semibold text-muted-foreground">{t('itemsForm.futureInstallmentsAnticipation')}</p>
 
           {/* Progress bar + anticipation controls */}
           <div className="flex items-center gap-2">
@@ -995,6 +990,7 @@ export function ItemsForm({
                 <span className="font-semibold text-foreground">{fmtVal(opts.monthlyValue)}{t('itemsForm.perMonth')}</span>
               )
             )}
+          </div>
           </div>
         </div>
       )

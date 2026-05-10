@@ -374,7 +374,6 @@ export function registerSectionItemsHandlers(db: WrappedDatabase): void {
     if (!item) throw new Error('Item not found')
     if (item.type !== 'installment' && item.type !== 'emprestimo') throw new Error('Only installment/emprestimo items can use current installment payment anticipation')
     if (item.end_reason === 'settled') throw new Error('Cannot anticipate payment for a settled item')
-    if (isItemInterrupted(itemId, month)) throw new Error('Cannot anticipate payment for an interrupted month')
     if (!Number.isFinite(originalValue) || originalValue <= 0) throw new Error('Original value must be positive')
     if (!Number.isFinite(paidValue) || paidValue < 0) throw new Error('Paid value must be zero or positive')
     if (paidValue > originalValue) throw new Error('Paid value cannot be greater than original value')
@@ -388,6 +387,7 @@ export function registerSectionItemsHandlers(db: WrappedDatabase): void {
     })
 
     if (!splitId) {
+      if (isItemInterrupted(itemId, month)) return
       statusRepo.setPaid(itemId, month, true, paidAt || undefined)
       return
     }
@@ -396,7 +396,7 @@ export function registerSectionItemsHandlers(db: WrappedDatabase): void {
     const allSplitsHaveCurrentPayment = splitRows.length > 0 && splitRows.every(split =>
       currentPaymentsRepo.findByTarget(itemId, month, split.id)
     )
-    if (allSplitsHaveCurrentPayment) statusRepo.setPaid(itemId, month, true, paidAt || undefined)
+    if (allSplitsHaveCurrentPayment && !isItemInterrupted(itemId, month)) statusRepo.setPaid(itemId, month, true, paidAt || undefined)
   })
 
   ipcMain.handle(IPC_CHANNELS.ITEMS_DELETE_CURRENT_INSTALLMENT_PAYMENT, (_, paymentId: number) => {
