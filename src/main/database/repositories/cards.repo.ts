@@ -32,6 +32,15 @@ export class CardsRepository {
     return row ? row.count : 0
   }
 
+  private getPaidMonthsCount(itemId: number, startMonth: string, endMonth: string): number {
+    const row = this.db.prepare(
+      `SELECT COUNT(*) as count
+       FROM item_monthly_status
+       WHERE item_id = ? AND is_paid = 1 AND month >= ? AND month <= ?`
+    ).get(itemId, startMonth, endMonth) as any
+    return row?.count || 0
+  }
+
   private isItemInterrupted(itemId: number, month: string): boolean {
     const rows = this.db.prepare(
       'SELECT end_month, resume_month FROM item_interruptions WHERE item_id = ?'
@@ -196,11 +205,12 @@ export class CardsRepository {
       }
       const snapshot = item.exchange_rate_snapshot || 1.0
       const monthlyValue = item.value / instCount
-      const monthsElapsed = monthDiff(item.start_month, month) + 1
+      const monthsElapsed = month < item.start_month ? 0 : monthDiff(item.start_month, month) + 1
+      const paidMonths = this.getPaidMonthsCount(item.id, limitStartMonth, month)
       const totalAnticipated = this.getTotalAnticipated(item.id)
       const anticipatedInMonth = this.getAnticipatedInMonth(item.id, month)
       const pastAnticipations = totalAnticipated - anticipatedInMonth
-      const remaining = instCount - monthsElapsed - pastAnticipations
+      const remaining = instCount - Math.max(monthsElapsed, paidMonths) - pastAnticipations
       total += Math.max(0, remaining) * monthlyValue * snapshot / cardRate
     }
 
@@ -246,11 +256,12 @@ export class CardsRepository {
         }
         if (visible) {
           const monthlyValue = sp.value / instCount
-          const monthsElapsed = monthDiff(sp.start_month, month) + 1
+          const monthsElapsed = month < sp.start_month ? 0 : monthDiff(sp.start_month, month) + 1
+          const paidMonths = this.getPaidMonthsCount(sp.item_id, limitStartMonth, month)
           const totalAnticipated = this.getTotalAnticipatedForSplit(sp.split_id)
           const anticipatedInMonth = this.getAnticipatedInMonthForSplit(sp.split_id, month)
           const pastAnticipations = totalAnticipated - anticipatedInMonth
-          const remaining = instCount - monthsElapsed - pastAnticipations
+          const remaining = instCount - Math.max(monthsElapsed, paidMonths) - pastAnticipations
           total += Math.max(0, remaining) * monthlyValue * snapshot / cardRate
         }
       }
