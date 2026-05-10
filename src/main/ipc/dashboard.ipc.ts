@@ -37,21 +37,33 @@ function mapToDashboardItem(
 
     if (splits.length > 0) {
       const splitValues = db.prepare(`
-        SELECT ics.id, ics.value, ics.total_installments, p.paid_value
+        SELECT ics.id, ics.value, ics.total_installments, p.paid_value, a.count as anticipated_count, a.discounted_total
         FROM item_card_splits ics
         LEFT JOIN item_current_installment_payments p
           ON p.item_id = ics.item_id AND p.split_id = ics.id AND p.month = ?
+        LEFT JOIN item_anticipations a
+          ON a.split_id = ics.id AND a.month = ?
         WHERE ics.item_id = ?
-      `).all(month, item.id) as any[]
-      ;(item as any).current_installment_paid_value = splitValues.reduce((sum, split) => {
+      `).all(month, month, item.id) as any[]
+      ;(item as any).current_installment_monthly_value = splitValues.reduce((sum, split) => {
         const monthly = Math.round((split.value / split.total_installments) * 100) / 100
-        return sum + (split.paid_value ?? monthly)
+        const futureValue = split.anticipated_count > 0 && split.discounted_total != null
+          ? split.discounted_total
+          : monthly * (split.anticipated_count || 0)
+        return sum + (split.paid_value ?? monthly) + futureValue
       }, 0)
     } else {
       const payment = db.prepare(
         'SELECT paid_value FROM item_current_installment_payments WHERE item_id = ? AND month = ? AND split_id IS NULL LIMIT 1'
       ).get(item.id, month) as any
-      ;(item as any).current_installment_paid_value = payment?.paid_value ?? null
+      const anticipation = db.prepare(
+        'SELECT count, discounted_total FROM item_anticipations WHERE item_id = ? AND split_id IS NULL AND month = ? LIMIT 1'
+      ).get(item.id, month) as any
+      const monthly = item.total_installments ? Math.round((item.value / item.total_installments) * 100) / 100 : 0
+      const futureValue = anticipation?.count > 0 && anticipation.discounted_total != null
+        ? anticipation.discounted_total
+        : monthly * (anticipation?.count || 0)
+      ;(item as any).current_installment_monthly_value = (payment?.paid_value ?? monthly) + futureValue
     }
   }
 
@@ -113,7 +125,7 @@ function mapToDashboardItem(
   }
 
   ;(result as any).exchangeRateSnapshot = item.exchange_rate_snapshot || 1.0
-  ;(result as any).currentInstallmentPaidValue = (item as any).current_installment_paid_value ?? null
+  ;(result as any).currentInstallmentMonthlyValue = (item as any).current_installment_monthly_value ?? null
   ;(result as any).currencySymbol = item.currency_symbol || undefined
   ;(result as any).currencyCode = item.currency_code || undefined
 
@@ -306,7 +318,7 @@ export function registerDashboardHandlers(db: WrappedDatabase): void {
     function effectiveValue(item: DashboardListItem): number {
       const snapshot = (item as any).exchangeRateSnapshot || 1.0
       if ((item.type === 'installment' || item.type === 'emprestimo') && item.totalInstallments) {
-        return (((item as any).currentInstallmentPaidValue ?? Math.round((item.value / item.totalInstallments) * 100) / 100) * snapshot)
+        return (((item as any).currentInstallmentMonthlyValue ?? Math.round((item.value / item.totalInstallments) * 100) / 100) * snapshot)
       }
       return item.value * snapshot
     }

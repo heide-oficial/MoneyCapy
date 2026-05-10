@@ -141,6 +141,13 @@ export class BankAccountsRepository {
     return row ? row.count : 0
   }
 
+  private getDiscountedTotalInMonth(itemId: number, month: string): number | null {
+    const row = this.db.prepare(
+      'SELECT discounted_total FROM item_anticipations WHERE item_id = ? AND split_id IS NULL AND month = ?'
+    ).get(itemId, month) as any
+    return row ? row.discounted_total ?? null : null
+  }
+
   private getCurrentInstallmentPaidValue(itemId: number, month: string): number | null {
     const row = this.db.prepare(
       'SELECT paid_value FROM item_current_installment_payments WHERE item_id = ? AND month = ? AND split_id IS NULL LIMIT 1'
@@ -204,7 +211,9 @@ export class BankAccountsRepository {
         const anticipatedInMonth = this.getAnticipatedInMonth(item.id, month)
         const baseMonthly = item.value / instCount
         const currentMonthly = this.getCurrentInstallmentPaidValue(item.id, month) ?? baseMonthly
-        const monthlyValue = (currentMonthly + baseMonthly * anticipatedInMonth) * snapshot
+        const discounted = this.getDiscountedTotalInMonth(item.id, month)
+        const futureValue = anticipatedInMonth > 0 && discounted != null ? discounted : baseMonthly * anticipatedInMonth
+        const monthlyValue = (currentMonthly + futureValue) * snapshot
         if (item.type === 'emprestimo') {
           emprestimoCount++
           emprestimoTotal += monthlyValue

@@ -32,6 +32,20 @@ export class CardsRepository {
     return row ? row.count : 0
   }
 
+  private getDiscountedTotalInMonth(itemId: number, month: string): number | null {
+    const row = this.db.prepare(
+      'SELECT discounted_total FROM item_anticipations WHERE item_id = ? AND split_id IS NULL AND month = ?'
+    ).get(itemId, month) as any
+    return row ? row.discounted_total ?? null : null
+  }
+
+  private getDiscountedTotalInMonthForSplit(splitId: number, month: string): number | null {
+    const row = this.db.prepare(
+      'SELECT discounted_total FROM item_anticipations WHERE split_id = ? AND month = ?'
+    ).get(splitId, month) as any
+    return row ? row.discounted_total ?? null : null
+  }
+
   private getCurrentInstallmentPaidValue(itemId: number, month: string, splitId?: number | null): number | null {
     const row = splitId == null
       ? this.db.prepare(
@@ -433,7 +447,9 @@ export class CardsRepository {
         const anticipatedInMonth = this.getAnticipatedInMonth(item.id, month)
         const baseMonthly = item.value / instCount
         const currentMonthly = this.getCurrentInstallmentPaidValue(item.id, month, null) ?? baseMonthly
-        const monthlyValue = (currentMonthly + baseMonthly * anticipatedInMonth) * snapshot / cardRate
+        const discounted = this.getDiscountedTotalInMonth(item.id, month)
+        const futureValue = anticipatedInMonth > 0 && discounted != null ? discounted : baseMonthly * anticipatedInMonth
+        const monthlyValue = (currentMonthly + futureValue) * snapshot / cardRate
         if (item.type === 'emprestimo') {
           emprestimoCount++
           emprestimoTotal += monthlyValue
@@ -479,7 +495,9 @@ export class CardsRepository {
           const anticipatedInMonth = this.getAnticipatedInMonthForSplit(sp.split_id, month)
           const baseMonthly = sp.value / instCount
           const currentMonthly = this.getCurrentInstallmentPaidValue(sp.item_id, month, sp.split_id) ?? baseMonthly
-          const monthlyValue = (currentMonthly + baseMonthly * anticipatedInMonth) * snapshot / cardRate
+          const discounted = this.getDiscountedTotalInMonthForSplit(sp.split_id, month)
+          const futureValue = anticipatedInMonth > 0 && discounted != null ? discounted : baseMonthly * anticipatedInMonth
+          const monthlyValue = (currentMonthly + futureValue) * snapshot / cardRate
           if (sp.type === 'emprestimo') {
             emprestimoCount++
             emprestimoTotal += monthlyValue

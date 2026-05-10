@@ -205,25 +205,31 @@ export function registerInsightsHandlers(db: WrappedDatabase): void {
           if (splits.length > 0) {
             for (const sp of splits) {
               const anticipatedRow = db.prepare(
-                'SELECT COALESCE(count, 0) as count FROM item_anticipations WHERE split_id = ? AND month = ?'
+                'SELECT COALESCE(count, 0) as count, discounted_total FROM item_anticipations WHERE split_id = ? AND month = ?'
               ).get(sp.id, month) as any
               const currentPayment = db.prepare(
                 'SELECT paid_value FROM item_current_installment_payments WHERE item_id = ? AND split_id = ? AND month = ? LIMIT 1'
               ).get(item.id, sp.id, month) as any
               const anticipatedInMonth = anticipatedRow ? anticipatedRow.count : 0
               const monthly = Math.round((sp.value / sp.total_installments) * 100) / 100
-              effectiveValue += (currentPayment?.paid_value ?? monthly) + monthly * anticipatedInMonth
+              const futureValue = anticipatedInMonth > 0 && anticipatedRow?.discounted_total != null
+                ? anticipatedRow.discounted_total
+                : monthly * anticipatedInMonth
+              effectiveValue += (currentPayment?.paid_value ?? monthly) + futureValue
             }
           } else {
             const anticipatedRow = db.prepare(
-              'SELECT COALESCE(count, 0) as count FROM item_anticipations WHERE item_id = ? AND split_id IS NULL AND month = ?'
+              'SELECT COALESCE(count, 0) as count, discounted_total FROM item_anticipations WHERE item_id = ? AND split_id IS NULL AND month = ?'
             ).get(item.id, month) as any
             const currentPayment = db.prepare(
               'SELECT paid_value FROM item_current_installment_payments WHERE item_id = ? AND split_id IS NULL AND month = ? LIMIT 1'
             ).get(item.id, month) as any
             const anticipatedInMonth = anticipatedRow ? anticipatedRow.count : 0
             const monthly = Math.round((item.value / item.total_installments) * 100) / 100
-            effectiveValue = (currentPayment?.paid_value ?? monthly) + monthly * anticipatedInMonth
+            const futureValue = anticipatedInMonth > 0 && anticipatedRow?.discounted_total != null
+              ? anticipatedRow.discounted_total
+              : monthly * anticipatedInMonth
+            effectiveValue = (currentPayment?.paid_value ?? monthly) + futureValue
           }
         } else {
           effectiveValue = sectionItemsRepo.getEffectiveValue(item, month)

@@ -137,14 +137,7 @@ export function ItemsForm({
   const [showValueOverrideModal, setShowValueOverrideModal] = useState(false)
   const [valueOverrideMonth, setValueOverrideMonth] = useState('')
   const [valueOverrideValue, setValueOverrideValue] = useState(0)
-  const [currentPaymentTarget, setCurrentPaymentTarget] = useState<{
-    splitId?: number
-    label: string
-    originalValue: number
-    payment?: CurrentInstallmentPayment | null
-  } | null>(null)
-  const [currentPaymentPaidValue, setCurrentPaymentPaidValue] = useState(0)
-  const [currentPaymentPaidAt, setCurrentPaymentPaidAt] = useState('')
+  const [currentPaymentStates, setCurrentPaymentStates] = useState<Record<string, { mode: 'total' | 'perParcel' | 'percent'; total: number; paidAt: string }>>({})
 
   // Inline creation modals
   const INLINE_COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316', '#14b8a6', '#6366f1']
@@ -170,7 +163,7 @@ export function ItemsForm({
     if (open) {
       setModalTab(initialTab || 'detalhes')
       setDiscountStates({})
-      setCurrentPaymentTarget(null)
+      setCurrentPaymentStates({})
     }
   }, [open])
 
@@ -212,35 +205,6 @@ export function ItemsForm({
     toast.success(t('valueOverrides.removed'))
     await loadValueOverrides()
     onValuesChanged?.()
-  }
-
-  const openCurrentPaymentModal = (target: {
-    splitId?: number
-    label: string
-    originalValue: number
-    payment?: CurrentInstallmentPayment | null
-  }) => {
-    const paidAt = target.payment?.paidAt || form.paidAt || new Date().toISOString().substring(0, 10)
-    setCurrentPaymentTarget(target)
-    setCurrentPaymentPaidValue(target.payment?.paidValue ?? target.originalValue)
-    setCurrentPaymentPaidAt(paidAt)
-  }
-
-  const saveCurrentPayment = async () => {
-    if (!currentPaymentTarget) return
-    await handleCurrentInstallmentPayment(
-      currentPaymentTarget.splitId,
-      currentPaymentTarget.originalValue,
-      currentPaymentPaidValue,
-      currentPaymentPaidAt
-    )
-    setCurrentPaymentTarget(null)
-  }
-
-  const deleteCurrentPayment = async () => {
-    if (!currentPaymentTarget?.payment) return
-    await handleDeleteCurrentInstallmentPayment(currentPaymentTarget.payment.id)
-    setCurrentPaymentTarget(null)
   }
 
   const handleModalScroll = () => {
@@ -813,7 +777,17 @@ export function ItemsForm({
 
       const paidPct = effectiveTotal > 0 ? Math.min((opts.currentInst / effectiveTotal) * 100, 100) : 0
       const previewPct = effectiveTotal > 0 && countNum > 0 ? Math.min((countNum / effectiveTotal) * 100, 100 - paidPct) : 0
-      const currentPaymentSavings = opts.currentPayment ? opts.currentPayment.originalValue - opts.currentPayment.paidValue : 0
+      const originalCurrentValue = Math.round(opts.monthlyValue * 100) / 100
+      const currentPaymentState = currentPaymentStates[key] || {
+        mode: 'total' as const,
+        total: opts.currentPayment?.paidValue ?? originalCurrentValue,
+        paidAt: opts.currentPayment?.paidAt || form.paidAt || new Date().toISOString().substring(0, 10)
+      }
+      const updateCurrentPaymentState = (patch: Partial<typeof currentPaymentState>) => {
+        setCurrentPaymentStates(s => ({ ...s, [key]: { ...currentPaymentState, ...patch } }))
+      }
+      const currentPaymentSavings = originalCurrentValue - currentPaymentState.total
+      const savedCurrentPaymentSavings = opts.currentPayment ? opts.currentPayment.originalValue - opts.currentPayment.paidValue : 0
 
       return (
         <div className="rounded-lg border border-border bg-card p-4 space-y-3">
@@ -831,51 +805,82 @@ export function ItemsForm({
             </span>
           </div>
 
-          <div className="rounded-md border border-border/60 bg-muted/20 p-3 space-y-2">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-muted-foreground">{t('itemsForm.currentInstallmentPayment')}</p>
-                <p className="text-sm text-foreground">
-                  {opts.currentPayment
-                    ? `${fmtVal(opts.currentPayment.paidValue)} - ${fmtDate(opts.currentPayment.paidAt || '')}`
-                    : t('itemsForm.noCurrentInstallmentPayment')}
-                </p>
-                {opts.currentPayment && currentPaymentSavings > 0 && (
-                  <p className="text-xs font-medium text-green-500">{t('itemsForm.savingsLabel')}: {fmtVal(currentPaymentSavings)}</p>
-                )}
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  disabled={done || opts.monthlyValue <= 0}
-                  onClick={() => openCurrentPaymentModal({
-                    splitId: opts.splitId,
-                    label: opts.label,
-                    originalValue: Math.round(opts.monthlyValue * 100) / 100,
-                    payment: opts.currentPayment
-                  })}
-                >
-                  {t('itemsForm.anticipateCurrentInstallmentPayment')}
-                </Button>
-                {opts.currentPayment && (
-                  <button
-                    type="button"
-                    onClick={() => openCurrentPaymentModal({
-                      splitId: opts.splitId,
-                      label: opts.label,
-                      originalValue: opts.currentPayment?.originalValue ?? Math.round(opts.monthlyValue * 100) / 100,
-                      payment: opts.currentPayment
+          <div className="rounded-md border border-border/60 bg-muted/20 p-3 space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground">{t('itemsForm.currentMonthPaymentAnticipation')}</p>
+                {opts.currentPayment ? (
+                  <p className="text-xs text-muted-foreground">
+                    {t('itemsForm.currentInstallmentPaymentSavedDetail', {
+                      value: fmtVal(opts.currentPayment.paidValue),
+                      date: fmtDate(opts.currentPayment.paidAt || '')
                     })}
-                    className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-input text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                    title={t('common.edit')}
-                  >
-                    <Pencil size={14} />
-                  </button>
+                    {savedCurrentPaymentSavings > 0 && (
+                      <span className="ml-1 font-semibold text-green-500">
+                        {t('itemsForm.savingsLabel')}: {fmtVal(savedCurrentPaymentSavings)}
+                      </span>
+                    )}
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">{t('itemsForm.noCurrentInstallmentPayment')}</p>
                 )}
               </div>
+              {opts.currentPayment && (
+                <button
+                  type="button"
+                  onClick={() => handleDeleteCurrentInstallmentPayment(opts.currentPayment!.id)}
+                  className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-input text-muted-foreground hover:bg-accent hover:text-destructive transition-colors"
+                  title={t('common.delete')}
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
+            <div className="flex rounded-md border border-input p-0.5 bg-muted/30">
+              {(['total', 'perParcel', 'percent'] as const).map(m => (
+                <button key={m} type="button"
+                  onClick={() => updateCurrentPaymentState({ mode: m })}
+                  className={`flex-1 py-1 text-xs font-medium rounded transition-all ${
+                    currentPaymentState.mode === m ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                  }`}>
+                  {m === 'total' ? t('itemsForm.discountTotal') : m === 'perParcel' ? t('itemsForm.discountPerInstallment') : t('itemsForm.discountPercent')}
+                </button>
+              ))}
+            </div>
+            {currentPaymentState.mode === 'total' && (
+              <CurrencyInput label={t('itemsForm.paidInstallmentValue')} value={currentPaymentState.total}
+                onChange={v => updateCurrentPaymentState({ total: v })} symbol={currencySymbol} />
+            )}
+            {currentPaymentState.mode === 'perParcel' && (
+              <CurrencyInput label={t('itemsForm.valuePerInstallment')} value={currentPaymentState.total}
+                onChange={v => updateCurrentPaymentState({ total: v })} symbol={currencySymbol} />
+            )}
+            {currentPaymentState.mode === 'percent' && (
+              <Input label={t('itemsForm.percentDiscount')} type="number" step="0.01" min={0} max={100}
+                value={originalCurrentValue > 0 ? String(Math.round((1 - currentPaymentState.total / originalCurrentValue) * 10000) / 100) : '0'}
+                onChange={e => {
+                  const pct = parseFloat(e.target.value) || 0
+                  updateCurrentPaymentState({ total: Math.round(originalCurrentValue * (1 - pct / 100) * 100) / 100 })
+                }} />
+            )}
+            <DatePicker className="w-full justify-start" mode="date" label={t('itemsForm.paymentDate')} value={currentPaymentState.paidAt}
+              onChange={v => updateCurrentPaymentState({ paidAt: v })} />
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>{t('itemsForm.originalValue')}: {fmtVal(originalCurrentValue)}</span>
+              {currentPaymentSavings > 0 && (
+                <span className="font-semibold text-green-500">{t('itemsForm.savingsLabel')}: {fmtVal(currentPaymentSavings)}</span>
+              )}
+            </div>
+            <button type="button"
+              onClick={() => handleCurrentInstallmentPayment(opts.splitId, originalCurrentValue, currentPaymentState.total, currentPaymentState.paidAt)}
+              disabled={done || opts.monthlyValue <= 0 || currentPaymentState.total > originalCurrentValue}
+              className="w-full h-7 flex items-center justify-center rounded border border-input text-xs font-medium text-muted-foreground hover:bg-accent disabled:opacity-30 transition-colors gap-1">
+              <FastForward size={10} /> {t('itemsForm.anticipateCurrentInstallmentPayment')}
+            </button>
+          </div>
+
+          <div className="pt-1">
+            <p className="mb-2 text-xs font-semibold text-muted-foreground">{t('itemsForm.futureInstallmentsAnticipation')}</p>
           </div>
 
           {/* Progress bar + anticipation controls */}
@@ -1331,57 +1336,6 @@ export function ItemsForm({
           <Button onClick={handleSaveValueOverride}>{t('common.save')}</Button>
         </div>
       </div>
-    </Modal>
-
-    <Modal
-      open={!!currentPaymentTarget}
-      onClose={() => setCurrentPaymentTarget(null)}
-      title={t('itemsForm.anticipateCurrentInstallmentPayment')}
-      maxWidth="max-w-sm"
-    >
-      {currentPaymentTarget && (
-        <div className="space-y-4">
-          <div className="rounded-lg border border-border bg-card p-3 space-y-1">
-            <p className="text-sm font-semibold text-foreground">{currentPaymentTarget.label}</p>
-            <p className="text-xs text-muted-foreground">
-              {t('itemsForm.originalInstallmentValue')}: {fmtVal(currentPaymentTarget.originalValue)}
-            </p>
-          </div>
-          <CurrencyInput
-            label={t('itemsForm.paidInstallmentValue')}
-            value={currentPaymentPaidValue}
-            onChange={setCurrentPaymentPaidValue}
-            autoFocus
-            symbol={currencySymbol}
-          />
-          <DatePicker
-            className="w-full justify-start"
-            mode="date"
-            label={t('itemsForm.paymentDate')}
-            value={currentPaymentPaidAt}
-            onChange={setCurrentPaymentPaidAt}
-          />
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>{t('itemsForm.savingsLabel')}</span>
-            <span className="font-semibold text-green-500">
-              {fmtVal(Math.max(0, currentPaymentTarget.originalValue - currentPaymentPaidValue))}
-            </span>
-          </div>
-          <div className="flex items-center justify-between gap-2 pt-2">
-            <div>
-              {currentPaymentTarget.payment && (
-                <Button variant="ghost" className="text-destructive hover:text-destructive" onClick={deleteCurrentPayment}>
-                  <X size={14} /> {t('common.delete')}
-                </Button>
-              )}
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setCurrentPaymentTarget(null)}>{t('common.cancel')}</Button>
-              <Button onClick={saveCurrentPayment}>{t('common.save')}</Button>
-            </div>
-          </div>
-        </div>
-      )}
     </Modal>
 
     {/* Store creation modal */}

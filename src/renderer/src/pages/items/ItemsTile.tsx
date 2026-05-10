@@ -133,6 +133,23 @@ export function ItemsTile({
     monthValue = item.type === 'subscription' ? (item.effectiveValue ?? item.value) : item.value
   }
 
+  const adjustedInstallmentTotal = (() => {
+    if (!isInstallment) return item.value
+    const currentPaymentSavings = (item.currentInstallmentPayments || []).reduce((sum, payment) => {
+      return sum + Math.max(0, payment.originalValue - payment.paidValue)
+    }, 0)
+    const anticipationSavings = (item.anticipations || []).reduce((sum, anticipation) => {
+      if (anticipation.discountedTotal == null) return sum
+      const split = anticipation.splitId ? item.cardSplits?.find(s => s.id === anticipation.splitId) : null
+      const monthly = split
+        ? split.value / split.totalInstallments
+        : item.totalInstallments ? item.value / item.totalInstallments : 0
+      const originalTotal = monthly * anticipation.count
+      return sum + Math.max(0, originalTotal - anticipation.discountedTotal)
+    }, 0)
+    return Math.max(0, item.value - currentPaymentSavings - anticipationSavings)
+  })()
+
   const typeText = item.type === 'emprestimo' ? t('itemTypes.emprestimo') : item.type === 'installment' ? t('itemTypes.installment') : item.type === 'subscription' ? t('itemTypes.subscription') : t('itemTypes.common')
   const categoryLabel = item.categoryName ? `${item.categoryName}${item.subcategoryName ? `/${item.subcategoryName}` : ''}` : t('items.noCategoryDefined')
 
@@ -159,18 +176,28 @@ export function ItemsTile({
         const current = split.currentInstallment || Math.min(item.currentInstallment!, split.totalInstallments)
         const splitLabel = split.cardName ? formatCardLabel(split.cardName, split.cardType, split.paymentMethod, cardTypeLabels) : t('items.cardFallback', { id: String(split.cardId) })
         const anticipated = split.anticipatedThisMonth || 0
+        const monthly = Math.round((split.value / split.totalInstallments) * 100) / 100
+        const currentMonthly = split.currentInstallmentPayment?.paidValue ?? monthly
+        const futureValue = anticipated > 0 && split.discountedTotalThisMonth != null
+          ? split.discountedTotalThisMonth
+          : monthly * anticipated
         cardRows.push({
           name: splitLabel,
           detail: `${current}/${split.totalInstallments} ${t('items.installments').toLowerCase()}${anticipated > 0 ? ` (+${anticipated})` : ''}`,
-          amount: `${fmtVal(split.value / split.totalInstallments)}${t('itemsForm.perMonth')}`,
+          amount: `${fmtVal(currentMonthly + futureValue)}${t('itemsForm.perMonth')}`,
           progress: Math.min((current / split.totalInstallments) * 100, 100)
         })
       }
     } else {
+      const monthly = Math.round((item.value / item.totalInstallments!) * 100) / 100
+      const currentMonthly = item.currentInstallmentPayment?.paidValue ?? monthly
+      const futureValue = (item.anticipatedThisMonth || 0) > 0 && item.discountedTotalThisMonth != null
+        ? item.discountedTotalThisMonth
+        : monthly * (item.anticipatedThisMonth || 0)
       cardRows.push({
         name: item.type === 'emprestimo' ? t('items.installments') : (item.cardName ? formatCardLabel(item.cardName, item.cardType, item.paymentMethod, cardTypeLabels) : t('items.installments')),
         detail: `${item.currentInstallment!}/${item.totalInstallments!} ${t('items.installments').toLowerCase()}${(item.anticipatedThisMonth || 0) > 0 ? ` (+${item.anticipatedThisMonth})` : ''}`,
-        amount: `${fmtVal(item.value / item.totalInstallments!)}${t('itemsForm.perMonth')}`,
+        amount: `${fmtVal(currentMonthly + futureValue)}${t('itemsForm.perMonth')}`,
         progress: Math.min((item.currentInstallment! / item.totalInstallments!) * 100, 100)
       })
     }
@@ -326,7 +353,7 @@ export function ItemsTile({
               <div>
                 <div className="leading-none">{renderValue(monthValue)}</div>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {isInstallment ? t('items.ofTotal', { value: fmtVal(item.value) }) : t('items.total')}
+                  {isInstallment ? t('items.ofTotal', { value: fmtVal(adjustedInstallmentTotal) }) : t('items.total')}
                 </p>
               </div>
               <div className="flex flex-col items-center gap-1 border-l border-border pl-2">
