@@ -15,6 +15,12 @@ export class IncomeInterruptionsRepository {
     ).run(incomeId, endMonth, resumeMonth ?? null)
   }
 
+  updateById(id: number, endMonth: string, resumeMonth?: string | null): void {
+    this.db.prepare(
+      'UPDATE income_interruptions SET end_month = ?, resume_month = ? WHERE id = ?'
+    ).run(endMonth, resumeMonth ?? null, id)
+  }
+
   deleteById(id: number): void {
     this.db.prepare('DELETE FROM income_interruptions WHERE id = ?').run(id)
   }

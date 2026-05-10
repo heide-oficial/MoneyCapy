@@ -8,8 +8,8 @@ import { Select } from '../../components/ui/Select'
 import { formatCurrency, formatCurrencyWith } from '../../lib/currency'
 import { addMonths, useFormatDate } from '../../lib/date'
 import { useCurrencySettings } from '../../contexts/CurrencySettingsContext'
-import { Plus, X, FastForward, Undo2, Check, Palette } from 'lucide-react'
-import type { TagData, CardSplit, SectionItem } from '../../types/entities'
+import { Plus, X, FastForward, Undo2, Check, Palette, Pencil } from 'lucide-react'
+import type { TagData, CardSplit, ItemInterruption, SectionItem } from '../../types/entities'
 import { DayPicker } from '../../components/ui/DayPicker'
 import { ColorPicker } from '../../components/ui/ColorPicker'
 import { useTranslation } from '../../contexts/LanguageContext'
@@ -96,6 +96,7 @@ export interface ItemsFormProps {
   handleAnticipate: (splitId?: number, discountedTotal?: number) => Promise<void>
   handleUndoAnticipation: (anticipationId: number) => Promise<void>
   handleReactivate: (interruptionId: number) => void
+  handleEditInterruption: (item: SectionItem, interruption: ItemInterruption) => void
   setInterruptItem: (item: SectionItem | null) => void
   onValuesChanged?: () => void
   onDelete?: (id: number) => void
@@ -111,7 +112,7 @@ export function ItemsForm({
   categories, setCategories, subcategories, setSubcategories, cards, bankAccounts, stores, setStores,
   allTags, setAllTags,
   handleSave, handleAnticipate, handleUndoAnticipation,
-  handleReactivate, setInterruptItem,
+  handleReactivate, handleEditInterruption, setInterruptItem,
   onValuesChanged,
   onDelete,
   showParcelasTab, initialTab,
@@ -712,15 +713,20 @@ export function ItemsForm({
               <div className="rounded-lg border border-border bg-card p-3 space-y-2">
                 {editing.interruptions && editing.interruptions.length > 0 ? (
                   editing.interruptions.map(int => (
-                    <div key={int.id} className="flex items-center justify-between gap-3 rounded-md border border-border/60 bg-muted/20 px-3 py-2 text-sm">
-                      <span>
+                    <div key={int.id} className="flex items-center justify-between gap-3 rounded-md bg-muted/30 px-3 py-2 text-sm">
+                      <span className="min-w-0 flex-1">
                         {int.resumeMonth
                           ? t('itemsForm.pausedAt', { startMonth: fmtMonth(addMonths(int.endMonth, 1)), resumeMonth: fmtMonth(int.resumeMonth) })
                           : t('itemsForm.interruptedPermanently', { endMonth: fmtMonth(addMonths(int.endMonth, 1)) })}
                       </span>
-                      <Button size="sm" variant="ghost" onClick={() => { handleReactivate(int.id); onClose() }}>
-                        <Undo2 size={12} /> {t('common.undo')}
-                      </Button>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => handleEditInterruption(editing, int)} title={t('common.edit')}>
+                          <Pencil size={14} />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => handleReactivate(int.id)} title={t('common.delete')}>
+                          <X size={14} />
+                        </Button>
+                      </div>
                     </div>
                   ))
                 ) : (
@@ -1005,13 +1011,17 @@ export function ItemsForm({
             ) : (
               valueOverrides.map(entry => (
                 <div key={entry.month} className="flex items-center justify-between gap-3 rounded-md bg-muted/30 px-3 py-2">
-                  <button type="button" onClick={() => openValueOverrideModal(entry)} className="text-left">
-                    <p className="text-sm font-medium text-foreground">{fmtMonth(entry.month)}</p>
-                    <p className="text-xs text-muted-foreground">{fmtVal(entry.value)}</p>
-                  </button>
-                  <Button size="sm" variant="ghost" onClick={() => handleRemoveValueOverride(entry.month)}>
-                    <X size={14} />
-                  </Button>
+                  <p className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+                    {fmtMonth(entry.month)} - {fmtVal(entry.value)}
+                  </p>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Button size="sm" variant="ghost" onClick={() => openValueOverrideModal(entry)} title={t('common.edit')}>
+                      <Pencil size={14} />
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => handleRemoveValueOverride(entry.month)} title={t('common.delete')}>
+                      <X size={14} />
+                    </Button>
+                  </div>
                 </div>
               ))
             )}
@@ -1162,7 +1172,7 @@ export function ItemsForm({
   return (
     <>
     <Modal open={open} onClose={onClose} title={editing ? t('itemsForm.editItem') : t('itemsForm.newItem')} maxWidth="max-w-xl">
-      <div className="flex flex-col overflow-hidden" style={{ maxHeight: '70vh' }}>
+      <div className="flex flex-col overflow-hidden" style={{ height: 'min(78vh, 760px)' }}>
         {/* Tab bar */}
         <div className="flex gap-4 -mx-6 px-6 pb-3 mb-4 border-b border-border shrink-0">
           {([

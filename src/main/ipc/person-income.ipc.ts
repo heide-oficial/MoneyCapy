@@ -165,6 +165,10 @@ export function registerPersonIncomeHandlers(db: WrappedDatabase): void {
     interruptionsRepo.create(incomeId, currentMonth, resumeMonth)
   })
 
+  ipcMain.handle(IPC_CHANNELS.INCOME_UPDATE_INTERRUPTION, (_, interruptionId: number, endMonth: string, resumeMonth?: string | null) => {
+    interruptionsRepo.updateById(interruptionId, endMonth, resumeMonth ?? null)
+  })
+
   ipcMain.handle(IPC_CHANNELS.INCOME_REACTIVATE, (_, interruptionId: number) => {
     interruptionsRepo.deleteById(interruptionId)
   })

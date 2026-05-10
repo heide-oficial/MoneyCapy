@@ -322,6 +322,10 @@ export function registerSectionItemsHandlers(db: WrappedDatabase): void {
     interruptionsRepo.create(itemId, currentMonth, resumeMonth)
   })
 
+  ipcMain.handle(IPC_CHANNELS.ITEMS_UPDATE_INTERRUPTION, (_, interruptionId: number, endMonth: string, resumeMonth?: string | null) => {
+    interruptionsRepo.updateById(interruptionId, endMonth, resumeMonth ?? null)
+  })
+
   ipcMain.handle(IPC_CHANNELS.ITEMS_REACTIVATE, (_, interruptionId: number) => {
     interruptionsRepo.deleteById(interruptionId)
   })

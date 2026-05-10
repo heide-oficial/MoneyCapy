@@ -65,6 +65,8 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.PERSON_INCOME_SEARCH, personId, query, filters),
     interrupt: (incomeId: number, month: string, pauseMonths?: number) =>
       ipcRenderer.invoke(IPC_CHANNELS.INCOME_INTERRUPT, incomeId, month, pauseMonths),
+    updateInterruption: (interruptionId: number, endMonth: string, resumeMonth?: string | null) =>
+      ipcRenderer.invoke(IPC_CHANNELS.INCOME_UPDATE_INTERRUPTION, interruptionId, endMonth, resumeMonth),
     reactivate: (interruptionId: number) =>
       ipcRenderer.invoke(IPC_CHANNELS.INCOME_REACTIVATE, interruptionId)
   },
@@ -77,6 +79,7 @@ const api = {
     togglePaid: (id: number, month: string) => ipcRenderer.invoke(IPC_CHANNELS.ITEMS_TOGGLE_PAID, id, month),
     setPaid: (id: number, month: string, isPaid: boolean, paidAt?: string) => ipcRenderer.invoke(IPC_CHANNELS.ITEMS_SET_PAID, id, month, isPaid, paidAt),
     interrupt: (itemId: number, month: string, pauseMonths?: number) => ipcRenderer.invoke(IPC_CHANNELS.ITEMS_INTERRUPT, itemId, month, pauseMonths),
+    updateInterruption: (interruptionId: number, endMonth: string, resumeMonth?: string | null) => ipcRenderer.invoke(IPC_CHANNELS.ITEMS_UPDATE_INTERRUPTION, interruptionId, endMonth, resumeMonth),
     reactivate: (interruptionId: number) => ipcRenderer.invoke(IPC_CHANNELS.ITEMS_REACTIVATE, interruptionId),
     anticipate: (itemId: number, month: string, count: number, splitId?: number, discountedTotal?: number) =>
       ipcRenderer.invoke(IPC_CHANNELS.ITEMS_ANTICIPATE, itemId, month, count, splitId, discountedTotal),

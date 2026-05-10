@@ -130,7 +130,8 @@
 }
 
 .tile-card-tooltip {
-  background: hsl(var(--card)) !important;
+  background-color: hsl(var(--card)) !important;
+  background-image: linear-gradient(hsl(var(--card)), hsl(var(--card))) !important;
   box-shadow: 0 24px 60px rgb(0 0 0 / 0.55), 0 0 0 1px hsl(var(--border));
   isolation: isolate;
   z-index: 2147483647;

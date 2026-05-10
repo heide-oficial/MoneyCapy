@@ -10,7 +10,7 @@ import { SearchInput } from '../../components/ui/SearchInput'
 import { CurrencyMonthNavigator } from '../../components/ui/CurrencyMonthNavigator'
 import { SectionLayout } from '../../components/layout/SectionLayout'
 import { formatCurrency } from '../../lib/currency'
-import { addMonths, useFormatDate } from '../../lib/date'
+import { addMonths, monthDiff, useFormatDate } from '../../lib/date'
 import { getActiveInterruption } from '../../lib/interruptions'
 import { getMonthlyExpenseValue } from '../../lib/monthly-finance'
 import { usePageMonth } from '../../contexts/DefaultMonthContext'
@@ -30,7 +30,7 @@ import { TileFieldsPickerButton } from '../../components/ui/TileFieldsPickerButt
 import { FilterGroup } from '../../components/ui/FilterGroup'
 import { CsvExportModal, type CsvColumn } from '../../components/ui/CsvExportModal'
 
-import type { TagData, CardSplit, SectionItem } from '../../types/entities'
+import type { TagData, CardSplit, ItemInterruption, SectionItem } from '../../types/entities'
 import { type ItemSortMode, sortItems, getItemSortOptions, getSortLabelMap } from '../../hooks/useSortItems'
 import { useDefaultSortMode } from '../../hooks/useDefaultSortMode'
 import { useUndoableDelete } from '../../hooks/useUndoableDelete'
@@ -143,6 +143,7 @@ export default function ItemsPage() {
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<SectionItem | null>(null)
   const [interruptItem, setInterruptItem] = useState<SectionItem | null>(null)
+  const [editingInterruption, setEditingInterruption] = useState<ItemInterruption | null>(null)
   const [interruptMode, setInterruptMode] = useState<'permanent' | 'temporary'>('permanent')
   const [interruptMonths, setInterruptMonths] = useState(1)
   const [form, setForm] = useState<ItemForm>({ ...defaultForm })
@@ -647,9 +648,19 @@ export default function ItemsPage() {
   const handleInterrupt = async () => {
     if (!interruptItem) return
     const pauseMonths = interruptMode === 'temporary' ? interruptMonths : undefined
-    await window.api.items.interrupt(interruptItem.id, month, pauseMonths)
+    const interruptionBaseMonth = editingInterruption?.endMonth || month
+    if (editingInterruption) {
+      await window.api.items.updateInterruption(
+        editingInterruption.id,
+        interruptionBaseMonth,
+        pauseMonths ? addMonths(interruptionBaseMonth, pauseMonths + 1) : null
+      )
+    } else {
+      await window.api.items.interrupt(interruptItem.id, interruptionBaseMonth, pauseMonths)
+    }
     toast.success(pauseMonths ? t('items.pausedUntil', { month: String(pauseMonths) }) : t('items.interrupted'))
     setInterruptItem(null)
+    setEditingInterruption(null)
     setInterruptMode('permanent')
     setInterruptMonths(1)
     bumpItems()
@@ -659,8 +670,24 @@ export default function ItemsPage() {
   const handleReactivate = async (interruptionId: number) => {
     await window.api.items.reactivate(interruptionId)
     toast.success(t('items.interruptionUndone'))
+    setEditing(prev => prev ? {
+      ...prev,
+      interruptions: prev.interruptions?.filter(int => int.id !== interruptionId)
+    } : prev)
     bumpItems()
     loadData()
+  }
+
+  const handleEditInterruption = (item: SectionItem, interruption: ItemInterruption) => {
+    setInterruptItem(item)
+    setEditingInterruption(interruption)
+    if (interruption.resumeMonth) {
+      setInterruptMode('temporary')
+      setInterruptMonths(Math.max(1, monthDiff(interruption.endMonth, interruption.resumeMonth) - 1))
+    } else {
+      setInterruptMode('permanent')
+      setInterruptMonths(1)
+    }
   }
 
   const openValueEdit = (item: SectionItem) => {
@@ -1123,6 +1150,7 @@ export default function ItemsPage() {
         handleAnticipate={handleAnticipate}
           handleUndoAnticipation={handleUndoAnticipation}
           handleReactivate={handleReactivate}
+          handleEditInterruption={handleEditInterruption}
           setInterruptItem={setInterruptItem}
           onValuesChanged={() => { bumpItems(); loadData() }}
           onDelete={id => requestDelete(id)}
@@ -1132,7 +1160,7 @@ export default function ItemsPage() {
         setAnticipateCounts={setAnticipateCounts}
       />
 
-      <Modal open={interruptItem !== null} onClose={() => { setInterruptItem(null); setInterruptMode('permanent'); setInterruptMonths(1) }} title={t('items.interrupt')}>
+      <Modal open={interruptItem !== null} onClose={() => { setInterruptItem(null); setEditingInterruption(null); setInterruptMode('permanent'); setInterruptMonths(1) }} title={t('items.interrupt')}>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">{t('items.interrupt')}</p>
           <div className="flex gap-2">
@@ -1167,7 +1195,7 @@ export default function ItemsPage() {
             </div>
           )}
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => { setInterruptItem(null); setInterruptMode('permanent'); setInterruptMonths(1) }}>{t('common.cancel')}</Button>
+            <Button variant="outline" onClick={() => { setInterruptItem(null); setEditingInterruption(null); setInterruptMode('permanent'); setInterruptMonths(1) }}>{t('common.cancel')}</Button>
             <Button variant="destructive" onClick={handleInterrupt}>
               {t('items.interrupt')}
             </Button>

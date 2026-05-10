@@ -11,7 +11,7 @@ import { CurrencyMonthNavigator } from '../../components/ui/CurrencyMonthNavigat
 import { SearchInput } from '../../components/ui/SearchInput'
 import { formatCurrency, formatCurrencyWith } from '../../lib/currency'
 import { useDisplayCurrency } from '../../contexts/DisplayCurrencyContext'
-import { getCurrentMonth, useFormatDate } from '../../lib/date'
+import { getCurrentMonth, monthDiff, useFormatDate } from '../../lib/date'
 import { addMonths, getActiveInterruption } from '../../lib/interruptions'
 import { getMonthlyIncomeValue } from '../../lib/monthly-finance'
 import { usePageMonth } from '../../contexts/DefaultMonthContext'
@@ -24,7 +24,7 @@ import { FilterGroup } from '../../components/ui/FilterGroup'
 import {
   HandCoins, Plus, Pencil, Trash2, Repeat, Users, Layers,
   CheckCircle, Circle, CircleDot, DollarSign,
-  ChevronDown, CalendarClock, Filter, Palette, X, Undo2, Tags, Bookmark, Download
+  ChevronDown, CalendarClock, Filter, Palette, X, Tags, Bookmark, Download
 } from 'lucide-react'
 import { DayPicker } from '../../components/ui/DayPicker'
 import { TileFieldsPickerButton } from '../../components/ui/TileFieldsPickerButton'
@@ -171,6 +171,7 @@ export default function IncomePage() {
 
   // Interrupt state
   const [interruptItem, setInterruptItem] = useState<Income | null>(null)
+  const [editingInterruption, setEditingInterruption] = useState<ItemInterruption | null>(null)
   const [interruptMode, setInterruptMode] = useState<'permanent' | 'temporary'>('temporary')
   const [interruptMonths, setInterruptMonths] = useState('2')
 
@@ -465,16 +466,42 @@ export default function IncomePage() {
   const handleInterrupt = async () => {
     if (!interruptItem) return
     const pauseMonths = interruptMode === 'temporary' ? interruptionMonthsCount : undefined
-    await window.api.personIncome.interrupt(interruptItem.id, month, pauseMonths)
+    const interruptionBaseMonth = editingInterruption?.endMonth || month
+    if (editingInterruption) {
+      await window.api.personIncome.updateInterruption(
+        editingInterruption.id,
+        interruptionBaseMonth,
+        pauseMonths ? addMonths(interruptionBaseMonth, pauseMonths + 1) : null
+      )
+    } else {
+      await window.api.personIncome.interrupt(interruptItem.id, interruptionBaseMonth, pauseMonths)
+    }
     toast.success(interruptMode === 'permanent' ? t('items.interrupted') : t('items.pausedUntil', { month: String(pauseMonths) }))
     setInterruptItem(null)
+    setEditingInterruption(null)
     load()
   }
 
   const handleReactivate = async (interruptionId: number) => {
     await window.api.personIncome.reactivate(interruptionId)
     toast.success(t('items.interruptionUndone'))
+    setEditing(prev => prev ? {
+      ...prev,
+      interruptions: prev.interruptions?.filter(int => int.id !== interruptionId)
+    } : prev)
     load()
+  }
+
+  const handleEditInterruption = (income: Income, interruption: ItemInterruption) => {
+    setInterruptItem(income)
+    setEditingInterruption(interruption)
+    if (interruption.resumeMonth) {
+      setInterruptMode('temporary')
+      setInterruptMonths(String(Math.max(1, monthDiff(interruption.endMonth, interruption.resumeMonth) - 1)))
+    } else {
+      setInterruptMode('permanent')
+      setInterruptMonths('2')
+    }
   }
 
   const toggleTag = (tagId: number) => {
@@ -490,9 +517,10 @@ export default function IncomePage() {
 
   const interruptionMonthsCount = Math.max(1, parseInt(interruptMonths) || 1)
   const interruptionPreview = (() => {
-    const pausedFrom = addMonths(month, 1)
-    const pausedUntil = addMonths(month, interruptionMonthsCount)
-    const resumeMonth = addMonths(month, interruptionMonthsCount + 1)
+    const interruptionBaseMonth = editingInterruption?.endMonth || month
+    const pausedFrom = addMonths(interruptionBaseMonth, 1)
+    const pausedUntil = addMonths(interruptionBaseMonth, interruptionMonthsCount)
+    const resumeMonth = addMonths(interruptionBaseMonth, interruptionMonthsCount + 1)
     return t('items.interruptionPreview', {
       count: String(interruptionMonthsCount),
       startMonth: fmtMonth(pausedFrom),
@@ -768,7 +796,7 @@ export default function IncomePage() {
 
       {/* Create/Edit Modal */}
       <Modal open={showForm} onClose={() => setShowForm(false)} title={editing ? t('income.editIncome') : t('income.newIncome')} maxWidth="max-w-xl">
-        <div className="flex flex-col overflow-hidden" style={{ maxHeight: '70vh' }}>
+        <div className="flex flex-col overflow-hidden" style={{ height: 'min(78vh, 760px)' }}>
           {/* Tab bar */}
           <div className="flex gap-4 -mx-6 px-6 pb-3 mb-4 border-b border-border shrink-0">
             {([
@@ -920,13 +948,17 @@ export default function IncomePage() {
                     ) : (
                       valueOverrides.map(entry => (
                         <div key={entry.month} className="flex items-center justify-between gap-3 rounded-md bg-muted/30 px-3 py-2">
-                          <button type="button" onClick={() => openValueOverrideModal(entry)} className="text-left">
-                            <p className="text-sm font-medium text-foreground">{fmtMonth(entry.month)}</p>
-                            <p className="text-xs text-muted-foreground">{formatCurrency(entry.value * (editing.exchangeRateSnapshot || 1.0))}</p>
-                          </button>
-                          <Button size="sm" variant="ghost" onClick={() => handleRemoveValueOverride(entry.month)}>
-                            <X size={14} />
-                          </Button>
+                          <p className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+                            {fmtMonth(entry.month)} - {formatCurrency(entry.value * (editing.exchangeRateSnapshot || 1.0))}
+                          </p>
+                          <div className="flex shrink-0 items-center gap-1">
+                            <Button size="sm" variant="ghost" onClick={() => openValueOverrideModal(entry)} title={t('common.edit')}>
+                              <Pencil size={14} />
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => handleRemoveValueOverride(entry.month)} title={t('common.delete')}>
+                              <X size={14} />
+                            </Button>
+                          </div>
                         </div>
                       ))
                     )}
@@ -953,7 +985,7 @@ export default function IncomePage() {
                           </p>
                         </div>
                         {!(editing.interruptions?.some(i => !i.resumeMonth)) && (
-                          <Button size="sm" variant="outline" onClick={() => { setShowForm(false); setInterruptMode('temporary'); setInterruptMonths('2'); setTimeout(() => setInterruptItem(editing), 50) }}>
+                          <Button size="sm" variant="outline" onClick={() => { setShowForm(false); setEditingInterruption(null); setInterruptMode('temporary'); setInterruptMonths('2'); setTimeout(() => setInterruptItem(editing), 50) }}>
                             <X size={14} /> {t('itemsForm.interrupt')}
                           </Button>
                         )}
@@ -965,15 +997,20 @@ export default function IncomePage() {
                       <div className="rounded-lg border border-border bg-card p-3 space-y-2">
                         {editing.interruptions && editing.interruptions.length > 0 ? (
                           editing.interruptions.map(int => (
-                            <div key={int.id} className="flex items-center justify-between gap-3 rounded-md border border-border/60 bg-muted/20 px-3 py-2 text-sm">
-                              <span>
+                            <div key={int.id} className="flex items-center justify-between gap-3 rounded-md bg-muted/30 px-3 py-2 text-sm">
+                              <span className="min-w-0 flex-1">
                                 {int.resumeMonth
                                   ? t('itemsForm.pausedAt', { startMonth: fmtMonth(addMonths(int.endMonth, 1)), resumeMonth: fmtMonth(int.resumeMonth) })
                                   : t('itemsForm.interruptedPermanently', { endMonth: fmtMonth(addMonths(int.endMonth, 1)) })}
                               </span>
-                              <Button size="sm" variant="ghost" onClick={() => { handleReactivate(int.id); setShowForm(false) }}>
-                                <Undo2 size={12} /> {t('common.undo')}
-                              </Button>
+                              <div className="flex shrink-0 items-center gap-1">
+                                <Button size="sm" variant="ghost" onClick={() => handleEditInterruption(editing, int)} title={t('common.edit')}>
+                                  <Pencil size={14} />
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => handleReactivate(int.id)} title={t('common.delete')}>
+                                  <X size={14} />
+                                </Button>
+                              </div>
                             </div>
                           ))
                         ) : (
@@ -1193,7 +1230,7 @@ export default function IncomePage() {
         onConfirm={c => { setSubcatCreateColor(c); setShowSubcatColorPicker(false) }} />
 
       {/* Interrupt modal */}
-      <Modal open={!!interruptItem} onClose={() => setInterruptItem(null)} title={t('income.interruptIncome')} maxWidth="max-w-sm">
+      <Modal open={!!interruptItem} onClose={() => { setInterruptItem(null); setEditingInterruption(null) }} title={t('income.interruptIncome')} maxWidth="max-w-sm">
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
             {t('income.interruptFrom', { name: interruptItem?.description || '', month: formatMonth(month) })}
@@ -1220,7 +1257,7 @@ export default function IncomePage() {
             </div>
           )}
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setInterruptItem(null)}>{t('common.cancel')}</Button>
+            <Button variant="outline" onClick={() => { setInterruptItem(null); setEditingInterruption(null) }}>{t('common.cancel')}</Button>
             <Button onClick={handleInterrupt}>{t('income.interrupt')}</Button>
           </div>
         </div>

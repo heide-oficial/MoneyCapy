@@ -38,6 +38,7 @@ export const IPC_CHANNELS = {
   PERSON_INCOME_LIST_MONTH_VALUES: 'person-income:list-month-values',
   PERSON_INCOME_SEARCH: 'person-income:search',
   INCOME_INTERRUPT: 'income:interrupt',
+  INCOME_UPDATE_INTERRUPTION: 'income:update-interruption',
   INCOME_REACTIVATE: 'income:reactivate',
 
   // Items (replaces Sections + Section Items)
@@ -49,6 +50,7 @@ export const IPC_CHANNELS = {
   ITEMS_TOGGLE_PAID: 'items:toggle-paid',
   ITEMS_SET_PAID: 'items:set-paid',
   ITEMS_INTERRUPT: 'items:interrupt',
+  ITEMS_UPDATE_INTERRUPTION: 'items:update-interruption',
   ITEMS_REACTIVATE: 'items:reactivate',
   ITEMS_ANTICIPATE: 'items:anticipate',
   ITEMS_UNDO_ANTICIPATION: 'items:undo-anticipation',

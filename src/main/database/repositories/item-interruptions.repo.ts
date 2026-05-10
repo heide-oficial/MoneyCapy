@@ -15,6 +15,12 @@ export class ItemInterruptionsRepository {
     ).run(itemId, endMonth, resumeMonth ?? null)
   }
 
+  updateById(id: number, endMonth: string, resumeMonth?: string | null): void {
+    this.db.prepare(
+      'UPDATE item_interruptions SET end_month = ?, resume_month = ? WHERE id = ?'
+    ).run(endMonth, resumeMonth ?? null, id)
+  }
+
   deleteById(id: number): void {
     this.db.prepare('DELETE FROM item_interruptions WHERE id = ?').run(id)
   }
