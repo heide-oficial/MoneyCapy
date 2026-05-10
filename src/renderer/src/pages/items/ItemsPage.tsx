@@ -264,11 +264,12 @@ export default function ItemsPage() {
     }
   }, [location.state])
 
-  // Apply category/tag filters from navigation state
+  // Apply category/subcategory/tag filters from navigation state
   useEffect(() => {
     const state = location.state as any
     if (!state) return
     const catName = state.categoryName as string | undefined
+    const subcatName = state.subcategoryName as string | undefined
     const tagN = state.tagName as string | undefined
     if (catName && categories.length > 0) {
       if (catName === '__no_category__') {
@@ -276,6 +277,15 @@ export default function ItemsPage() {
       } else {
         const cat = categories.find(c => c.name === catName)
         if (cat) setFilterCategories([cat.id])
+      }
+      window.history.replaceState({}, '')
+    }
+    if (subcatName && subcategories.length > 0) {
+      if (subcatName === '__no_subcategory__') {
+        setFilterSubcategories([-1])
+      } else {
+        const subcat = subcategories.find(s => s.name === subcatName)
+        if (subcat) setFilterSubcategories([subcat.id])
       }
       window.history.replaceState({}, '')
     }
@@ -288,7 +298,7 @@ export default function ItemsPage() {
       }
       window.history.replaceState({}, '')
     }
-  }, [location.state, categories, allTags])
+  }, [location.state, categories, subcategories, allTags])
 
   const { requestDelete, isPending: isDeletePending } = useUndoableDelete({
     onDelete: async (id) => { await window.api.items.delete(id); bumpItems(); loadData() },

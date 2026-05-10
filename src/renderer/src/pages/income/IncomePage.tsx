@@ -213,11 +213,12 @@ export default function IncomePage() {
     }
   }, [form.isRecurring, incomeTab])
 
-  // Apply category filter from navigation state
+  // Apply category/subcategory filter from navigation state
   useEffect(() => {
     const state = location.state as any
     if (!state) return
     const catName = state.categoryName as string | undefined
+    const subcatName = state.subcategoryName as string | undefined
     if (catName && categories.length > 0) {
       if (catName === '__no_category__') {
         setFilterCategories([-1])
@@ -227,11 +228,20 @@ export default function IncomePage() {
       }
       window.history.replaceState({}, '')
     }
+    if (subcatName && subcategories.length > 0) {
+      if (subcatName === '__no_subcategory__') {
+        setFilterSubcategories([-1])
+      } else {
+        const subcat = subcategories.find(s => s.name === subcatName)
+        if (subcat) setFilterSubcategories([subcat.id])
+      }
+      window.history.replaceState({}, '')
+    }
     if (state.recurringFilter) {
       if (state.recurringFilter === 'recurring' || state.recurringFilter === 'non-recurring') setRecurringFilter([state.recurringFilter])
       window.history.replaceState({}, '')
     }
-  }, [location.state, categories])
+  }, [location.state, categories, subcategories])
 
   const { requestDelete, isPending: isDeletePending } = useUndoableDelete({
     onDelete: async (id) => { await window.api.personIncome.delete(id); load() },
