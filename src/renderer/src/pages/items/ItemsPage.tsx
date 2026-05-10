@@ -249,6 +249,13 @@ export default function ItemsPage() {
     setStores(strs)
   }
 
+  const refreshEditingItem = async (itemId: number) => {
+    if (!activePerson) return
+    const refreshed = await window.api.items.list(activePerson.id, month)
+    const updated = (refreshed as SectionItem[]).find(item => item.id === itemId)
+    if (updated) setEditing(updated)
+  }
+
   useEffect(() => { loadData() }, [activePerson, month, typeFilter, itemsVersion])
 
   // Handle tab/edit from external navigation
@@ -753,6 +760,32 @@ export default function ItemsPage() {
     }
   }
 
+  const handleCurrentInstallmentPayment = async (splitId: number | undefined, originalValue: number, paidValue: number, paidAt: string) => {
+    if (!editing) return
+    try {
+      await window.api.items.setCurrentInstallmentPayment(editing.id, month, originalValue, paidValue, paidAt, splitId)
+      toast.success(t('itemsForm.currentInstallmentPaymentSaved'))
+      bumpItems()
+      await loadData()
+      await refreshEditingItem(editing.id)
+    } catch (e: any) {
+      toast.error(e.message || t('common.errorSaving'))
+    }
+  }
+
+  const handleDeleteCurrentInstallmentPayment = async (paymentId: number) => {
+    if (!editing) return
+    try {
+      await window.api.items.deleteCurrentInstallmentPayment(paymentId)
+      toast.success(t('itemsForm.currentInstallmentPaymentRemoved'))
+      bumpItems()
+      await loadData()
+      await refreshEditingItem(editing.id)
+    } catch (e: any) {
+      toast.error(e.message || t('common.errorSaving'))
+    }
+  }
+
   const interruptionPreview = (() => {
     const pausedFrom = addMonths(month, 1)
     const pausedUntil = addMonths(month, interruptMonths)
@@ -1159,6 +1192,8 @@ export default function ItemsPage() {
         handleSave={handleSave}
         handleAnticipate={handleAnticipate}
           handleUndoAnticipation={handleUndoAnticipation}
+          handleCurrentInstallmentPayment={handleCurrentInstallmentPayment}
+          handleDeleteCurrentInstallmentPayment={handleDeleteCurrentInstallmentPayment}
           handleReactivate={handleReactivate}
           handleEditInterruption={handleEditInterruption}
           setInterruptItem={setInterruptItem}

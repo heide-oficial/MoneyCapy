@@ -32,6 +32,17 @@ export class CardsRepository {
     return row ? row.count : 0
   }
 
+  private getCurrentInstallmentPaidValue(itemId: number, month: string, splitId?: number | null): number | null {
+    const row = splitId == null
+      ? this.db.prepare(
+        'SELECT paid_value FROM item_current_installment_payments WHERE item_id = ? AND month = ? AND split_id IS NULL LIMIT 1'
+      ).get(itemId, month)
+      : this.db.prepare(
+        'SELECT paid_value FROM item_current_installment_payments WHERE item_id = ? AND month = ? AND split_id = ? LIMIT 1'
+      ).get(itemId, month, splitId)
+    return row ? ((row as any).paid_value ?? null) : null
+  }
+
   private getPaidMonthsCount(itemId: number, startMonth: string, endMonth: string): number {
     const row = this.db.prepare(
       `SELECT COUNT(*) as count
@@ -420,7 +431,9 @@ export class CardsRepository {
         const instCount = item.total_installments || 1
         const snapshot = item.exchange_rate_snapshot || 1.0
         const anticipatedInMonth = this.getAnticipatedInMonth(item.id, month)
-        const monthlyValue = (item.value / instCount) * (1 + anticipatedInMonth) * snapshot / cardRate
+        const baseMonthly = item.value / instCount
+        const currentMonthly = this.getCurrentInstallmentPaidValue(item.id, month, null) ?? baseMonthly
+        const monthlyValue = (currentMonthly + baseMonthly * anticipatedInMonth) * snapshot / cardRate
         if (item.type === 'emprestimo') {
           emprestimoCount++
           emprestimoTotal += monthlyValue
@@ -464,7 +477,9 @@ export class CardsRepository {
         if (visible) {
           const instCount = sp.total_installments || 1
           const anticipatedInMonth = this.getAnticipatedInMonthForSplit(sp.split_id, month)
-          const monthlyValue = (sp.value / instCount) * (1 + anticipatedInMonth) * snapshot / cardRate
+          const baseMonthly = sp.value / instCount
+          const currentMonthly = this.getCurrentInstallmentPaidValue(sp.item_id, month, sp.split_id) ?? baseMonthly
+          const monthlyValue = (currentMonthly + baseMonthly * anticipatedInMonth) * snapshot / cardRate
           if (sp.type === 'emprestimo') {
             emprestimoCount++
             emprestimoTotal += monthlyValue

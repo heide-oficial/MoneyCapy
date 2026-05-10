@@ -6,6 +6,7 @@ import { TagsRepository } from '../database/repositories/tags.repo'
 import { ItemCardSplitsRepository } from '../database/repositories/item-card-splits.repo'
 import { ItemMonthlyStatusRepository } from '../database/repositories/item-monthly-status.repo'
 import { ItemAnticipationsRepository } from '../database/repositories/item-anticipations.repo'
+import { ItemCurrentInstallmentPaymentsRepository } from '../database/repositories/item-current-installment-payments.repo'
 import { ItemInterruptionsRepository } from '../database/repositories/item-interruptions.repo'
 import { SettingsRepository } from '../database/repositories/settings.repo'
 import { getStartCountingMonth, isMonthBeforeStart } from './start-counting-month'
@@ -66,6 +67,8 @@ function mapItem(item: any, db?: WrappedDatabase) {
     dueDayMonthOffset: item.due_day_month_offset ?? 0,
     cardDueDays: getCardDueDays(item, db),
     anticipations: item.anticipations || [],
+    currentInstallmentPayments: item.currentInstallmentPayments || [],
+    currentInstallmentPayment: item.currentInstallmentPayment || null,
     totalAnticipated: item.totalAnticipated || 0,
     anticipatedThisMonth: item.anticipatedThisMonth || 0,
     discountedTotalThisMonth: item.discountedTotalThisMonth ?? null,
@@ -87,7 +90,20 @@ function mapSplit(s: any, db?: WrappedDatabase) {
     totalAnticipated: s.totalAnticipated || 0,
     anticipatedThisMonth: s.anticipatedThisMonth || 0,
     discountedTotalThisMonth: s.discountedTotalThisMonth ?? null,
-    currentInstallment: s.currentInstallment || undefined
+    currentInstallment: s.currentInstallment || undefined,
+    currentInstallmentPayment: s.currentInstallmentPayment || null
+  }
+}
+
+function mapCurrentInstallmentPayment(row: any) {
+  return {
+    id: row.id,
+    itemId: row.item_id,
+    splitId: row.split_id ?? null,
+    month: row.month,
+    originalValue: row.original_value,
+    paidValue: row.paid_value,
+    paidAt: row.paid_at || null
   }
 }
 
@@ -109,6 +125,7 @@ function enrichItem(
   splitsRepo: ItemCardSplitsRepository,
   statusRepo: ItemMonthlyStatusRepository,
   anticipationsRepo: ItemAnticipationsRepository,
+  currentPaymentsRepo: ItemCurrentInstallmentPaymentsRepository,
   interruptionsRepo: ItemInterruptionsRepository,
   month?: string,
   itemsRepo?: SectionItemsRepository,
@@ -125,6 +142,7 @@ function enrichItem(
     item.anticipations = anticipationsRepo.findByItemId(item.id).map((a: any) => ({
       id: a.id, splitId: a.split_id || null, month: a.month, count: a.count, discountedTotal: a.discounted_total ?? null
     }))
+    item.currentInstallmentPayments = currentPaymentsRepo.findByItemId(item.id).map(mapCurrentInstallmentPayment)
     item.totalAnticipated = anticipationsRepo.getTotalAnticipated(item.id)
 
     // Load interruptions
@@ -139,6 +157,8 @@ function enrichItem(
         if (month) {
           sp.anticipatedThisMonth = anticipationsRepo.getAnticipatedInMonthForSplit(sp.id, month)
           sp.discountedTotalThisMonth = anticipationsRepo.getDiscountedTotalInMonthForSplit(sp.id, month)
+          const splitPayment = currentPaymentsRepo.findByTarget(item.id, month, sp.id)
+          sp.currentInstallmentPayment = splitPayment ? mapCurrentInstallmentPayment(splitPayment) : null
           const anticipatedBefore = anticipationsRepo.getAnticipatedBeforeMonthForSplit(sp.id, month)
           const spPauseGap = calcTotalPauseGap(item.interruptions, month)
           sp.currentInstallment = monthDiff(item.startMonth, month) + 1 + anticipatedBefore - spPauseGap
@@ -167,6 +187,8 @@ function enrichItem(
       item.currentInstallment = monthDiff(item.startMonth, month) + 1 + anticipatedBefore - itemPauseGap
       item.anticipatedThisMonth = anticipationsRepo.getAnticipatedInMonth(item.id, month)
       item.discountedTotalThisMonth = anticipationsRepo.getDiscountedTotalInMonth(item.id, month)
+      const itemPayment = currentPaymentsRepo.findByTarget(item.id, month, null)
+      item.currentInstallmentPayment = itemPayment ? mapCurrentInstallmentPayment(itemPayment) : null
     }
     if (item.type === 'subscription') {
       // Load interruptions for subscriptions
@@ -189,6 +211,7 @@ export function registerSectionItemsHandlers(db: WrappedDatabase): void {
   const splitsRepo = new ItemCardSplitsRepository(db)
   const statusRepo = new ItemMonthlyStatusRepository(db)
   const anticipationsRepo = new ItemAnticipationsRepository(db)
+  const currentPaymentsRepo = new ItemCurrentInstallmentPaymentsRepository(db)
   const interruptionsRepo = new ItemInterruptionsRepository(db)
   const settingsRepo = new SettingsRepository(db)
   const isItemInterrupted = (itemId: number, month: string) =>
@@ -200,7 +223,7 @@ export function registerSectionItemsHandlers(db: WrappedDatabase): void {
 
     const items = (repo.findByPersonAndMonth(personId, month, typeFilter) as any[]).map(i => mapItem(i, db))
     for (const item of items) {
-      enrichItem(item, tagsRepo, splitsRepo, statusRepo, anticipationsRepo, interruptionsRepo, month, repo, db)
+      enrichItem(item, tagsRepo, splitsRepo, statusRepo, anticipationsRepo, currentPaymentsRepo, interruptionsRepo, month, repo, db)
     }
     return items
   })
@@ -245,7 +268,7 @@ export function registerSectionItemsHandlers(db: WrappedDatabase): void {
       })))
     }
     const mapped = mapItem(item, db)
-    return enrichItem(mapped, tagsRepo, splitsRepo, statusRepo, anticipationsRepo, interruptionsRepo, undefined, undefined, db)
+    return enrichItem(mapped, tagsRepo, splitsRepo, statusRepo, anticipationsRepo, currentPaymentsRepo, interruptionsRepo, undefined, undefined, db)
   })
 
   ipcMain.handle(IPC_CHANNELS.ITEMS_UPDATE, (_, data) => {
@@ -293,7 +316,7 @@ export function registerSectionItemsHandlers(db: WrappedDatabase): void {
       }
     }
     const mapped = mapItem(item, db)
-    return enrichItem(mapped, tagsRepo, splitsRepo, statusRepo, anticipationsRepo, interruptionsRepo, undefined, undefined, db)
+    return enrichItem(mapped, tagsRepo, splitsRepo, statusRepo, anticipationsRepo, currentPaymentsRepo, interruptionsRepo, undefined, undefined, db)
   })
 
   ipcMain.handle(IPC_CHANNELS.ITEMS_DELETE, (_, id) => repo.delete(id))
@@ -346,6 +369,40 @@ export function registerSectionItemsHandlers(db: WrappedDatabase): void {
     anticipationsRepo.deleteById(anticipationId)
   })
 
+  ipcMain.handle(IPC_CHANNELS.ITEMS_SET_CURRENT_INSTALLMENT_PAYMENT, (_, itemId: number, month: string, originalValue: number, paidValue: number, paidAt?: string, splitId?: number) => {
+    const item = repo.findById(itemId) as any
+    if (!item) throw new Error('Item not found')
+    if (item.type !== 'installment' && item.type !== 'emprestimo') throw new Error('Only installment/emprestimo items can use current installment payment anticipation')
+    if (item.end_reason === 'settled') throw new Error('Cannot anticipate payment for a settled item')
+    if (isItemInterrupted(itemId, month)) throw new Error('Cannot anticipate payment for an interrupted month')
+    if (!Number.isFinite(originalValue) || originalValue <= 0) throw new Error('Original value must be positive')
+    if (!Number.isFinite(paidValue) || paidValue < 0) throw new Error('Paid value must be zero or positive')
+    if (paidValue > originalValue) throw new Error('Paid value cannot be greater than original value')
+    currentPaymentsRepo.upsert({
+      itemId,
+      splitId: splitId ?? null,
+      month,
+      originalValue,
+      paidValue,
+      paidAt: paidAt || new Date().toISOString().substring(0, 10)
+    })
+
+    if (!splitId) {
+      statusRepo.setPaid(itemId, month, true, paidAt || undefined)
+      return
+    }
+
+    const splitRows = splitsRepo.findByItemId(itemId) as any[]
+    const allSplitsHaveCurrentPayment = splitRows.length > 0 && splitRows.every(split =>
+      currentPaymentsRepo.findByTarget(itemId, month, split.id)
+    )
+    if (allSplitsHaveCurrentPayment) statusRepo.setPaid(itemId, month, true, paidAt || undefined)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.ITEMS_DELETE_CURRENT_INSTALLMENT_PAYMENT, (_, paymentId: number) => {
+    currentPaymentsRepo.deleteById(paymentId)
+  })
+
   ipcMain.handle(IPC_CHANNELS.ITEMS_SET_MONTH_VALUE, (_, itemId: number, month: string, value: number) => {
     repo.setValueForMonth(itemId, month, value)
   })
@@ -365,7 +422,7 @@ export function registerSectionItemsHandlers(db: WrappedDatabase): void {
   ipcMain.handle(IPC_CHANNELS.ITEMS_SEARCH, (_, personId: number, query: string, filters?: { type?: string; categoryId?: number; storeId?: number; cardId?: number; tagId?: number; isPaid?: boolean; isActive?: boolean; bankAccountId?: number }) => {
     const items = (repo.search(personId, query, filters) as any[]).map(i => mapItem(i, db))
     for (const item of items) {
-      enrichItem(item, tagsRepo, splitsRepo, statusRepo, anticipationsRepo, interruptionsRepo, undefined, undefined, db)
+      enrichItem(item, tagsRepo, splitsRepo, statusRepo, anticipationsRepo, currentPaymentsRepo, interruptionsRepo, undefined, undefined, db)
     }
     return items
   })

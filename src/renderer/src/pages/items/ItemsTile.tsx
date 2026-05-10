@@ -113,19 +113,21 @@ export function ItemsTile({
   if (hasSplits) {
     monthValue = item.cardSplits!.reduce((acc, split) => {
       const monthly = Math.round((split.value / split.totalInstallments) * 100) / 100
+      const currentMonthly = split.currentInstallmentPayment?.paidValue ?? monthly
       if ((split.anticipatedThisMonth || 0) > 0 && split.discountedTotalThisMonth != null) {
-        return acc + monthly + split.discountedTotalThisMonth
+        return acc + currentMonthly + split.discountedTotalThisMonth
       }
-      return acc + monthly * (1 + (split.anticipatedThisMonth || 0))
+      return acc + currentMonthly + monthly * (split.anticipatedThisMonth || 0)
     }, 0)
   } else if (isInstallment && item.totalInstallments) {
     const monthly = Math.round((item.value / item.totalInstallments) * 100) / 100
+    const currentMonthly = item.currentInstallmentPayment?.paidValue ?? monthly
     if ((item.anticipatedThisMonth || 0) > 0 && item.discountedTotalThisMonth != null) {
-      monthValue = monthly + item.discountedTotalThisMonth
+      monthValue = currentMonthly + item.discountedTotalThisMonth
     } else if ((item.anticipatedThisMonth || 0) > 0) {
-      monthValue = monthly * (1 + item.anticipatedThisMonth)
+      monthValue = currentMonthly + monthly * item.anticipatedThisMonth
     } else {
-      monthValue = monthly
+      monthValue = currentMonthly
     }
   } else {
     monthValue = item.type === 'subscription' ? (item.effectiveValue ?? item.value) : item.value

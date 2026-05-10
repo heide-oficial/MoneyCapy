@@ -8,18 +8,20 @@ export function getMonthlyExpenseValue(item: SectionItem): number {
     if (item.cardSplits && item.cardSplits.length > 0) {
       return item.cardSplits.reduce((sum, split) => {
         const monthly = Math.round((split.value / split.totalInstallments) * 100) / 100
+        const currentMonthly = split.currentInstallmentPayment?.paidValue ?? monthly
         if ((split.anticipatedThisMonth || 0) > 0 && split.discountedTotalThisMonth != null) {
-          return sum + monthly + split.discountedTotalThisMonth
+          return sum + currentMonthly + split.discountedTotalThisMonth
         }
-        return sum + monthly * (1 + (split.anticipatedThisMonth || 0))
+        return sum + currentMonthly + monthly * (split.anticipatedThisMonth || 0)
       }, 0) * rate
     }
 
     const monthly = Math.round((item.value / item.totalInstallments) * 100) / 100
+    const currentMonthly = item.currentInstallmentPayment?.paidValue ?? monthly
     if ((item.anticipatedThisMonth || 0) > 0 && item.discountedTotalThisMonth != null) {
-      return (monthly + item.discountedTotalThisMonth) * rate
+      return (currentMonthly + item.discountedTotalThisMonth) * rate
     }
-    return monthly * (1 + (item.anticipatedThisMonth || 0)) * rate
+    return (currentMonthly + monthly * (item.anticipatedThisMonth || 0)) * rate
   }
 
   return (item.type === 'subscription' ? (item.effectiveValue ?? item.value) : item.value) * rate

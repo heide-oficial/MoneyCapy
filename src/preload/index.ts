@@ -85,6 +85,10 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.ITEMS_ANTICIPATE, itemId, month, count, splitId, discountedTotal),
     undoAnticipation: (anticipationId: number) =>
       ipcRenderer.invoke(IPC_CHANNELS.ITEMS_UNDO_ANTICIPATION, anticipationId),
+    setCurrentInstallmentPayment: (itemId: number, month: string, originalValue: number, paidValue: number, paidAt?: string, splitId?: number) =>
+      ipcRenderer.invoke(IPC_CHANNELS.ITEMS_SET_CURRENT_INSTALLMENT_PAYMENT, itemId, month, originalValue, paidValue, paidAt, splitId),
+    deleteCurrentInstallmentPayment: (paymentId: number) =>
+      ipcRenderer.invoke(IPC_CHANNELS.ITEMS_DELETE_CURRENT_INSTALLMENT_PAYMENT, paymentId),
     setMonthValue: (itemId: number, month: string, value: number) =>
       ipcRenderer.invoke(IPC_CHANNELS.ITEMS_SET_MONTH_VALUE, itemId, month, value),
     removeMonthValue: (itemId: number, month: string) =>

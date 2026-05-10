@@ -14,6 +14,17 @@ export interface CardSplit {
   anticipatedThisMonth?: number
   discountedTotalThisMonth?: number | null
   currentInstallment?: number
+  currentInstallmentPayment?: CurrentInstallmentPayment | null
+}
+
+export interface CurrentInstallmentPayment {
+  id: number
+  itemId: number
+  splitId: number | null
+  month: string
+  originalValue: number
+  paidValue: number
+  paidAt: string | null
 }
 
 export interface ItemInterruption {
@@ -46,6 +57,8 @@ export interface SectionItem {
   tags?: TagData[]
   cardSplits?: CardSplit[]
   anticipations?: { id: number; splitId: number | null; month: string; count: number; discountedTotal?: number | null }[]
+  currentInstallmentPayments?: CurrentInstallmentPayment[]
+  currentInstallmentPayment?: CurrentInstallmentPayment | null
   totalAnticipated?: number
   anticipatedThisMonth?: number
   discountedTotalThisMonth?: number | null

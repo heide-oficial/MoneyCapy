@@ -172,6 +172,14 @@ export class BackupService {
       )
     } catch { /* table may not exist */ }
 
+    try {
+      copyQuery(
+        'item_current_installment_payments',
+        `SELECT * FROM item_current_installment_payments WHERE month >= ? AND month <= ?`,
+        [startMonth, endMonth]
+      )
+    } catch { /* table may not exist */ }
+
     // 8. Copy interruptions for included items/incomes
     if (itemIds.length > 0) {
       const itemChunks = this.chunkArray(itemIds, 500)
@@ -335,6 +343,18 @@ export class BackupService {
     for (const a of allAnticipations) {
       lines.push(`${a.id};${a.item_id};${a.split_id || ''};${a.month};${a.count}`)
     }
+    lines.push('')
+
+    lines.push('=== PAGAMENTOS ANTECIPADOS DA PARCELA ATUAL ===')
+    lines.push('ID;Item ID;Split ID;Mês;Valor Original;Valor Pago;Pago Em')
+    try {
+      const currentInstallmentPayments = this.db.prepare(
+        'SELECT * FROM item_current_installment_payments ORDER BY item_id, month'
+      ).all() as any[]
+      for (const p of currentInstallmentPayments) {
+        lines.push(`${p.id};${p.item_id};${p.split_id || ''};${p.month};${p.original_value};${p.paid_value};${p.paid_at || ''}`)
+      }
+    } catch { /* table may not exist */ }
     lines.push('')
 
     // Interruptions

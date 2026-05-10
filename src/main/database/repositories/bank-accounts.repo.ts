@@ -141,6 +141,13 @@ export class BankAccountsRepository {
     return row ? row.count : 0
   }
 
+  private getCurrentInstallmentPaidValue(itemId: number, month: string): number | null {
+    const row = this.db.prepare(
+      'SELECT paid_value FROM item_current_installment_payments WHERE item_id = ? AND month = ? AND split_id IS NULL LIMIT 1'
+    ).get(itemId, month) as any
+    return row ? row.paid_value ?? null : null
+  }
+
   /**
    * Get item counts for items directly linked to this bank account (via bank_account_id on section_items)
    */
@@ -195,7 +202,9 @@ export class BankAccountsRepository {
         const instCount = item.total_installments || 1
         const snapshot = item.exchange_rate_snapshot || 1.0
         const anticipatedInMonth = this.getAnticipatedInMonth(item.id, month)
-        const monthlyValue = (item.value / instCount) * (1 + anticipatedInMonth) * snapshot
+        const baseMonthly = item.value / instCount
+        const currentMonthly = this.getCurrentInstallmentPaidValue(item.id, month) ?? baseMonthly
+        const monthlyValue = (currentMonthly + baseMonthly * anticipatedInMonth) * snapshot
         if (item.type === 'emprestimo') {
           emprestimoCount++
           emprestimoTotal += monthlyValue

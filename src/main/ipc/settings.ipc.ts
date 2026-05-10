@@ -126,6 +126,7 @@ export function registerSettingsHandlers(db: WrappedDatabase): void {
   ipcMain.handle(IPC_CHANNELS.SETTINGS_RESET_ALL_DATA, () => {
     const transaction = db.transaction(() => {
       db.prepare('DELETE FROM item_anticipations').run()
+      db.prepare('DELETE FROM item_current_installment_payments').run()
       db.prepare('DELETE FROM item_monthly_status').run()
       db.prepare('DELETE FROM item_monthly_values').run()
       db.prepare('DELETE FROM item_interruptions').run()
@@ -156,6 +157,7 @@ export function registerSettingsHandlers(db: WrappedDatabase): void {
   ipcMain.handle(IPC_CHANNELS.SETTINGS_RESET_APP, () => {
     const transaction = db.transaction(() => {
       db.prepare('DELETE FROM item_anticipations').run()
+      db.prepare('DELETE FROM item_current_installment_payments').run()
       db.prepare('DELETE FROM item_monthly_status').run()
       db.prepare('DELETE FROM item_monthly_values').run()
       db.prepare('DELETE FROM item_interruptions').run()

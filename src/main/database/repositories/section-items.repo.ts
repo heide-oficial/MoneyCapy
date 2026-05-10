@@ -71,6 +71,17 @@ export class SectionItemsRepository {
     return row ? row.discounted_total ?? null : null
   }
 
+  private getCurrentInstallmentPaidValue(itemId: number, month: string, splitId?: number | null): number | null {
+    const row = splitId == null
+      ? this.db.prepare(
+        'SELECT paid_value FROM item_current_installment_payments WHERE item_id = ? AND month = ? AND split_id IS NULL LIMIT 1'
+      ).get(itemId, month)
+      : this.db.prepare(
+        'SELECT paid_value FROM item_current_installment_payments WHERE item_id = ? AND month = ? AND split_id = ? LIMIT 1'
+      ).get(itemId, month, splitId)
+    return row ? ((row as any).paid_value ?? null) : null
+  }
+
   /** Load interruptions for an item from item_interruptions table */
   private getInterruptions(itemId: number): { id: number; end_month: string; resume_month: string | null }[] {
     return this.db.prepare(
@@ -393,21 +404,25 @@ export class SectionItemsRepository {
           for (const sp of splits) {
             const splitAnticipated = this.getAnticipatedInMonthForSplit(sp.id, month)
             const monthly = Math.round((sp.value / sp.total_installments) * 100) / 100
+            const currentPaid = this.getCurrentInstallmentPaidValue(item.id, month, sp.id)
+            const currentMonthly = currentPaid ?? monthly
             if (splitAnticipated > 0) {
               const discounted = this.getDiscountedTotalInMonthForSplit(sp.id, month)
-              total += (monthly + (discounted != null ? discounted : monthly * splitAnticipated)) * snapshot
+              total += (currentMonthly + (discounted != null ? discounted : monthly * splitAnticipated)) * snapshot
             } else {
-              total += monthly * snapshot
+              total += currentMonthly * snapshot
             }
           }
         } else {
           const anticipatedInMonth = this.getAnticipatedInMonth(item.id, month)
           const monthly = Math.round((item.value / item.total_installments) * 100) / 100
+          const currentPaid = this.getCurrentInstallmentPaidValue(item.id, month, null)
+          const currentMonthly = currentPaid ?? monthly
           if (anticipatedInMonth > 0) {
             const discounted = this.getDiscountedTotalInMonth(item.id, month)
-            total += (monthly + (discounted != null ? discounted : monthly * anticipatedInMonth)) * snapshot
+            total += (currentMonthly + (discounted != null ? discounted : monthly * anticipatedInMonth)) * snapshot
           } else {
-            total += monthly * snapshot
+            total += currentMonthly * snapshot
           }
         }
       } else {

@@ -9,7 +9,7 @@ import { formatCurrency, formatCurrencyWith } from '../../lib/currency'
 import { addMonths, useFormatDate } from '../../lib/date'
 import { useCurrencySettings } from '../../contexts/CurrencySettingsContext'
 import { Plus, X, FastForward, Undo2, Check, Palette, Pencil } from 'lucide-react'
-import type { TagData, CardSplit, ItemInterruption, SectionItem } from '../../types/entities'
+import type { TagData, CardSplit, CurrentInstallmentPayment, ItemInterruption, SectionItem } from '../../types/entities'
 import { DayPicker } from '../../components/ui/DayPicker'
 import { ColorPicker } from '../../components/ui/ColorPicker'
 import { useTranslation } from '../../contexts/LanguageContext'
@@ -95,6 +95,8 @@ export interface ItemsFormProps {
   handleSave: () => Promise<void>
   handleAnticipate: (splitId?: number, discountedTotal?: number) => Promise<void>
   handleUndoAnticipation: (anticipationId: number) => Promise<void>
+  handleCurrentInstallmentPayment: (splitId: number | undefined, originalValue: number, paidValue: number, paidAt: string) => Promise<void>
+  handleDeleteCurrentInstallmentPayment: (paymentId: number) => Promise<void>
   handleReactivate: (interruptionId: number) => void
   handleEditInterruption: (item: SectionItem, interruption: ItemInterruption) => void
   setInterruptItem: (item: SectionItem | null) => void
@@ -112,6 +114,7 @@ export function ItemsForm({
   categories, setCategories, subcategories, setSubcategories, cards, bankAccounts, stores, setStores,
   allTags, setAllTags,
   handleSave, handleAnticipate, handleUndoAnticipation,
+  handleCurrentInstallmentPayment, handleDeleteCurrentInstallmentPayment,
   handleReactivate, handleEditInterruption, setInterruptItem,
   onValuesChanged,
   onDelete,
@@ -134,6 +137,14 @@ export function ItemsForm({
   const [showValueOverrideModal, setShowValueOverrideModal] = useState(false)
   const [valueOverrideMonth, setValueOverrideMonth] = useState('')
   const [valueOverrideValue, setValueOverrideValue] = useState(0)
+  const [currentPaymentTarget, setCurrentPaymentTarget] = useState<{
+    splitId?: number
+    label: string
+    originalValue: number
+    payment?: CurrentInstallmentPayment | null
+  } | null>(null)
+  const [currentPaymentPaidValue, setCurrentPaymentPaidValue] = useState(0)
+  const [currentPaymentPaidAt, setCurrentPaymentPaidAt] = useState('')
 
   // Inline creation modals
   const INLINE_COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316', '#14b8a6', '#6366f1']
@@ -159,6 +170,7 @@ export function ItemsForm({
     if (open) {
       setModalTab(initialTab || 'detalhes')
       setDiscountStates({})
+      setCurrentPaymentTarget(null)
     }
   }, [open])
 
@@ -200,6 +212,35 @@ export function ItemsForm({
     toast.success(t('valueOverrides.removed'))
     await loadValueOverrides()
     onValuesChanged?.()
+  }
+
+  const openCurrentPaymentModal = (target: {
+    splitId?: number
+    label: string
+    originalValue: number
+    payment?: CurrentInstallmentPayment | null
+  }) => {
+    const paidAt = target.payment?.paidAt || form.paidAt || new Date().toISOString().substring(0, 10)
+    setCurrentPaymentTarget(target)
+    setCurrentPaymentPaidValue(target.payment?.paidValue ?? target.originalValue)
+    setCurrentPaymentPaidAt(paidAt)
+  }
+
+  const saveCurrentPayment = async () => {
+    if (!currentPaymentTarget) return
+    await handleCurrentInstallmentPayment(
+      currentPaymentTarget.splitId,
+      currentPaymentTarget.originalValue,
+      currentPaymentPaidValue,
+      currentPaymentPaidAt
+    )
+    setCurrentPaymentTarget(null)
+  }
+
+  const deleteCurrentPayment = async () => {
+    if (!currentPaymentTarget?.payment) return
+    await handleDeleteCurrentInstallmentPayment(currentPaymentTarget.payment.id)
+    setCurrentPaymentTarget(null)
   }
 
   const handleModalScroll = () => {
@@ -753,6 +794,7 @@ export function ItemsForm({
       totalAnticipated: number
       monthlyValue: number
       splitId?: number
+      currentPayment?: CurrentInstallmentPayment | null
     }) => {
       const effectiveTotal = opts.totalInst - opts.totalAnticipated
       const remaining = Math.max(effectiveTotal - opts.currentInst, 0)
@@ -771,6 +813,7 @@ export function ItemsForm({
 
       const paidPct = effectiveTotal > 0 ? Math.min((opts.currentInst / effectiveTotal) * 100, 100) : 0
       const previewPct = effectiveTotal > 0 && countNum > 0 ? Math.min((countNum / effectiveTotal) * 100, 100 - paidPct) : 0
+      const currentPaymentSavings = opts.currentPayment ? opts.currentPayment.originalValue - opts.currentPayment.paidValue : 0
 
       return (
         <div className="rounded-lg border border-border bg-card p-4 space-y-3">
@@ -786,6 +829,53 @@ export function ItemsForm({
               {opts.totalAnticipated > 0 && <span className="text-primary"> (+{opts.totalAnticipated})</span>}
               {previewing && <span className="text-yellow-500"> (+{countNum})</span>}
             </span>
+          </div>
+
+          <div className="rounded-md border border-border/60 bg-muted/20 p-3 space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-muted-foreground">{t('itemsForm.currentInstallmentPayment')}</p>
+                <p className="text-sm text-foreground">
+                  {opts.currentPayment
+                    ? `${fmtVal(opts.currentPayment.paidValue)} - ${fmtDate(opts.currentPayment.paidAt || '')}`
+                    : t('itemsForm.noCurrentInstallmentPayment')}
+                </p>
+                {opts.currentPayment && currentPaymentSavings > 0 && (
+                  <p className="text-xs font-medium text-green-500">{t('itemsForm.savingsLabel')}: {fmtVal(currentPaymentSavings)}</p>
+                )}
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={done || opts.monthlyValue <= 0}
+                  onClick={() => openCurrentPaymentModal({
+                    splitId: opts.splitId,
+                    label: opts.label,
+                    originalValue: Math.round(opts.monthlyValue * 100) / 100,
+                    payment: opts.currentPayment
+                  })}
+                >
+                  {t('itemsForm.anticipateCurrentInstallmentPayment')}
+                </Button>
+                {opts.currentPayment && (
+                  <button
+                    type="button"
+                    onClick={() => openCurrentPaymentModal({
+                      splitId: opts.splitId,
+                      label: opts.label,
+                      originalValue: opts.currentPayment?.originalValue ?? Math.round(opts.monthlyValue * 100) / 100,
+                      payment: opts.currentPayment
+                    })}
+                    className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-input text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                    title={t('common.edit')}
+                  >
+                    <Pencil size={14} />
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Progress bar + anticipation controls */}
@@ -923,7 +1013,8 @@ export function ItemsForm({
               currentInst: sp.currentInstallment || (editing.currentInstallment || 0),
               totalAnticipated: sp.totalAnticipated || 0,
               monthlyValue: totalInst > 0 ? value / totalInst : 0,
-              splitId: sp.id
+              splitId: sp.id,
+              currentPayment: sp.currentInstallmentPayment || null
             })
           })
         ) : (
@@ -935,7 +1026,8 @@ export function ItemsForm({
               totalInst,
               currentInst: editing.currentInstallment || 0,
               totalAnticipated: editing.totalAnticipated || 0,
-              monthlyValue: totalInst > 0 ? value / totalInst : 0
+              monthlyValue: totalInst > 0 ? value / totalInst : 0,
+              currentPayment: editing.currentInstallmentPayment || null
             })
           })()
         )}
@@ -1239,6 +1331,57 @@ export function ItemsForm({
           <Button onClick={handleSaveValueOverride}>{t('common.save')}</Button>
         </div>
       </div>
+    </Modal>
+
+    <Modal
+      open={!!currentPaymentTarget}
+      onClose={() => setCurrentPaymentTarget(null)}
+      title={t('itemsForm.anticipateCurrentInstallmentPayment')}
+      maxWidth="max-w-sm"
+    >
+      {currentPaymentTarget && (
+        <div className="space-y-4">
+          <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+            <p className="text-sm font-semibold text-foreground">{currentPaymentTarget.label}</p>
+            <p className="text-xs text-muted-foreground">
+              {t('itemsForm.originalInstallmentValue')}: {fmtVal(currentPaymentTarget.originalValue)}
+            </p>
+          </div>
+          <CurrencyInput
+            label={t('itemsForm.paidInstallmentValue')}
+            value={currentPaymentPaidValue}
+            onChange={setCurrentPaymentPaidValue}
+            autoFocus
+            symbol={currencySymbol}
+          />
+          <DatePicker
+            className="w-full justify-start"
+            mode="date"
+            label={t('itemsForm.paymentDate')}
+            value={currentPaymentPaidAt}
+            onChange={setCurrentPaymentPaidAt}
+          />
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>{t('itemsForm.savingsLabel')}</span>
+            <span className="font-semibold text-green-500">
+              {fmtVal(Math.max(0, currentPaymentTarget.originalValue - currentPaymentPaidValue))}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-2 pt-2">
+            <div>
+              {currentPaymentTarget.payment && (
+                <Button variant="ghost" className="text-destructive hover:text-destructive" onClick={deleteCurrentPayment}>
+                  <X size={14} /> {t('common.delete')}
+                </Button>
+              )}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setCurrentPaymentTarget(null)}>{t('common.cancel')}</Button>
+              <Button onClick={saveCurrentPayment}>{t('common.save')}</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </Modal>
 
     {/* Store creation modal */}

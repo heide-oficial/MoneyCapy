@@ -207,15 +207,23 @@ export function registerInsightsHandlers(db: WrappedDatabase): void {
               const anticipatedRow = db.prepare(
                 'SELECT COALESCE(count, 0) as count FROM item_anticipations WHERE split_id = ? AND month = ?'
               ).get(sp.id, month) as any
+              const currentPayment = db.prepare(
+                'SELECT paid_value FROM item_current_installment_payments WHERE item_id = ? AND split_id = ? AND month = ? LIMIT 1'
+              ).get(item.id, sp.id, month) as any
               const anticipatedInMonth = anticipatedRow ? anticipatedRow.count : 0
-              effectiveValue += Math.round((sp.value / sp.total_installments) * 100) / 100 * (1 + anticipatedInMonth)
+              const monthly = Math.round((sp.value / sp.total_installments) * 100) / 100
+              effectiveValue += (currentPayment?.paid_value ?? monthly) + monthly * anticipatedInMonth
             }
           } else {
             const anticipatedRow = db.prepare(
               'SELECT COALESCE(count, 0) as count FROM item_anticipations WHERE item_id = ? AND split_id IS NULL AND month = ?'
             ).get(item.id, month) as any
+            const currentPayment = db.prepare(
+              'SELECT paid_value FROM item_current_installment_payments WHERE item_id = ? AND split_id IS NULL AND month = ? LIMIT 1'
+            ).get(item.id, month) as any
             const anticipatedInMonth = anticipatedRow ? anticipatedRow.count : 0
-            effectiveValue = Math.round((item.value / item.total_installments) * 100) / 100 * (1 + anticipatedInMonth)
+            const monthly = Math.round((item.value / item.total_installments) * 100) / 100
+            effectiveValue = (currentPayment?.paid_value ?? monthly) + monthly * anticipatedInMonth
           }
         } else {
           effectiveValue = sectionItemsRepo.getEffectiveValue(item, month)

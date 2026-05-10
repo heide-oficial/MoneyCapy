@@ -54,6 +54,8 @@ export const IPC_CHANNELS = {
   ITEMS_REACTIVATE: 'items:reactivate',
   ITEMS_ANTICIPATE: 'items:anticipate',
   ITEMS_UNDO_ANTICIPATION: 'items:undo-anticipation',
+  ITEMS_SET_CURRENT_INSTALLMENT_PAYMENT: 'items:set-current-installment-payment',
+  ITEMS_DELETE_CURRENT_INSTALLMENT_PAYMENT: 'items:delete-current-installment-payment',
   ITEMS_SET_MONTH_VALUE: 'items:set-month-value',
   ITEMS_REMOVE_MONTH_VALUE: 'items:remove-month-value',
   ITEMS_LIST_MONTH_VALUES: 'items:list-month-values',
