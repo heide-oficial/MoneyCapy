@@ -46,6 +46,14 @@ export class CardsRepository {
     return row ? row.value : baseValue
   }
 
+  private getLimitStartMonth(startMonth: string, billingDayMonthOffset: number | null | undefined): string {
+    return addMonths(startMonth, billingDayMonthOffset || 0)
+  }
+
+  private getInvoiceMonthForLimitMonth(limitMonth: string, billingDayMonthOffset: number | null | undefined): string {
+    return addMonths(limitMonth, -(billingDayMonthOffset || 0))
+  }
+
   findAll(personId?: number) {
     if (personId) {
       return this.db.prepare(
@@ -132,40 +140,49 @@ export class CardsRepository {
        FROM cards c LEFT JOIN currencies cur ON c.currency_id = cur.id WHERE c.id = ?`
     ).get(cardId) as any
     const cardRate = cardRow?.card_rate || 1.0
+    const maxInvoiceMonth = addMonths(month, 1)
 
     let total = 0
 
-    // Common items with this card in this exact month (credit only)
+    // Common credit purchases consume limit in their billing month.
     const commonItems = this.db.prepare(
-      `SELECT id, value, exchange_rate_snapshot FROM section_items
-       WHERE card_id = ? AND type = 'common' AND start_month = ? AND is_active = 1
+      `SELECT id, value, start_month, billing_day_month_offset, exchange_rate_snapshot FROM section_items
+       WHERE card_id = ? AND type = 'common' AND start_month <= ? AND is_active = 1
        AND (payment_method IS NULL OR payment_method = 'credit')`
-    ).all(cardId, month) as any[]
+    ).all(cardId, maxInvoiceMonth) as any[]
     for (const item of commonItems) {
-      if (this.isItemInterrupted(item.id, month)) continue
+      const limitStartMonth = this.getLimitStartMonth(item.start_month, item.billing_day_month_offset)
+      if (limitStartMonth !== month) continue
+      if (this.isItemInterrupted(item.id, item.start_month)) continue
       const snapshot = item.exchange_rate_snapshot || 1.0
       total += item.value * snapshot / cardRate
     }
 
-    // Subscription items with this card visible in this month (credit only)
+    // Subscription credit charges consume limit in the configured billing month for each invoice month.
     const subs = this.db.prepare(
-      `SELECT id, value, exchange_rate_snapshot FROM section_items
-       WHERE card_id = ? AND type = 'subscription' AND start_month <= ? AND (end_month IS NULL OR end_month >= ?) AND is_active = 1
+      `SELECT id, value, start_month, end_month, billing_day_month_offset, exchange_rate_snapshot FROM section_items
+       WHERE card_id = ? AND type = 'subscription' AND start_month <= ? AND is_active = 1
        AND (payment_method IS NULL OR payment_method = 'credit')`
-    ).all(cardId, month, month) as any[]
+    ).all(cardId, maxInvoiceMonth) as any[]
     for (const sub of subs) {
-      if (this.isItemInterrupted(sub.id, month)) continue
+      const invoiceMonth = this.getInvoiceMonthForLimitMonth(month, sub.billing_day_month_offset)
+      if (sub.start_month > invoiceMonth) continue
+      if (sub.end_month && sub.end_month < invoiceMonth) continue
+      if (this.isItemInterrupted(sub.id, invoiceMonth)) continue
       const snapshot = sub.exchange_rate_snapshot || 1.0
-      total += this.getEffectiveValueForSubscription(sub.id, sub.value, month) * snapshot / cardRate
+      total += this.getEffectiveValueForSubscription(sub.id, sub.value, invoiceMonth) * snapshot / cardRate
     }
 
-    // Installment items — need JS filtering
+    // Installment credit purchases consume limit from their billing month, while installments still follow start_month.
     const installmentItems = this.db.prepare(
-      `SELECT id, value, total_installments, start_month, end_month, exchange_rate_snapshot FROM section_items
-       WHERE card_id = ? AND (type = 'installment' OR type = 'emprestimo') AND start_month <= ? AND is_active = 1`
-    ).all(cardId, month) as any[]
+      `SELECT id, value, total_installments, start_month, end_month, billing_day_month_offset, exchange_rate_snapshot FROM section_items
+       WHERE card_id = ? AND (type = 'installment' OR type = 'emprestimo') AND start_month <= ? AND is_active = 1
+       AND (payment_method IS NULL OR payment_method = 'credit')`
+    ).all(cardId, maxInvoiceMonth) as any[]
 
     for (const item of installmentItems) {
+      const limitStartMonth = this.getLimitStartMonth(item.start_month, item.billing_day_month_offset)
+      if (limitStartMonth > month) continue
       if (this.isItemInterrupted(item.id, month)) continue
       const instCount = item.total_installments || 0
       if (instCount <= 0) continue
@@ -187,24 +204,34 @@ export class CardsRepository {
       total += Math.max(0, remaining) * monthlyValue * snapshot / cardRate
     }
 
-    // Splits pointing to this card (credit only for common/subscription)
+    // Splits pointing to this card (credit only)
     const splitItems = this.db.prepare(
       `SELECT ics.id as split_id, ics.value, ics.total_installments, si.type, si.start_month, si.end_month, si.is_active, si.id as item_id,
-              si.total_installments as item_total_installments, si.payment_method, si.exchange_rate_snapshot
+              si.total_installments as item_total_installments, COALESCE(ics.payment_method, si.payment_method) as payment_method,
+              si.billing_day_month_offset, si.exchange_rate_snapshot
        FROM item_card_splits ics
        JOIN section_items si ON ics.item_id = si.id
        WHERE ics.card_id = ? AND si.is_active = 1`
     ).all(cardId) as any[]
 
     for (const sp of splitItems) {
-      if (this.isItemInterrupted(sp.item_id, month)) continue
       const isCredit = sp.payment_method === null || sp.payment_method === 'credit'
       const snapshot = sp.exchange_rate_snapshot || 1.0
-      if (sp.type === 'common' && sp.start_month === month && isCredit) {
+      if (sp.type === 'common' && isCredit) {
+        const limitStartMonth = this.getLimitStartMonth(sp.start_month, sp.billing_day_month_offset)
+        if (limitStartMonth !== month) continue
+        if (this.isItemInterrupted(sp.item_id, sp.start_month)) continue
         total += sp.value * snapshot / cardRate
-      } else if (sp.type === 'subscription' && sp.start_month <= month && (sp.end_month === null || sp.end_month >= month) && isCredit) {
+      } else if (sp.type === 'subscription' && isCredit) {
+        const invoiceMonth = this.getInvoiceMonthForLimitMonth(month, sp.billing_day_month_offset)
+        if (sp.start_month > invoiceMonth) continue
+        if (sp.end_month && sp.end_month < invoiceMonth) continue
+        if (this.isItemInterrupted(sp.item_id, invoiceMonth)) continue
         total += sp.value * snapshot / cardRate
-      } else if ((sp.type === 'installment' || sp.type === 'emprestimo') && sp.start_month <= month) {
+      } else if ((sp.type === 'installment' || sp.type === 'emprestimo') && sp.start_month <= maxInvoiceMonth && isCredit) {
+        const limitStartMonth = this.getLimitStartMonth(sp.start_month, sp.billing_day_month_offset)
+        if (limitStartMonth > month) continue
+        if (this.isItemInterrupted(sp.item_id, month)) continue
         const instCount = sp.total_installments || 0
         if (instCount <= 0) continue
         let visible = false

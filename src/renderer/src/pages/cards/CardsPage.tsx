@@ -233,7 +233,7 @@ export default function CardsPage() {
   const unlimitedCards = cards.filter(c => c.totalLimit === 0)
   const totalLimit = limitedCards.reduce((s, c) => s + c.totalLimit, 0)
   const totalUsed = limitedCards.reduce((s, c) => s + c.usedLimit, 0)
-  const totalAvailable = totalLimit - totalUsed
+  const totalAvailable = limitedCards.reduce((s, c) => s + c.availableLimit, 0)
 
   const openCreate = () => {
     if (!hasPassword) { setShowPasswordModal(true); return }
