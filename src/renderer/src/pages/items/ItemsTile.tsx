@@ -42,8 +42,9 @@ interface CardDetailRow {
   name: string
   detail?: string
   amount?: string
+  previousPaidProgress?: number
   previousPendingProgress?: number
-  paidProgress?: number
+  currentPaidProgress?: number
   currentProgress?: number
   overdueProgress?: number
 }
@@ -202,12 +203,14 @@ export function ItemsTile({
     const total = Math.max(totalInstallments, 1)
     const current = Math.min(Math.max(currentInstallment, 1), total)
     const elapsedCount = Math.min(Math.max(current - 1, 0), total)
+    const previousPaidCount = Math.min(item.paidInstallmentsBefore || 0, elapsedCount)
+    const previousPendingCount = Math.max(elapsedCount - previousPaidCount, 0)
     const currentAndAnticipated = Math.min(1 + Math.max(anticipatedThisMonth, 0), Math.max(total - elapsedCount, 0))
-    const paidCount = item.isPaid ? currentAndAnticipated : 0
     const pendingCount = item.isPaid ? 0 : currentAndAnticipated
     return {
-      previousPendingProgress: (elapsedCount / total) * 100,
-      paidProgress: (paidCount / total) * 100,
+      previousPaidProgress: (previousPaidCount / total) * 100,
+      previousPendingProgress: (previousPendingCount / total) * 100,
+      currentPaidProgress: item.isPaid ? (currentAndAnticipated / total) * 100 : 0,
       currentProgress: isOverdue ? 0 : (pendingCount / total) * 100,
       overdueProgress: isOverdue ? (pendingCount / total) * 100 : 0
     }
@@ -478,14 +481,17 @@ export function ItemsTile({
                   </div>
                   {card.amount && <p className="text-sm font-bold tabular-nums text-foreground sm:text-right">{card.amount}</p>}
                 </div>
-                {card.paidProgress != null && (
+                {card.previousPaidProgress != null && (
                   <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
                     <div className="flex h-full">
+                      {(card.previousPaidProgress || 0) > 0 && (
+                        <div className="h-full bg-green-500 transition-all" style={{ width: `${card.previousPaidProgress}%` }} />
+                      )}
                       {(card.previousPendingProgress || 0) > 0 && (
                         <div className="h-full bg-yellow-500/45 transition-all" style={{ width: `${card.previousPendingProgress}%` }} />
                       )}
-                      {(card.paidProgress || 0) > 0 && (
-                        <div className="h-full bg-green-500 transition-all" style={{ width: `${card.paidProgress}%` }} />
+                      {(card.currentPaidProgress || 0) > 0 && (
+                        <div className="h-full bg-green-500 transition-all" style={{ width: `${card.currentPaidProgress}%` }} />
                       )}
                       {(card.currentProgress || 0) > 0 && (
                         <div className="h-full bg-yellow-500 transition-all" style={{ width: `${card.currentProgress}%` }} />

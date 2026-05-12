@@ -70,6 +70,7 @@ function mapItem(item: any, db?: WrappedDatabase) {
     currentInstallmentPayments: item.currentInstallmentPayments || [],
     currentInstallmentPayment: item.currentInstallmentPayment || null,
     totalAnticipated: item.totalAnticipated || 0,
+    paidInstallmentsBefore: item.paidInstallmentsBefore || 0,
     anticipatedThisMonth: item.anticipatedThisMonth || 0,
     discountedTotalThisMonth: item.discountedTotalThisMonth ?? null,
     effectiveValue: item.effectiveValue,
@@ -185,6 +186,7 @@ function enrichItem(
       }))
       const itemPauseGap = calcTotalPauseGap(interruptions, month)
       item.currentInstallment = monthDiff(item.startMonth, month) + 1 + anticipatedBefore - itemPauseGap
+      item.paidInstallmentsBefore = statusRepo.countPaidBefore(item.id, item.startMonth, month)
       item.anticipatedThisMonth = anticipationsRepo.getAnticipatedInMonth(item.id, month)
       item.discountedTotalThisMonth = anticipationsRepo.getDiscountedTotalInMonth(item.id, month)
       const itemPayment = currentPaymentsRepo.findByTarget(item.id, month, null)

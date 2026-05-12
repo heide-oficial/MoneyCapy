@@ -51,6 +51,18 @@ export class ItemMonthlyStatusRepository {
     return result
   }
 
+  countPaidBefore(itemId: number, startMonth: string, month: string): number {
+    const row = this.db.prepare(`
+      SELECT COUNT(*) as count
+      FROM item_monthly_status
+      WHERE item_id = ?
+        AND month >= ?
+        AND month < ?
+        AND is_paid = 1
+    `).get(itemId, startMonth, month) as any
+    return Number(row?.count || 0)
+  }
+
   // Monthly active status methods
 
   getMonthlyActive(itemId: number, month: string): boolean | null {

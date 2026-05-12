@@ -60,6 +60,7 @@ export interface SectionItem {
   currentInstallmentPayments?: CurrentInstallmentPayment[]
   currentInstallmentPayment?: CurrentInstallmentPayment | null
   totalAnticipated?: number
+  paidInstallmentsBefore?: number
   anticipatedThisMonth?: number
   discountedTotalThisMonth?: number | null
   effectiveValue?: number
