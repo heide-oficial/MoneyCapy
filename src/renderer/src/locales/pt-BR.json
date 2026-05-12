@@ -484,6 +484,7 @@
     "interruptionMonths": "Quantidade de meses",
     "interruptionPreview": "Interrompido por {{count}} meses - De {{startMonth}} até {{endMonth}} - Volta em {{resumeMonth}}",
     "anticipatedInstallments": "{{count}} parcela(s) adiantada(s)",
+    "anticipatedInstallmentsToMonth": "+{{count}} parcela(s) adiantada(s) para {{month}}",
     "valueUpdatedFromMonth": "Valor atualizado a partir deste mês",
     "valueRestoredToBase": "Valor restaurado ao base",
     "interruptionUndone": "Interrupção desfeita",

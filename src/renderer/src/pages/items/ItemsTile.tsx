@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { formatCurrency, formatCurrencyWith } from '../../lib/currency'
 import { useFormatDate } from '../../lib/date'
 import { formatCardLabel, getTypeLabels } from '../../lib/card-utils'
-import { formatDayLabelResolved } from '../../../../../shared/day-utils'
+import { formatDayLabelResolved, resolveDay } from '../../../../../shared/day-utils'
 import { getInstallmentMonthValue } from '../../../../../shared/installment-utils'
 import { useBusinessDayConfig } from '../../contexts/BusinessDayContext'
 import { useDimPaid } from '../../contexts/DimPaidContext'
@@ -42,8 +42,9 @@ interface CardDetailRow {
   name: string
   detail?: string
   amount?: string
-  progress?: number
-  anticipatedProgress?: number
+  paidProgress?: number
+  currentProgress?: number
+  overdueProgress?: number
 }
 
 interface TooltipRow {
@@ -171,6 +172,49 @@ export function ItemsTile({
     }
     return formatDayLabelResolved(item.dueDay, item.dueDayType || null, t('items.dueDayLabel'), mYear, mMonth, businessDayConfig, undefined, dueOffset)
   })()
+  const dueDate = (() => {
+    if (!item.dueDay && !(item.dueDayType === 'card_due' && item.cardDueDays?.length)) return null
+    const dueOffset = item.dueDayMonthOffset || 0
+    let dueMonth = mMonth + dueOffset
+    let dueYear = mYear
+    while (dueMonth > 12) { dueYear++; dueMonth -= 12 }
+    while (dueMonth < 1) { dueYear--; dueMonth += 12 }
+
+    if (item.dueDayType === 'card_due' && item.cardDueDays && item.cardDueDays.length > 0) {
+      const resolvedDays = [...new Set(item.cardDueDays)]
+        .map(day => resolveDay({ day, dayType: 'static' }, dueYear, dueMonth, businessDayConfig))
+        .filter((day): day is number => day != null)
+      if (resolvedDays.length === 0) return null
+      return new Date(dueYear, dueMonth - 1, Math.max(...resolvedDays), 23, 59, 59, 999)
+    }
+
+    const resolvedDay = resolveDay(
+      { day: item.dueDay, dayType: (item.dueDayType || 'static') as any },
+      dueYear,
+      dueMonth,
+      businessDayConfig
+    )
+    return resolvedDay == null ? null : new Date(dueYear, dueMonth - 1, resolvedDay, 23, 59, 59, 999)
+  })()
+  const isOverdue = Boolean(dueDate && !item.isPaid && dueDate.getTime() < Date.now())
+  const buildInstallmentProgress = (currentInstallment: number, totalInstallments: number, anticipatedThisMonth = 0) => {
+    const total = Math.max(totalInstallments, 1)
+    const current = Math.min(Math.max(currentInstallment, 1), total)
+    const previousPaid = Math.min(Math.max(current - 1, 0), total)
+    const currentAndAnticipated = Math.min(1 + Math.max(anticipatedThisMonth, 0), Math.max(total - previousPaid, 0))
+    const paidCount = item.isPaid ? Math.min(previousPaid + currentAndAnticipated, total) : previousPaid
+    const pendingCount = item.isPaid ? 0 : currentAndAnticipated
+    return {
+      paidProgress: (paidCount / total) * 100,
+      currentProgress: isOverdue ? 0 : (pendingCount / total) * 100,
+      overdueProgress: isOverdue ? (pendingCount / total) * 100 : 0
+    }
+  }
+  const formatInstallmentDetail = (currentInstallment: number, totalInstallments: number, anticipatedThisMonth = 0) => {
+    const base = `${currentInstallment}/${totalInstallments} ${t('items.installments').toLowerCase()}`
+    if (anticipatedThisMonth <= 0) return base
+    return `${base} (${t('items.anticipatedInstallmentsToMonth', { count: String(anticipatedThisMonth), month: fmtMonth(month) })})`
+  }
 
   const cardRows: CardDetailRow[] = []
   if (isInstallment) {
@@ -189,15 +233,13 @@ export function ItemsTile({
         })
         cardRows.push({
           name: splitLabel,
-          detail: `${current}/${split.totalInstallments} ${t('items.installments').toLowerCase()}${anticipated > 0 ? ` (+${anticipated})` : ''}`,
+          detail: formatInstallmentDetail(current, split.totalInstallments, anticipated),
           amount: `${fmtVal(rowValue)}${t('itemsForm.perMonth')}`,
-          progress: Math.min((current / split.totalInstallments) * 100, 100),
-          anticipatedProgress: Math.min((anticipated / split.totalInstallments) * 100, Math.max(100 - Math.min((current / split.totalInstallments) * 100, 100), 0))
+          ...buildInstallmentProgress(current, split.totalInstallments, anticipated)
         })
       }
     } else {
       const anticipated = item.anticipatedThisMonth || 0
-      const progress = Math.min((item.currentInstallment! / item.totalInstallments!) * 100, 100)
       const monthly = Math.round((item.value / item.totalInstallments!) * 100) / 100
       const rowValue = getInstallmentMonthValue({
         monthlyValue: monthly,
@@ -208,10 +250,9 @@ export function ItemsTile({
       })
       cardRows.push({
         name: item.type === 'emprestimo' ? t('items.installments') : (item.cardName ? formatCardLabel(item.cardName, item.cardType, item.paymentMethod, cardTypeLabels) : t('items.installments')),
-        detail: `${item.currentInstallment!}/${item.totalInstallments!} ${t('items.installments').toLowerCase()}${anticipated > 0 ? ` (+${anticipated})` : ''}`,
+        detail: formatInstallmentDetail(item.currentInstallment!, item.totalInstallments!, anticipated),
         amount: `${fmtVal(rowValue)}${t('itemsForm.perMonth')}`,
-        progress,
-        anticipatedProgress: Math.min((anticipated / item.totalInstallments!) * 100, Math.max(100 - progress, 0))
+        ...buildInstallmentProgress(item.currentInstallment!, item.totalInstallments!, anticipated)
       })
     }
   } else if (item.cardName) {
@@ -435,12 +476,17 @@ export function ItemsTile({
                   </div>
                   {card.amount && <p className="text-sm font-bold tabular-nums text-foreground sm:text-right">{card.amount}</p>}
                 </div>
-                {card.progress != null && (
+                {card.paidProgress != null && (
                   <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
                     <div className="flex h-full">
-                      <div className={`h-full transition-all ${card.progress >= 100 ? 'bg-green-500' : 'bg-primary'}`} style={{ width: `${card.progress}%` }} />
-                      {(card.anticipatedProgress || 0) > 0 && (
-                        <div className="h-full bg-yellow-500 transition-all" style={{ width: `${card.anticipatedProgress}%` }} />
+                      {(card.paidProgress || 0) > 0 && (
+                        <div className="h-full bg-green-500 transition-all" style={{ width: `${card.paidProgress}%` }} />
+                      )}
+                      {(card.currentProgress || 0) > 0 && (
+                        <div className="h-full bg-yellow-500 transition-all" style={{ width: `${card.currentProgress}%` }} />
+                      )}
+                      {(card.overdueProgress || 0) > 0 && (
+                        <div className="h-full bg-red-500 transition-all" style={{ width: `${card.overdueProgress}%` }} />
                       )}
                     </div>
                   </div>
