@@ -461,7 +461,7 @@ export function ItemsForm({
             <X size={12} className="text-destructive" />
           </button>
         </div>
-        <Select value={sp.cardId} onChange={e => updateSplit(idx, 'cardId', e.target.value)} options={cards.map(c => ({ value: c.id, label: c.name }))} placeholder={t('itemsForm.selectCard')} />
+        <Select value={sp.cardId} onChange={e => updateSplit(idx, 'cardId', e.target.value)} options={cards.map(c => ({ value: c.id, label: c.name }))} placeholder={t('itemsForm.selectCard')} searchable />
         {sp.cardId && renderSplitPaymentMethodSelector(sp, idx)}
         <CurrencyInput label={t('itemsForm.valueRequired')} value={sp.value} onChange={v => updateSplit(idx, 'value', v)} symbol={currencySymbol} />
         <Input label={t('itemsForm.installments')} type="number" min={1} value={String(sp.totalInstallments)} onChange={e => updateSplit(idx, 'totalInstallments', parseInt(e.target.value) || 1)} />
@@ -588,7 +588,7 @@ export function ItemsForm({
 
               {form.cardMode === 'single' && form.splits.length > 0 && (
                 <div className="space-y-3">
-                  <Select label={t('itemsForm.card')} value={form.splits[0].cardId} onChange={e => updateSplit(0, 'cardId', e.target.value)} options={cards.map(c => ({ value: c.id, label: c.name }))} placeholder={t('itemsForm.selectCard')} />
+                  <Select label={t('itemsForm.card')} value={form.splits[0].cardId} onChange={e => updateSplit(0, 'cardId', e.target.value)} options={cards.map(c => ({ value: c.id, label: c.name }))} placeholder={t('itemsForm.selectCard')} searchable />
                   <div className="grid grid-cols-2 gap-3">
                     <CurrencyInput label={t('itemsForm.totalValue')} value={form.value} onChange={v => setForm({ ...form, value: v })} symbol={currencySymbol} />
                     <Input label={t('itemsForm.installments')} type="number" min={1} value={String(form.splits[0].totalInstallments)} onChange={e => updateSplit(0, 'totalInstallments', parseInt(e.target.value) || 1)} />
@@ -660,7 +660,7 @@ export function ItemsForm({
                 const ct = card?.cardType || 'both'
                 const pm = ct === 'credit' ? 'credit' : ct === 'debit' ? 'debit' : ''
                 setForm(f => ({ ...f, cardId: newCardId, paymentMethod: newCardId ? pm : '' }))
-              }} options={cards.map(c => ({ value: c.id, label: c.name }))} placeholder={t('itemsForm.noneCardPlaceholder')} />
+              }} options={cards.map(c => ({ value: c.id, label: c.name }))} placeholder={t('itemsForm.noneCardPlaceholder')} searchable />
               {form.cardId && (form.type === 'common' || form.type === 'subscription') && (() => {
                 const selectedCard = cards.find(c => String(c.id) === String(form.cardId))
                 const ct = selectedCard?.cardType || 'both'
