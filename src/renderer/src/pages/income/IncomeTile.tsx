@@ -95,13 +95,12 @@ export function IncomeTile({
   const tagsSummary = income.tags && income.tags.length > 0 ? income.tags.map(tag => tag.name).join(', ') : t('items.noTags')
   const statusSummary = income.isReceived
     ? (income.receivedAt ? t('items.receivedAt', { date: fmtDate(income.receivedAt) }) : t('items.received'))
-    : t('income.notReceivedYet')
+    : t('items.notReceived')
   const tooltipRows: TooltipRow[] = [
     receitasFields.type ? { icon: Layers, label: t('tileFields.type'), value: typeText } : null,
     receitasFields.dueDay && receivingDayText ? { icon: CalendarClock, label: receivingDayLabel, value: receivingDayText } : null,
     receitasFields.store && income.storeName ? { icon: Store, label: t('tileFields.store'), value: income.storeName } : null,
-    receitasFields.status ? { icon: CheckCircle, label: t('itemsForm.status'), value: income.isReceived ? t('items.received') : t('items.notReceived') } : null,
-    receitasFields.receivedDate ? { icon: CalendarClock, label: t('income.receivedDate'), value: statusSummary } : null,
+    (receitasFields.status || receitasFields.receivedDate) ? { icon: CheckCircle, label: t('itemsForm.status'), value: statusSummary } : null,
     receitasFields.interruptions ? { icon: PauseCircle, label: t('items.interruptions'), value: interruptionSummary } : null,
     receitasFields.tags ? { icon: Tags, label: t('itemsForm.tags'), value: tagsSummary } : null
   ].filter(Boolean) as TooltipRow[]
