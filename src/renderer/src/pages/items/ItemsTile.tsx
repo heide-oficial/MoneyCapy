@@ -42,7 +42,7 @@ interface CardDetailRow {
   name: string
   detail?: string
   amount?: string
-  elapsedProgress?: number
+  previousPendingProgress?: number
   paidProgress?: number
   currentProgress?: number
   overdueProgress?: number
@@ -206,7 +206,7 @@ export function ItemsTile({
     const paidCount = item.isPaid ? currentAndAnticipated : 0
     const pendingCount = item.isPaid ? 0 : currentAndAnticipated
     return {
-      elapsedProgress: (elapsedCount / total) * 100,
+      previousPendingProgress: (elapsedCount / total) * 100,
       paidProgress: (paidCount / total) * 100,
       currentProgress: isOverdue ? 0 : (pendingCount / total) * 100,
       overdueProgress: isOverdue ? (pendingCount / total) * 100 : 0
@@ -481,8 +481,8 @@ export function ItemsTile({
                 {card.paidProgress != null && (
                   <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
                     <div className="flex h-full">
-                      {(card.elapsedProgress || 0) > 0 && (
-                        <div className="h-full bg-transparent transition-all" style={{ width: `${card.elapsedProgress}%` }} />
+                      {(card.previousPendingProgress || 0) > 0 && (
+                        <div className="h-full bg-yellow-500/45 transition-all" style={{ width: `${card.previousPendingProgress}%` }} />
                       )}
                       {(card.paidProgress || 0) > 0 && (
                         <div className="h-full bg-green-500 transition-all" style={{ width: `${card.paidProgress}%` }} />
