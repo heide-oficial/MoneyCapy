@@ -51,16 +51,17 @@ export class ItemMonthlyStatusRepository {
     return result
   }
 
-  countPaidBefore(itemId: number, startMonth: string, month: string): number {
-    const row = this.db.prepare(`
-      SELECT COUNT(*) as count
+  listPaidMonthsBefore(itemId: number, startMonth: string, month: string): string[] {
+    const rows = this.db.prepare(`
+      SELECT month
       FROM item_monthly_status
       WHERE item_id = ?
         AND month >= ?
         AND month < ?
         AND is_paid = 1
-    `).get(itemId, startMonth, month) as any
-    return Number(row?.count || 0)
+      ORDER BY month ASC
+    `).all(itemId, startMonth, month) as { month: string }[]
+    return rows.map(row => row.month)
   }
 
   // Monthly active status methods

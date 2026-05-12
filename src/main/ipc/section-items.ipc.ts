@@ -89,6 +89,7 @@ function mapSplit(s: any, db?: WrappedDatabase) {
     value: s.value,
     totalInstallments: s.total_installments,
     totalAnticipated: s.totalAnticipated || 0,
+    paidInstallmentsBefore: s.paidInstallmentsBefore || 0,
     anticipatedThisMonth: s.anticipatedThisMonth || 0,
     discountedTotalThisMonth: s.discountedTotalThisMonth ?? null,
     currentInstallment: s.currentInstallment || undefined,
@@ -118,6 +119,22 @@ function calcTotalPauseGap(interruptions: { end_month?: string; endMonth?: strin
     }
   }
   return total
+}
+
+function countPaidInstallmentUnitsBefore(
+  statusRepo: ItemMonthlyStatusRepository,
+  anticipationsRepo: ItemAnticipationsRepository,
+  itemId: number,
+  startMonth: string,
+  month: string,
+  splitId?: number | null
+): number {
+  return statusRepo.listPaidMonthsBefore(itemId, startMonth, month).reduce((sum, paidMonth) => {
+    const anticipated = splitId
+      ? anticipationsRepo.getAnticipatedInMonthForSplit(splitId, paidMonth)
+      : anticipationsRepo.getAnticipatedInMonth(itemId, paidMonth)
+    return sum + 1 + anticipated
+  }, 0)
 }
 
 function enrichItem(
@@ -163,6 +180,7 @@ function enrichItem(
           const anticipatedBefore = anticipationsRepo.getAnticipatedBeforeMonthForSplit(sp.id, month)
           const spPauseGap = calcTotalPauseGap(item.interruptions, month)
           sp.currentInstallment = monthDiff(item.startMonth, month) + 1 + anticipatedBefore - spPauseGap
+          sp.paidInstallmentsBefore = countPaidInstallmentUnitsBefore(statusRepo, anticipationsRepo, item.id, item.startMonth, month, sp.id)
         }
       }
     }
@@ -186,7 +204,7 @@ function enrichItem(
       }))
       const itemPauseGap = calcTotalPauseGap(interruptions, month)
       item.currentInstallment = monthDiff(item.startMonth, month) + 1 + anticipatedBefore - itemPauseGap
-      item.paidInstallmentsBefore = statusRepo.countPaidBefore(item.id, item.startMonth, month)
+      item.paidInstallmentsBefore = countPaidInstallmentUnitsBefore(statusRepo, anticipationsRepo, item.id, item.startMonth, month)
       item.anticipatedThisMonth = anticipationsRepo.getAnticipatedInMonth(item.id, month)
       item.discountedTotalThisMonth = anticipationsRepo.getDiscountedTotalInMonth(item.id, month)
       const itemPayment = currentPaymentsRepo.findByTarget(item.id, month, null)

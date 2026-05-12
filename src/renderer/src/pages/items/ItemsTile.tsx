@@ -199,11 +199,11 @@ export function ItemsTile({
     return resolvedDay == null ? null : new Date(dueYear, dueMonth - 1, resolvedDay, 23, 59, 59, 999)
   })()
   const isOverdue = Boolean(dueDate && !item.isPaid && dueDate.getTime() < Date.now())
-  const buildInstallmentProgress = (currentInstallment: number, totalInstallments: number, anticipatedThisMonth = 0) => {
+  const buildInstallmentProgress = (currentInstallment: number, totalInstallments: number, anticipatedThisMonth = 0, paidInstallmentsBefore = item.paidInstallmentsBefore || 0) => {
     const total = Math.max(totalInstallments, 1)
     const current = Math.min(Math.max(currentInstallment, 1), total)
     const elapsedCount = Math.min(Math.max(current - 1, 0), total)
-    const previousPaidCount = Math.min(item.paidInstallmentsBefore || 0, elapsedCount)
+    const previousPaidCount = Math.min(paidInstallmentsBefore, elapsedCount)
     const previousPendingCount = Math.max(elapsedCount - previousPaidCount, 0)
     const currentAndAnticipated = Math.min(1 + Math.max(anticipatedThisMonth, 0), Math.max(total - elapsedCount, 0))
     const pendingCount = item.isPaid ? 0 : currentAndAnticipated
@@ -240,7 +240,7 @@ export function ItemsTile({
           name: splitLabel,
           detail: formatInstallmentDetail(current, split.totalInstallments, anticipated),
           amount: `${fmtVal(rowValue)}${t('itemsForm.perMonth')}`,
-          ...buildInstallmentProgress(current, split.totalInstallments, anticipated)
+          ...buildInstallmentProgress(current, split.totalInstallments, anticipated, split.paidInstallmentsBefore || 0)
         })
       }
     } else {

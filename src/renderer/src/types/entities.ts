@@ -11,6 +11,7 @@ export interface CardSplit {
   value: number
   totalInstallments: number
   totalAnticipated?: number
+  paidInstallmentsBefore?: number
   anticipatedThisMonth?: number
   discountedTotalThisMonth?: number | null
   currentInstallment?: number
