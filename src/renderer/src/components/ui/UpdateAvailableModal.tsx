@@ -7,6 +7,10 @@ import type { AppUpdateInfo } from '@shared/app-info'
 
 const SKIPPED_UPDATE_SETTING = 'skippedUpdateVersion'
 
+function displayVersion(version: string): string {
+  return version.trim().replace(/^v/i, '')
+}
+
 export function UpdateAvailableModal() {
   const { t } = useTranslation()
   const [updateInfo, setUpdateInfo] = useState<AppUpdateInfo | null>(null)
@@ -44,6 +48,8 @@ export function UpdateAvailableModal() {
   }, [])
 
   const latestVersion = updateInfo?.latestVersion || ''
+  const latestVersionLabel = displayVersion(latestVersion)
+  const currentVersionLabel = displayVersion(updateInfo?.currentVersion || '')
 
   const handleSkipVersion = async () => {
     if (latestVersion) {
@@ -60,7 +66,7 @@ export function UpdateAvailableModal() {
   }
 
   return (
-    <Modal open={open} onClose={() => setOpen(false)} title={t('updates.title')} maxWidth="max-w-md">
+    <Modal open={open} onClose={() => setOpen(false)} title={t('updates.title')} maxWidth="max-w-xl">
       <div className="space-y-5">
         <div className="rounded-lg border border-border bg-card p-4">
           <div className="flex items-start gap-3">
@@ -69,24 +75,36 @@ export function UpdateAvailableModal() {
             </div>
             <div className="min-w-0 space-y-1">
               <p className="text-sm font-medium text-foreground">
-                {t('updates.versionAvailable', { version: latestVersion })}
+                {t('updates.versionAvailable', { version: latestVersionLabel })}
               </p>
-              <p className="text-sm text-muted-foreground">
-                {t('updates.description', { currentVersion: updateInfo?.currentVersion || '' })}
+              <p className="max-w-prose text-sm leading-relaxed text-muted-foreground">
+                {t('updates.description', { currentVersion: currentVersionLabel })}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button variant="outline" onClick={handleSkipVersion}>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)_minmax(0,1fr)]">
+          <Button
+            variant="outline"
+            onClick={handleSkipVersion}
+            className="h-auto min-h-11 whitespace-normal px-4 py-3 text-center leading-snug"
+          >
             {t('updates.skipVersion')}
           </Button>
-          <Button variant="outline" onClick={() => setOpen(false)}>
+          <Button
+            variant="outline"
+            onClick={() => setOpen(false)}
+            className="h-auto min-h-11 whitespace-normal px-4 py-3 text-center leading-snug"
+          >
             <Clock size={14} />
             {t('updates.remindLater')}
           </Button>
-          <Button onClick={handleDownload} disabled={!updateInfo?.latestReleaseUrl}>
+          <Button
+            onClick={handleDownload}
+            disabled={!updateInfo?.latestReleaseUrl}
+            className="h-auto min-h-11 whitespace-normal px-4 py-3 text-center leading-snug"
+          >
             <Download size={14} />
             {t('updates.goToDownload')}
           </Button>
