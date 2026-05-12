@@ -175,14 +175,26 @@ export class CardsRepository {
   findAll(personId?: number) {
     if (personId) {
       return this.db.prepare(
-        `SELECT cards.*, cur.symbol as currency_symbol, cur.code as currency_code, cur.exchange_rate as currency_exchange_rate
-         FROM cards LEFT JOIN currencies cur ON cards.currency_id = cur.id
+        `SELECT cards.*, cur.symbol as currency_symbol, cur.code as currency_code, cur.exchange_rate as currency_exchange_rate,
+                clg.name as limit_group_name, clg.total_limit as limit_group_total_limit, clg.currency_id as limit_group_currency_id,
+                lgcur.symbol as limit_group_currency_symbol, lgcur.code as limit_group_currency_code, lgcur.exchange_rate as limit_group_currency_exchange_rate,
+                (SELECT COUNT(*) FROM cards c2 WHERE c2.limit_group_id = clg.id) as limit_group_card_count
+         FROM cards
+         LEFT JOIN currencies cur ON cards.currency_id = cur.id
+         LEFT JOIN card_limit_groups clg ON cards.limit_group_id = clg.id
+         LEFT JOIN currencies lgcur ON clg.currency_id = lgcur.id
          WHERE cards.person_id = ? ORDER BY cards.name`
       ).all(personId)
     }
     return this.db.prepare(
-      `SELECT cards.*, cur.symbol as currency_symbol, cur.code as currency_code, cur.exchange_rate as currency_exchange_rate
-       FROM cards LEFT JOIN currencies cur ON cards.currency_id = cur.id
+      `SELECT cards.*, cur.symbol as currency_symbol, cur.code as currency_code, cur.exchange_rate as currency_exchange_rate,
+              clg.name as limit_group_name, clg.total_limit as limit_group_total_limit, clg.currency_id as limit_group_currency_id,
+              lgcur.symbol as limit_group_currency_symbol, lgcur.code as limit_group_currency_code, lgcur.exchange_rate as limit_group_currency_exchange_rate,
+              (SELECT COUNT(*) FROM cards c2 WHERE c2.limit_group_id = clg.id) as limit_group_card_count
+       FROM cards
+       LEFT JOIN currencies cur ON cards.currency_id = cur.id
+       LEFT JOIN card_limit_groups clg ON cards.limit_group_id = clg.id
+       LEFT JOIN currencies lgcur ON clg.currency_id = lgcur.id
        ORDER BY cards.name`
     ).all()
   }
@@ -197,10 +209,77 @@ export class CardsRepository {
 
   findById(id: number) {
     return this.db.prepare(
-      `SELECT cards.*, cur.symbol as currency_symbol, cur.code as currency_code, cur.exchange_rate as currency_exchange_rate
-       FROM cards LEFT JOIN currencies cur ON cards.currency_id = cur.id
+      `SELECT cards.*, cur.symbol as currency_symbol, cur.code as currency_code, cur.exchange_rate as currency_exchange_rate,
+              clg.name as limit_group_name, clg.total_limit as limit_group_total_limit, clg.currency_id as limit_group_currency_id,
+              lgcur.symbol as limit_group_currency_symbol, lgcur.code as limit_group_currency_code, lgcur.exchange_rate as limit_group_currency_exchange_rate,
+              (SELECT COUNT(*) FROM cards c2 WHERE c2.limit_group_id = clg.id) as limit_group_card_count
+       FROM cards
+       LEFT JOIN currencies cur ON cards.currency_id = cur.id
+       LEFT JOIN card_limit_groups clg ON cards.limit_group_id = clg.id
+       LEFT JOIN currencies lgcur ON clg.currency_id = lgcur.id
        WHERE cards.id = ?`
     ).get(id)
+  }
+
+  findLimitGroupsByPerson(personId?: number | null) {
+    const baseSql = `
+      SELECT clg.*, cur.symbol as currency_symbol, cur.code as currency_code, cur.exchange_rate as currency_exchange_rate,
+             COUNT(cards.id) as card_count
+      FROM card_limit_groups clg
+      LEFT JOIN currencies cur ON clg.currency_id = cur.id
+      LEFT JOIN cards ON cards.limit_group_id = clg.id
+    `
+    const suffix = ` GROUP BY clg.id ORDER BY clg.name`
+    if (personId) {
+      return this.db.prepare(`${baseSql} WHERE clg.person_id = ?${suffix}`).all(personId)
+    }
+    return this.db.prepare(`${baseSql}${suffix}`).all()
+  }
+
+  findLimitGroupById(id: number) {
+    return this.db.prepare(
+      `SELECT clg.*, cur.symbol as currency_symbol, cur.code as currency_code, cur.exchange_rate as currency_exchange_rate,
+              COUNT(cards.id) as card_count
+       FROM card_limit_groups clg
+       LEFT JOIN currencies cur ON clg.currency_id = cur.id
+       LEFT JOIN cards ON cards.limit_group_id = clg.id
+       WHERE clg.id = ?
+       GROUP BY clg.id`
+    ).get(id)
+  }
+
+  createLimitGroup(data: {
+    person_id?: number | null
+    name: string
+    total_limit: number
+    currency_id?: number | null
+  }) {
+    const result = this.db.prepare(`
+      INSERT INTO card_limit_groups (person_id, name, total_limit, currency_id)
+      VALUES (?, ?, ?, ?)
+    `).run(data.person_id ?? null, data.name, data.total_limit || 0, data.currency_id ?? null)
+    return this.findLimitGroupById(result.lastInsertRowid as number)
+  }
+
+  updateLimitGroup(id: number, data: Record<string, any>) {
+    const fields: string[] = []
+    const values: any[] = []
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined && key !== 'id') {
+        fields.push(`${key} = ?`)
+        values.push(value)
+      }
+    }
+    if (fields.length === 0) return this.findLimitGroupById(id)
+    fields.push("updated_at = datetime('now')")
+    values.push(id)
+    this.db.prepare(`UPDATE card_limit_groups SET ${fields.join(', ')} WHERE id = ?`).run(...values)
+    return this.findLimitGroupById(id)
+  }
+
+  deleteLimitGroup(id: number) {
+    this.db.prepare('UPDATE cards SET limit_group_id = NULL WHERE limit_group_id = ?').run(id)
+    this.db.prepare('DELETE FROM card_limit_groups WHERE id = ?').run(id)
   }
 
   create(data: {
@@ -213,18 +292,19 @@ export class CardsRepository {
     total_limit: number; billing_close_day: number; due_day: number
     card_type?: string
     currency_id?: number | null
+    limit_group_id?: number | null
   }) {
     const cols = `name, person_id, bank_account_id, number_encrypted, number_iv, number_tag,
         expiration_encrypted, expiration_iv, expiration_tag,
         holder_encrypted, holder_iv, holder_tag,
-        total_limit, billing_close_day, due_day, card_type, currency_id`
+        total_limit, billing_close_day, due_day, card_type, currency_id, limit_group_id`
     const params: any[] = [
       data.name, data.person_id || null, data.bank_account_id ?? null,
       data.number_encrypted, data.number_iv, data.number_tag,
       data.expiration_encrypted, data.expiration_iv, data.expiration_tag,
       data.holder_encrypted, data.holder_iv, data.holder_tag,
       data.total_limit, data.billing_close_day, data.due_day,
-      data.card_type || 'both', data.currency_id ?? null
+      data.card_type || 'both', data.currency_id ?? null, data.limit_group_id ?? null
     ]
     const placeholders = params.map(() => '?').join(', ')
     const result = this.db.prepare(`INSERT INTO cards (${cols}) VALUES (${placeholders})`).run(...params)
@@ -382,6 +462,67 @@ export class CardsRepository {
     }
 
     return total
+  }
+
+  getLimitGroupUsedLimitForMonth(groupId: number, month: string): number {
+    const group = this.findLimitGroupById(groupId) as any
+    if (!group) return 0
+    const groupRate = group.currency_exchange_rate || 1.0
+    const groupCards = this.db.prepare(
+      `SELECT cards.id, COALESCE(cur.exchange_rate, 1.0) as currency_exchange_rate
+       FROM cards
+       LEFT JOIN currencies cur ON cards.currency_id = cur.id
+       WHERE cards.limit_group_id = ?`
+    ).all(groupId) as any[]
+
+    return groupCards.reduce((sum, card) => {
+      const usedInCardCurrency = this.getUsedLimitForMonth(card.id, month)
+      const cardRate = card.currency_exchange_rate || 1.0
+      return sum + (usedInCardCurrency * cardRate / groupRate)
+    }, 0)
+  }
+
+  getLimitMetricsForCard(card: any, month: string, groupUsageCache?: Map<number, number>) {
+    if (card.limit_group_id) {
+      const groupId = Number(card.limit_group_id)
+      let usedLimit = groupUsageCache?.get(groupId)
+      if (usedLimit === undefined) {
+        usedLimit = this.getLimitGroupUsedLimitForMonth(groupId, month)
+        groupUsageCache?.set(groupId, usedLimit)
+      }
+      const totalLimit = card.limit_group_total_limit ?? 0
+      return {
+        totalLimit,
+        ownTotalLimit: card.total_limit || 0,
+        usedLimit,
+        availableLimit: Math.max(0, totalLimit - usedLimit),
+        overLimitAmount: Math.max(0, usedLimit - totalLimit),
+        limitGroupId: groupId,
+        limitGroupName: card.limit_group_name || null,
+        limitGroupCardCount: card.limit_group_card_count || 0,
+        currencyId: card.limit_group_currency_id ?? card.currency_id ?? null,
+        currencySymbol: card.limit_group_currency_symbol || card.currency_symbol || undefined,
+        currencyCode: card.limit_group_currency_code || card.currency_code || undefined,
+        currencyExchangeRate: card.limit_group_currency_exchange_rate || card.currency_exchange_rate || 1.0
+      }
+    }
+
+    const usedLimit = this.getUsedLimitForMonth(card.id, month)
+    const totalLimit = card.total_limit || 0
+    return {
+      totalLimit,
+      ownTotalLimit: totalLimit,
+      usedLimit,
+      availableLimit: Math.max(0, totalLimit - usedLimit),
+      overLimitAmount: Math.max(0, usedLimit - totalLimit),
+      limitGroupId: null,
+      limitGroupName: null,
+      limitGroupCardCount: 0,
+      currencyId: card.currency_id ?? null,
+      currencySymbol: card.currency_symbol || undefined,
+      currencyCode: card.currency_code || undefined,
+      currencyExchangeRate: card.currency_exchange_rate || 1.0
+    }
   }
 
   getItemCountsForMonth(cardId: number, month: string): {

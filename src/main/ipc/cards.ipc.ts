@@ -16,7 +16,29 @@ function getCurrentMonth(): string {
 }
 
 
-function mapCard(card: any, usedLimit: number, db?: WrappedDatabase) {
+function mapLimitGroup(group: any) {
+  return {
+    id: group.id,
+    personId: group.person_id ?? null,
+    name: group.name,
+    totalLimit: group.total_limit || 0,
+    currencyId: group.currency_id ?? null,
+    currencySymbol: group.currency_symbol || undefined,
+    currencyCode: group.currency_code || undefined,
+    cardCount: group.card_count || 0
+  }
+}
+
+function zeroUsedMetrics(metrics: any) {
+  return {
+    ...metrics,
+    usedLimit: 0,
+    availableLimit: metrics.totalLimit || 0,
+    overLimitAmount: 0
+  }
+}
+
+function mapCard(card: any, limitMetrics: any, db?: WrappedDatabase) {
   let numberMasked = '**** **** **** ****'
   let expirationMasked = '**/**'
   let holderMasked = '*****'
@@ -40,16 +62,21 @@ function mapCard(card: any, usedLimit: number, db?: WrappedDatabase) {
     numberMasked,
     expirationMasked,
     holderMasked,
-    totalLimit: card.total_limit,
-    usedLimit,
-    availableLimit: Math.max(0, card.total_limit - usedLimit),
-    overLimitAmount: Math.max(0, usedLimit - card.total_limit),
+    totalLimit: limitMetrics.totalLimit,
+    ownTotalLimit: limitMetrics.ownTotalLimit,
+    usedLimit: limitMetrics.usedLimit,
+    availableLimit: limitMetrics.availableLimit,
+    overLimitAmount: limitMetrics.overLimitAmount,
+    limitGroupId: limitMetrics.limitGroupId,
+    limitGroupName: limitMetrics.limitGroupName,
+    limitGroupCardCount: limitMetrics.limitGroupCardCount,
     billingCloseDay: card.billing_close_day,
     dueDay: card.due_day,
     cardType: card.card_type || 'both',
-    currencyId: card.currency_id || null,
-    currencySymbol: card.currency_symbol || undefined,
-    currencyCode: card.currency_code || undefined,
+    currencyId: limitMetrics.currencyId,
+    ownCurrencyId: card.currency_id || null,
+    currencySymbol: limitMetrics.currencySymbol,
+    currencyCode: limitMetrics.currencyCode,
     createdAt: card.created_at || null
   }
 }
@@ -65,7 +92,8 @@ export function registerCardsHandlers(db: WrappedDatabase): void {
   ipcMain.handle(IPC_CHANNELS.CARDS_LIST, (_, personId?: number, month?: string) => {
     const m = month || getCurrentMonth()
     const cards = repo.findAll(personId) as any[]
-    return cards.map(card => mapCard(card, repo.getUsedLimitForMonth(card.id, m), db))
+    const groupUsageCache = new Map<number, number>()
+    return cards.map(card => mapCard(card, repo.getLimitMetricsForCard(card, m, groupUsageCache), db))
   })
 
   ipcMain.handle(IPC_CHANNELS.CARDS_GET_DECRYPTED, (_, id: number) => {
@@ -75,9 +103,9 @@ export function registerCardsHandlers(db: WrappedDatabase): void {
     const card = repo.findById(id) as any
     if (!card) return null
     const m = getCurrentMonth()
-    const usedLimit = repo.getUsedLimitForMonth(card.id, m)
+    const limitMetrics = repo.getLimitMetricsForCard(card, m)
     return {
-      ...mapCard(card, usedLimit, db),
+      ...mapCard(card, limitMetrics, db),
       number: EncryptionService.decrypt({ ciphertext: card.number_encrypted, iv: card.number_iv, tag: card.number_tag }),
       expiration: EncryptionService.decrypt({ ciphertext: card.expiration_encrypted, iv: card.expiration_iv, tag: card.expiration_tag }),
       holder: EncryptionService.decrypt({ ciphertext: card.holder_encrypted, iv: card.holder_iv, tag: card.holder_tag })
@@ -102,7 +130,8 @@ export function registerCardsHandlers(db: WrappedDatabase): void {
       billing_close_day: data.billingCloseDay,
       due_day: data.dueDay,
       card_type: data.cardType || 'both',
-      currency_id: data.currencyId || null
+      currency_id: data.currencyId || null,
+      limit_group_id: data.limitGroupId ?? null
     })
   })
 
@@ -116,6 +145,7 @@ export function registerCardsHandlers(db: WrappedDatabase): void {
     if (data.dueDay !== undefined) updateData.due_day = data.dueDay
     if (data.cardType !== undefined) updateData.card_type = data.cardType
     if (data.currencyId !== undefined) updateData.currency_id = data.currencyId
+    if (data.limitGroupId !== undefined) updateData.limit_group_id = data.limitGroupId
     if (data.number !== undefined && EncryptionService.isUnlocked()) {
       const enc = EncryptionService.encrypt(data.number)
       updateData.number_encrypted = enc.ciphertext
@@ -139,14 +169,41 @@ export function registerCardsHandlers(db: WrappedDatabase): void {
 
   ipcMain.handle(IPC_CHANNELS.CARDS_DELETE, (_, id) => repo.delete(id))
 
+  ipcMain.handle(IPC_CHANNELS.CARD_LIMIT_GROUPS_LIST, (_, personId?: number) => {
+    return (repo.findLimitGroupsByPerson(personId) as any[]).map(mapLimitGroup)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.CARD_LIMIT_GROUPS_CREATE, (_, data) => {
+    const group = repo.createLimitGroup({
+      person_id: data.personId ?? null,
+      name: data.name,
+      total_limit: data.totalLimit || 0,
+      currency_id: data.currencyId ?? null
+    })
+    return mapLimitGroup(group)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.CARD_LIMIT_GROUPS_UPDATE, (_, data) => {
+    const updateData: Record<string, any> = {}
+    if (data.name !== undefined) updateData.name = data.name
+    if (data.personId !== undefined) updateData.person_id = data.personId
+    if (data.totalLimit !== undefined) updateData.total_limit = data.totalLimit
+    if (data.currencyId !== undefined) updateData.currency_id = data.currencyId
+    const group = repo.updateLimitGroup(data.id, updateData)
+    return mapLimitGroup(group)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.CARD_LIMIT_GROUPS_DELETE, (_, id: number) => repo.deleteLimitGroup(id))
+
   ipcMain.handle(IPC_CHANNELS.CARDS_LIST_ENRICHED, (_, personId: number, month: string) => {
     const m = month || getCurrentMonth()
     const scm = getStartCountingMonth(settingsRepo, personId)
     const beforeStart = isMonthBeforeStart(m, scm)
     const cards = repo.findAll(personId) as any[]
+    const groupUsageCache = new Map<number, number>()
     return cards.map(card => {
-      const usedLimit = beforeStart ? 0 : repo.getUsedLimitForMonth(card.id, m)
-      const base = mapCard(card, usedLimit, db)
+      const limitMetrics = repo.getLimitMetricsForCard(card, m, groupUsageCache)
+      const base = mapCard(card, beforeStart ? zeroUsedMetrics(limitMetrics) : limitMetrics, db)
       const counts = beforeStart
         ? { commonCount: 0, commonTotal: 0, installmentCount: 0, installmentTotal: 0, subscriptionCount: 0, subscriptionTotal: 0, emprestimoCount: 0, emprestimoTotal: 0 }
         : repo.getItemCountsForMonth(card.id, m)

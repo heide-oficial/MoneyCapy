@@ -203,15 +203,22 @@ export function registerDashboardHandlers(db: WrappedDatabase): void {
     // --- Cards ---
     const cards = cardsRepo.findAll(personId) as any[]
     let cardsTotal = 0
+    const cardLimitBuckets = new Set<string>()
+    const cardLimitUsageCache = new Map<number, number>()
     const cardSummaries = cards.map(card => {
-      const used = cardsRepo.getUsedLimitForMonth(card.id, month)
-      const cardCurrencyRate = card.currency_exchange_rate || 1.0
-      cardsTotal += used * cardCurrencyRate
+      const limitMetrics = cardsRepo.getLimitMetricsForCard(card, month, cardLimitUsageCache)
+      const bucketKey = limitMetrics.limitGroupId ? `group-${limitMetrics.limitGroupId}` : `card-${card.id}`
+      if (!cardLimitBuckets.has(bucketKey)) {
+        cardLimitBuckets.add(bucketKey)
+        cardsTotal += limitMetrics.usedLimit * limitMetrics.currencyExchangeRate
+      }
       return {
         id: card.id,
         name: card.name,
-        totalLimit: card.total_limit || 0,
-        usedLimit: used
+        totalLimit: limitMetrics.totalLimit,
+        usedLimit: limitMetrics.usedLimit,
+        limitGroupId: limitMetrics.limitGroupId,
+        limitGroupName: limitMetrics.limitGroupName
       }
     })
 
@@ -466,9 +473,9 @@ export function registerDashboardHandlers(db: WrappedDatabase): void {
 
     // --- Card details (enriched) ---
     const allCards = cardsRepo.findAll(personId) as any[]
+    const cardDetailsLimitCache = new Map<number, number>()
     const cardDetails: DashboardCardEnriched[] = allCards.map(card => {
-      const usedLimit = cardsRepo.getUsedLimitForMonth(card.id, month)
-      const totalLimit = card.total_limit || 0
+      const limitMetrics = cardsRepo.getLimitMetricsForCard(card, month, cardDetailsLimitCache)
       const counts = cardsRepo.getItemCountsForMonth(card.id, month)
       let bankAccountName: string | null = null
       if (card.bank_account_id) {
@@ -478,9 +485,11 @@ export function registerDashboardHandlers(db: WrappedDatabase): void {
       return {
         id: card.id,
         name: card.name,
-        totalLimit,
-        usedLimit,
-        availableLimit: Math.max(0, totalLimit - usedLimit),
+        totalLimit: limitMetrics.totalLimit,
+        usedLimit: limitMetrics.usedLimit,
+        availableLimit: limitMetrics.availableLimit,
+        limitGroupId: limitMetrics.limitGroupId,
+        limitGroupName: limitMetrics.limitGroupName,
         billingCloseDay: card.billing_close_day,
         dueDay: card.due_day,
         cardType: card.card_type || 'both',

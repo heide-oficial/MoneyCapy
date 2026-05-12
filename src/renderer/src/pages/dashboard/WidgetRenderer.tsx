@@ -21,7 +21,7 @@ import {
 // ── Types ──
 
 interface TypeTotal { type: string; label?: string; total: number }
-interface CardSummary { id: number; name: string; totalLimit: number; usedLimit: number }
+interface CardSummary { id: number; name: string; totalLimit: number; usedLimit: number; limitGroupId?: number | null; limitGroupName?: string | null }
 interface BankAccountSummary { id: number; name: string; balance: number; icon: string; color: string }
 
 export interface Summary {
@@ -446,9 +446,13 @@ export function renderWidgetContent(
     }
     case 'cards-total': {
       const allCards = widgetsData?.cardDetails ?? []
-      const totalUsed = allCards.reduce((s, c) => s + c.usedLimit, 0)
-      const totalLimitSum = allCards.reduce((s, c) => s + c.totalLimit, 0)
-      const totalAvail = allCards.reduce((s, c) => s + c.availableLimit, 0)
+      const limitBuckets = allCards.filter((card, index) => {
+        const bucketKey = card.limitGroupId ? `group-${card.limitGroupId}` : `card-${card.id}`
+        return allCards.findIndex(other => (other.limitGroupId ? `group-${other.limitGroupId}` : `card-${other.id}`) === bucketKey) === index
+      })
+      const totalUsed = limitBuckets.reduce((s, c) => s + c.usedLimit, 0)
+      const totalLimitSum = limitBuckets.reduce((s, c) => s + c.totalLimit, 0)
+      const totalAvail = limitBuckets.reduce((s, c) => s + c.availableLimit, 0)
       const usedPct = totalLimitSum > 0 ? (totalUsed / totalLimitSum) * 100 : 0
       const pctColor = usedPct > 80 ? 'text-destructive' : usedPct > 60 ? 'text-amber-500' : 'text-primary'
       const barColor = usedPct > 80 ? 'bg-destructive' : 'bg-primary'

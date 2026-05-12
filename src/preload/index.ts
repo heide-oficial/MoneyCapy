@@ -31,7 +31,11 @@ const api = {
     create: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.CARDS_CREATE, data),
     update: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.CARDS_UPDATE, data),
     delete: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.CARDS_DELETE, id),
-    payInvoice: (cardId: number, month: string) => ipcRenderer.invoke(IPC_CHANNELS.CARDS_PAY_INVOICE, cardId, month)
+    payInvoice: (cardId: number, month: string) => ipcRenderer.invoke(IPC_CHANNELS.CARDS_PAY_INVOICE, cardId, month),
+    listLimitGroups: (personId?: number) => ipcRenderer.invoke(IPC_CHANNELS.CARD_LIMIT_GROUPS_LIST, personId),
+    createLimitGroup: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.CARD_LIMIT_GROUPS_CREATE, data),
+    updateLimitGroup: (data: any) => ipcRenderer.invoke(IPC_CHANNELS.CARD_LIMIT_GROUPS_UPDATE, data),
+    deleteLimitGroup: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.CARD_LIMIT_GROUPS_DELETE, id)
   },
   categories: {
     list: () => invoke<CategoryRecord[]>(IPC_CHANNELS.CATEGORIES_LIST),

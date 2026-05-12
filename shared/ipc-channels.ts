@@ -7,6 +7,10 @@ export const IPC_CHANNELS = {
   CARDS_DELETE: 'cards:delete',
   CARDS_LIST_ENRICHED: 'cards:list-enriched',
   CARDS_PAY_INVOICE: 'cards:pay-invoice',
+  CARD_LIMIT_GROUPS_LIST: 'card-limit-groups:list',
+  CARD_LIMIT_GROUPS_CREATE: 'card-limit-groups:create',
+  CARD_LIMIT_GROUPS_UPDATE: 'card-limit-groups:update',
+  CARD_LIMIT_GROUPS_DELETE: 'card-limit-groups:delete',
 
   // Categories
   CATEGORIES_LIST: 'categories:list',

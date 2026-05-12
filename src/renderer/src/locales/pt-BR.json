@@ -817,7 +817,22 @@
     "viewItems": "Ver itens",
     "nameOnCard": "NOME NO CARTÃO",
     "limitsInfo": "{{used}} limite usado · {{available}} limite restante",
-    "totalExpenses": "Total de gastos: {{total}}"
+    "totalExpenses": "Total de gastos: {{total}}",
+    "sharedLimitGroup": "Grupo de limite compartilhado",
+    "noSharedLimitGroup": "Sem limite compartilhado",
+    "sharedLimitGroupHint": "Use um grupo quando dois ou mais cartões consomem o mesmo limite.",
+    "sharedLimitGroupInfo": "{{group}} · {{limit}} compartilhado entre {{count}} cartão(ões)",
+    "sharedLimitGroupBadge": "Limite compartilhado: {{group}}",
+    "individualLimit": "Limite individual",
+    "newLimitGroup": "Novo grupo de limite",
+    "editLimitGroup": "Editar grupo de limite",
+    "limitGroupName": "Nome do grupo",
+    "limitGroupNamePlaceholder": "Ex: Limite Nubank",
+    "sharedTotalLimit": "Limite total compartilhado",
+    "limitGroupCreated": "Grupo de limite criado",
+    "limitGroupUpdated": "Grupo de limite atualizado",
+    "limitGroupNameRequired": "Informe o nome do grupo de limite",
+    "limitGroupErrorSaving": "Erro ao salvar grupo de limite"
   },
   "cardTypes": {
     "credit": "crédito",

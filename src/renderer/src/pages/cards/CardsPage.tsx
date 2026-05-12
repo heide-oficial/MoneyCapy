@@ -41,8 +41,13 @@ interface CardEnriched {
   expirationMasked: string
   holderMasked: string
   totalLimit: number
+  ownTotalLimit: number
   usedLimit: number
   availableLimit: number
+  overLimitAmount?: number
+  limitGroupId?: number | null
+  limitGroupName?: string | null
+  limitGroupCardCount?: number
   billingCloseDay: number
   dueDay: number
   cardType: 'credit' | 'debit' | 'both'
@@ -60,6 +65,17 @@ interface CardEnriched {
   currencySymbol?: string
   currencyCode?: string
   createdAt?: string
+}
+
+interface CardLimitGroup {
+  id: number
+  personId: number | null
+  name: string
+  totalLimit: number
+  currencyId?: number | null
+  currencySymbol?: string
+  currencyCode?: string
+  cardCount: number
 }
 
 interface BankAccountBasic {
@@ -104,12 +120,13 @@ export default function CardsPage() {
   const { activePerson } = useActivePerson()
   const { isUnlocked, hasPassword } = useSession()
   const { gastosStyle } = useColorSettings()
-  const { currencies } = useCurrencySettings()
+  const { currencies, defaultCurrencyId } = useCurrencySettings()
   const { formatDisplayCurrency } = useDisplayCurrency()
   const cardSortLabels = CARD_SORT_LABELS_FN(t)
   const cardSortOptions = Object.entries(cardSortLabels).map(([key, label]) => ({ key, label })) as { key: CardSortMode; label: string }[]
   const [cards, setCards] = useState<CardEnriched[]>([])
   const [accounts, setAccounts] = useState<BankAccountBasic[]>([])
+  const [limitGroups, setLimitGroups] = useState<CardLimitGroup[]>([])
   const { month, setMonth } = usePageMonth()
   const [showForm, setShowForm] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
@@ -117,6 +134,8 @@ export default function CardsPage() {
   const [pendingEditId, setPendingEditId] = useState<number | null>(null)
   const [payInvoiceCardId, setPayInvoiceCardId] = useState<number | null>(null)
   const [multiCardMessage, setMultiCardMessage] = useState<string | null>(null)
+  const [showLimitGroupForm, setShowLimitGroupForm] = useState(false)
+  const [editingLimitGroupId, setEditingLimitGroupId] = useState<number | null>(null)
   const { sortMode, setSortMode, defaultSortMode, setDefaultSortMode } = useDefaultSortMode<CardSortMode>('cards', 'manual', cardSortOptions.map(option => option.key))
   const [filterBanco, setFilterBanco] = useState<string>('')
   const [filterCardType, setFilterCardType] = useState('all')
@@ -141,17 +160,26 @@ export default function CardsPage() {
     totalLimit: 0, billingCloseDay: 1, dueDay: 10,
     bankAccountId: null as number | null,
     cardType: 'both' as 'credit' | 'debit' | 'both',
+    currencyId: null as number | null,
+    limitGroupId: null as number | null
+  })
+
+  const [limitGroupForm, setLimitGroupForm] = useState({
+    name: '',
+    totalLimit: 0,
     currencyId: null as number | null
   })
 
   const loadData = async () => {
     if (!activePerson) return
-    const [cardsData, accountsData] = await Promise.all([
+    const [cardsData, accountsData, limitGroupsData] = await Promise.all([
       window.api.cards.listEnriched(activePerson.id, month),
-      window.api.bankAccounts.list(activePerson.id)
+      window.api.bankAccounts.list(activePerson.id),
+      window.api.cards.listLimitGroups(activePerson.id)
     ])
     setCards(cardsData)
     setAccounts(accountsData)
+    setLimitGroups(limitGroupsData)
   }
 
   useEffect(() => { loadData() }, [activePerson, month, isUnlocked])
@@ -229,17 +257,43 @@ export default function CardsPage() {
   })
 
   const totalExpense = cards.reduce((s, c) => s + cardTotalExpense(c), 0)
-  const limitedCards = cards.filter(c => c.totalLimit > 0)
-  const unlimitedCards = cards.filter(c => c.totalLimit === 0)
-  const totalLimit = limitedCards.reduce((s, c) => s + c.totalLimit, 0)
-  const totalUsed = limitedCards.reduce((s, c) => s + c.usedLimit, 0)
-  const totalAvailable = limitedCards.reduce((s, c) => s + c.availableLimit, 0)
+  const limitBuckets = cards.filter((card, index) => {
+    if (card.totalLimit <= 0) return false
+    const bucketKey = card.limitGroupId ? `group-${card.limitGroupId}` : `card-${card.id}`
+    return cards.findIndex(other => {
+      const otherKey = other.limitGroupId ? `group-${other.limitGroupId}` : `card-${other.id}`
+      return otherKey === bucketKey
+    }) === index
+  })
+  const totalLimit = limitBuckets.reduce((s, c) => s + c.totalLimit, 0)
+  const totalUsed = limitBuckets.reduce((s, c) => s + c.usedLimit, 0)
+  const totalAvailable = limitBuckets.reduce((s, c) => s + c.availableLimit, 0)
+
+  const resetFormData = () => {
+    setFormData({
+      name: '',
+      number: '',
+      expiration: '',
+      holder: '',
+      totalLimit: 0,
+      billingCloseDay: 1,
+      dueDay: 10,
+      bankAccountId: null,
+      cardType: 'both',
+      currencyId: defaultCurrencyId ?? null,
+      limitGroupId: null
+    })
+  }
+
+  const selectedLimitGroup = formData.limitGroupId
+    ? limitGroups.find(group => group.id === formData.limitGroupId) || null
+    : null
 
   const openCreate = () => {
     if (!hasPassword) { setShowPasswordModal(true); return }
     if (!isUnlocked) { setShowPasswordModal(true); return }
     setEditing(null)
-    setFormData({ name: '', number: '', expiration: '', holder: '', totalLimit: 0, billingCloseDay: 1, dueDay: 10, bankAccountId: null, cardType: 'both' })
+    resetFormData()
     setShowForm(true)
   }
 
@@ -256,12 +310,13 @@ export default function CardsPage() {
         number: decrypted.number || '',
         expiration: decrypted.expiration || '',
         holder: decrypted.holder || '',
-        totalLimit: decrypted.totalLimit,
+        totalLimit: decrypted.ownTotalLimit ?? decrypted.totalLimit,
         billingCloseDay: decrypted.billingCloseDay,
         dueDay: decrypted.dueDay,
         bankAccountId: decrypted.bankAccountId ?? null,
         cardType: decrypted.cardType || 'both',
-        currencyId: decrypted.currencyId || null
+        currencyId: decrypted.ownCurrencyId ?? decrypted.currencyId ?? null,
+        limitGroupId: decrypted.limitGroupId ?? null
       })
       setEditing(cardId)
       setShowForm(true)
@@ -296,8 +351,57 @@ export default function CardsPage() {
       await openEdit(editId)
     } else {
       setEditing(null)
-      setFormData({ name: '', number: '', expiration: '', holder: '', totalLimit: 0, billingCloseDay: 1, dueDay: 10, bankAccountId: null, cardType: 'both', currencyId: null })
+      resetFormData()
       setShowForm(true)
+    }
+  }
+
+  const openCreateLimitGroup = () => {
+    setEditingLimitGroupId(null)
+    setLimitGroupForm({
+      name: '',
+      totalLimit: formData.totalLimit || 0,
+      currencyId: formData.currencyId ?? defaultCurrencyId ?? currencies[0]?.id ?? null
+    })
+    setShowLimitGroupForm(true)
+  }
+
+  const openEditLimitGroup = () => {
+    if (!selectedLimitGroup) return
+    setEditingLimitGroupId(selectedLimitGroup.id)
+    setLimitGroupForm({
+      name: selectedLimitGroup.name,
+      totalLimit: selectedLimitGroup.totalLimit,
+      currencyId: selectedLimitGroup.currencyId ?? defaultCurrencyId ?? currencies[0]?.id ?? null
+    })
+    setShowLimitGroupForm(true)
+  }
+
+  const handleSaveLimitGroup = async () => {
+    if (!activePerson) return
+    if (!limitGroupForm.name.trim()) {
+      toast.error(t('cards.limitGroupNameRequired'))
+      return
+    }
+
+    try {
+      const payload = {
+        name: limitGroupForm.name.trim(),
+        totalLimit: limitGroupForm.totalLimit,
+        currencyId: limitGroupForm.currencyId,
+        personId: activePerson.id
+      }
+      const saved = editingLimitGroupId
+        ? await window.api.cards.updateLimitGroup({ id: editingLimitGroupId, ...payload })
+        : await window.api.cards.createLimitGroup(payload)
+      const groupsData = await window.api.cards.listLimitGroups(activePerson.id)
+      setLimitGroups(groupsData)
+      setFormData(current => ({ ...current, limitGroupId: saved.id }))
+      setShowLimitGroupForm(false)
+      toast.success(editingLimitGroupId ? t('cards.limitGroupUpdated') : t('cards.limitGroupCreated'))
+      loadData()
+    } catch (err) {
+      toast.error(getErrorMessage(err, t('cards.limitGroupErrorSaving')))
     }
   }
 
@@ -307,13 +411,14 @@ export default function CardsPage() {
     const expanded = expandedCardId === card.id
     const cardTypeLabel = card.cardType === 'credit' ? t('cards.credit') : card.cardType === 'debit' ? t('cards.debit') : t('cards.creditAndDebit')
     const sensitiveRows = [
+      card.limitGroupName ? { icon: Layers, label: t('cards.sharedLimitGroup'), value: card.limitGroupName } : null,
       { icon: Hash, label: t('cards.cardNumber'), value: !isUnlocked ? '**** **** **** ****' : (card.numberMasked && card.numberMasked !== '**** **** **** ****' ? card.numberMasked : '0000 0000 0000 0000') },
       { icon: CalendarDays, label: t('cards.expiration'), value: !isUnlocked ? '**/**' : (card.expirationMasked && card.expirationMasked !== '**/**' ? card.expirationMasked : '00/00') },
       { icon: User, label: t('cards.holderName'), value: !isUnlocked ? '*****' : (card.holderMasked && card.holderMasked !== '*****' ? card.holderMasked : t('cards.nameOnCard')) },
       { icon: Landmark, label: t('cards.bankAccount'), value: card.bankAccountName || t('cards.noneOption') },
       { icon: CalendarDays, label: t('cards.billingCloseDay'), value: t('cards.closesDay', { day: card.billingCloseDay }) },
       { icon: CalendarDays, label: t('cards.dueDay'), value: t('cards.duesDay', { day: card.dueDay }) }
-    ]
+    ].filter(Boolean) as { icon: typeof Hash; label: string; value: string }[]
     return (
       <>
         {expanded && (
@@ -338,6 +443,11 @@ export default function CardsPage() {
               <div className="min-w-0">
                 <h3 className="truncate text-lg font-bold leading-tight text-foreground sm:text-xl">{card.name}</h3>
                 <p className="mt-1 truncate text-sm text-muted-foreground">{cardTypeLabel}</p>
+                {card.limitGroupName && (
+                  <p className="mt-1 truncate text-xs text-primary">
+                    {t('cards.sharedLimitGroupBadge', { group: card.limitGroupName })}
+                  </p>
+                )}
               </div>
 
               <div className="flex shrink-0 items-start gap-3 text-right">
@@ -580,7 +690,36 @@ export default function CardsPage() {
             }} placeholder="MM/AA" maxLength={5} />
             <Input label={t('cards.holderName')} value={formData.holder} onChange={e => setFormData({ ...formData, holder: e.target.value })} placeholder={t('cards.nameOnCard')} />
           </div>
-          <CurrencyInput label={t('cards.totalLimit')} value={formData.totalLimit} onChange={v => setFormData({ ...formData, totalLimit: v })} />
+          <CurrencyInput
+            label={formData.limitGroupId ? t('cards.individualLimit') : t('cards.totalLimit')}
+            value={formData.totalLimit}
+            onChange={v => setFormData({ ...formData, totalLimit: v })}
+          />
+          <div className="space-y-2">
+            <div className="grid grid-cols-[1fr_auto] items-end gap-2">
+              <Select
+                label={t('cards.sharedLimitGroup')}
+                value={formData.limitGroupId !== null ? String(formData.limitGroupId) : ''}
+                onChange={e => setFormData({ ...formData, limitGroupId: e.target.value ? parseInt(e.target.value, 10) : null })}
+                options={[
+                  { value: '', label: t('cards.noSharedLimitGroup') },
+                  ...limitGroups.map(group => ({ value: String(group.id), label: group.name }))
+                ]}
+              />
+              <Button type="button" variant="outline" onClick={selectedLimitGroup ? openEditLimitGroup : openCreateLimitGroup}>
+                {selectedLimitGroup ? t('common.edit') : t('common.create')}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {selectedLimitGroup
+                ? t('cards.sharedLimitGroupInfo', {
+                  group: selectedLimitGroup.name,
+                  limit: selectedLimitGroup.currencySymbol ? formatCurrencyWith(selectedLimitGroup.totalLimit, selectedLimitGroup.currencySymbol) : formatCurrency(selectedLimitGroup.totalLimit),
+                  count: selectedLimitGroup.cardCount
+                })
+                : t('cards.sharedLimitGroupHint')}
+            </p>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <Input label={t('cards.closingDay')} type="number" min={1} max={31} value={String(formData.billingCloseDay)} onChange={e => setFormData({ ...formData, billingCloseDay: parseInt(e.target.value) || 1 })} />
             <Input label={t('cards.dueDay')} type="number" min={1} max={31} value={String(formData.dueDay)} onChange={e => setFormData({ ...formData, dueDay: parseInt(e.target.value) || 10 })} />
@@ -619,6 +758,42 @@ export default function CardsPage() {
               <Button variant="outline" onClick={() => setShowForm(false)}>{t('common.cancel')}</Button>
               <Button onClick={handleSave}>{editing ? t('common.save') : t('common.create')}</Button>
             </div>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={showLimitGroupForm}
+        onClose={() => setShowLimitGroupForm(false)}
+        title={editingLimitGroupId ? t('cards.editLimitGroup') : t('cards.newLimitGroup')}
+        maxWidth="max-w-md"
+      >
+        <div className="space-y-4">
+          <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+            <Input
+              label={t('cards.limitGroupName')}
+              value={limitGroupForm.name}
+              onChange={e => setLimitGroupForm({ ...limitGroupForm, name: e.target.value })}
+              placeholder={t('cards.limitGroupNamePlaceholder')}
+              autoFocus
+            />
+            <CurrencyInput
+              label={t('cards.sharedTotalLimit')}
+              value={limitGroupForm.totalLimit}
+              onChange={value => setLimitGroupForm({ ...limitGroupForm, totalLimit: value })}
+            />
+            {currencies.length > 1 && (
+              <Select
+                label={t('common.currency')}
+                value={limitGroupForm.currencyId !== null ? String(limitGroupForm.currencyId) : ''}
+                onChange={e => setLimitGroupForm({ ...limitGroupForm, currencyId: e.target.value ? parseInt(e.target.value, 10) : null })}
+                options={currencies.map(c => ({ value: String(c.id), label: `${c.code} — ${c.symbol}` }))}
+              />
+            )}
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowLimitGroupForm(false)}>{t('common.cancel')}</Button>
+            <Button onClick={handleSaveLimitGroup}>{editingLimitGroupId ? t('common.save') : t('common.create')}</Button>
           </div>
         </div>
       </Modal>

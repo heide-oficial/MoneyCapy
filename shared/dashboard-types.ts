@@ -71,6 +71,8 @@ export interface DashboardCardEnriched {
   totalLimit: number
   usedLimit: number
   availableLimit: number
+  limitGroupId?: number | null
+  limitGroupName?: string | null
   billingCloseDay: number
   dueDay: number
   cardType: 'credit' | 'debit' | 'both'
