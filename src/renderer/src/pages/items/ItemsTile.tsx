@@ -42,6 +42,7 @@ interface CardDetailRow {
   name: string
   detail?: string
   amount?: string
+  elapsedProgress?: number
   paidProgress?: number
   currentProgress?: number
   overdueProgress?: number
@@ -200,11 +201,12 @@ export function ItemsTile({
   const buildInstallmentProgress = (currentInstallment: number, totalInstallments: number, anticipatedThisMonth = 0) => {
     const total = Math.max(totalInstallments, 1)
     const current = Math.min(Math.max(currentInstallment, 1), total)
-    const previousPaid = Math.min(Math.max(current - 1, 0), total)
-    const currentAndAnticipated = Math.min(1 + Math.max(anticipatedThisMonth, 0), Math.max(total - previousPaid, 0))
-    const paidCount = item.isPaid ? Math.min(previousPaid + currentAndAnticipated, total) : previousPaid
+    const elapsedCount = Math.min(Math.max(current - 1, 0), total)
+    const currentAndAnticipated = Math.min(1 + Math.max(anticipatedThisMonth, 0), Math.max(total - elapsedCount, 0))
+    const paidCount = item.isPaid ? currentAndAnticipated : 0
     const pendingCount = item.isPaid ? 0 : currentAndAnticipated
     return {
+      elapsedProgress: (elapsedCount / total) * 100,
       paidProgress: (paidCount / total) * 100,
       currentProgress: isOverdue ? 0 : (pendingCount / total) * 100,
       overdueProgress: isOverdue ? (pendingCount / total) * 100 : 0
@@ -479,6 +481,9 @@ export function ItemsTile({
                 {card.paidProgress != null && (
                   <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
                     <div className="flex h-full">
+                      {(card.elapsedProgress || 0) > 0 && (
+                        <div className="h-full bg-transparent transition-all" style={{ width: `${card.elapsedProgress}%` }} />
+                      )}
                       {(card.paidProgress || 0) > 0 && (
                         <div className="h-full bg-green-500 transition-all" style={{ width: `${card.paidProgress}%` }} />
                       )}
