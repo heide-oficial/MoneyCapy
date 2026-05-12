@@ -30,6 +30,7 @@ export class PersonIncomeRepository {
   /** Check if an income is visible in a given month (considering interruptions) */
   private isIncomeVisibleInMonth(income: any, month: string): boolean {
     if (!monthLte(income.start_month, month)) return false
+    if (income.is_recurring !== 1) return income.start_month === month
 
     // If has end_month, check it
     if (income.end_month && !monthLte(month, income.end_month)) return false

@@ -138,6 +138,7 @@ export function ItemsForm({
   const [valueOverrideMonth, setValueOverrideMonth] = useState('')
   const [valueOverrideValue, setValueOverrideValue] = useState(0)
   const [currentPaymentStates, setCurrentPaymentStates] = useState<Record<string, { mode: 'total' | 'percent'; total: number; paidAt: string }>>({})
+  const [installmentPaymentTab, setInstallmentPaymentTab] = useState<'current' | 'future'>('current')
   const [showExchangeRateConfirm, setShowExchangeRateConfirm] = useState(false)
 
   // Inline creation modals
@@ -165,6 +166,7 @@ export function ItemsForm({
       setModalTab(initialTab || 'detalhes')
       setDiscountStates({})
       setCurrentPaymentStates({})
+      setInstallmentPaymentTab('current')
     }
   }, [open])
 
@@ -798,6 +800,8 @@ export function ItemsForm({
       totalAnticipated: number
       monthlyValue: number
       splitId?: number
+      anticipatedThisMonth?: number
+      discountedTotalThisMonth?: number | null
       currentPayment?: CurrentInstallmentPayment | null
     }) => {
       const effectiveTotal = opts.totalInst - opts.totalAnticipated
@@ -813,11 +817,24 @@ export function ItemsForm({
       // Preview values
       const previewCurrent = opts.currentInst + countNum
       const previewEnd = previewing ? addMonths(editing.startMonth, effectiveTotal - countNum) : effectiveEnd
-      const previewMonthly = previewing && opts.monthlyValue > 0 ? opts.monthlyValue * (countNum + 1) : 0
+      const savedFutureCount = opts.anticipatedThisMonth || 0
+      const savedFutureOriginal = savedFutureCount * opts.monthlyValue
+      const savedFutureValue = savedFutureCount > 0
+        ? (opts.discountedTotalThisMonth ?? savedFutureOriginal)
+        : 0
+      const pendingFutureFullTotal = countNum * opts.monthlyValue
+      const pendingDiscount = discountStates[key]
+      const pendingFutureValue = previewing
+        ? (pendingDiscount?.total ?? pendingFutureFullTotal)
+        : 0
+      const previewMonthly = previewing && opts.monthlyValue > 0 ? opts.monthlyValue + savedFutureValue + pendingFutureValue : 0
 
       const paidPct = effectiveTotal > 0 ? Math.min((opts.currentInst / effectiveTotal) * 100, 100) : 0
       const previewPct = effectiveTotal > 0 && countNum > 0 ? Math.min((countNum / effectiveTotal) * 100, 100 - paidPct) : 0
-      const originalCurrentValue = Math.round(opts.monthlyValue * 100) / 100
+      const originalCurrentValue = Math.round((opts.monthlyValue + savedFutureValue + pendingFutureValue) * 100) / 100
+      const futureBasePart = savedFutureValue + pendingFutureValue
+      const displayedMonthlyValue = opts.monthlyValue + savedFutureValue
+      const progressText = `${previewing ? previewCurrent : opts.currentInst}/${effectiveTotal}${opts.totalAnticipated > 0 ? ` (+${opts.totalAnticipated})` : ''}${previewing ? ` (+${countNum})` : ''}`
       const currentPaymentState = currentPaymentStates[key] || {
         mode: 'total' as const,
         total: opts.currentPayment?.paidValue ?? originalCurrentValue,
@@ -831,20 +848,11 @@ export function ItemsForm({
 
       return (
         <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-          {/* Header: label + counter + preview extra */}
           <div className="flex items-center justify-between">
             <span className="text-sm font-semibold">{opts.label}</span>
-            <span className="text-xs text-muted-foreground">
-              {previewing ? (
-                <><span className="text-yellow-500 font-semibold">{previewCurrent}</span>/{effectiveTotal}</>
-              ) : (
-                <>{opts.currentInst}/{effectiveTotal}</>
-              )}
-              {opts.totalAnticipated > 0 && <span className="text-primary"> (+{opts.totalAnticipated})</span>}
-              {previewing && <span className="text-yellow-500"> (+{countNum})</span>}
-            </span>
           </div>
 
+          {installmentPaymentTab === 'current' && (
           <div className="rounded-md border border-border/60 bg-muted/20 p-3 space-y-3">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -864,6 +872,12 @@ export function ItemsForm({
                 ) : (
                   <p className="text-xs text-muted-foreground">{t('itemsForm.noCurrentInstallmentPayment')}</p>
                 )}
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t('itemsForm.currentPaymentBaseBreakdown', {
+                    current: fmtVal(opts.monthlyValue),
+                    future: futureBasePart > 0 ? t('itemsForm.futurePaymentBasePart', { value: fmtVal(futureBasePart) }) : ''
+                  })}
+                </p>
               </div>
               {opts.currentPayment && (
                 <button
@@ -914,9 +928,16 @@ export function ItemsForm({
               <FastForward size={10} /> {t('itemsForm.anticipateCurrentInstallmentPayment')}
             </button>
           </div>
+          )}
 
+          {installmentPaymentTab === 'future' && (
           <div className="rounded-md border border-border/60 bg-muted/20 p-3 space-y-3">
-            <p className="text-xs font-semibold text-muted-foreground">{t('itemsForm.futureInstallmentsAnticipation')}</p>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-semibold text-muted-foreground">{t('itemsForm.futureInstallmentsAnticipation')}</p>
+              <span className="text-xs font-semibold text-muted-foreground tabular-nums">
+                {progressText}
+              </span>
+            </div>
 
           {/* Progress bar + anticipation controls */}
           <div className="flex items-center gap-2">
@@ -1027,11 +1048,12 @@ export function ItemsForm({
               previewing ? (
                 <span className="font-semibold text-yellow-500">{fmtVal(previewMonthly)}{t('itemsForm.perMonth')}</span>
               ) : (
-                <span className="font-semibold text-foreground">{fmtVal(opts.monthlyValue)}{t('itemsForm.perMonth')}</span>
+                <span className="font-semibold text-foreground">{fmtVal(displayedMonthlyValue)}{t('itemsForm.perMonth')}</span>
               )
             )}
           </div>
           </div>
+          )}
         </div>
       )
     }
@@ -1039,9 +1061,120 @@ export function ItemsForm({
     // Use form values (from Detalhes tab) when available, fallback to saved editing values
     const formSplits = form.splits
     const formValue = form.value
+    const getSplitName = (splitId: number | null | undefined) => {
+      if (!splitId || !hasSplits) return null
+      return editing.cardSplits!.find(sp => sp.id === splitId)?.cardName || `${t('itemsForm.card')} #${splitId}`
+    }
+    const getMonthlyForAnticipation = (anticipation: NonNullable<SectionItem['anticipations']>[number]) => {
+      const splitData = anticipation.splitId && hasSplits ? editing.cardSplits!.find(sp => sp.id === anticipation.splitId) : null
+      return splitData
+        ? splitData.value / splitData.totalInstallments
+        : (editing.totalInstallments ? editing.value / editing.totalInstallments : 0)
+    }
+    const renderCurrentPaymentHistory = () => {
+      const payments = editing.currentInstallmentPayments || []
+      return (
+        <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+          <h4 className="text-sm font-semibold text-foreground">{t('itemsForm.currentInstallmentPaymentHistory')}</h4>
+          {payments.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t('itemsForm.noCurrentInstallmentPaymentHistory')}</p>
+          ) : (
+            <div className="space-y-2">
+              {payments.map(payment => {
+                const splitName = getSplitName(payment.splitId)
+                const savings = Math.max(0, payment.originalValue - payment.paidValue)
+                return (
+                  <div key={payment.id} className="rounded-md bg-muted/30 px-3 py-2 text-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-medium text-foreground">
+                          {t('itemsForm.currentInstallmentPaymentHistoryItem', {
+                            month: fmtMonth(payment.month),
+                            paid: fmtVal(payment.paidValue),
+                            original: fmtVal(payment.originalValue),
+                            date: payment.paidAt ? fmtDate(payment.paidAt) : '-'
+                          })}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {splitName ? t('itemsForm.forCard', { name: splitName }) : t('itemsForm.currentMonthPaymentAnticipation')}
+                          {savings > 0 && <span className="ml-2 text-green-500">{t('itemsForm.savingsLabel')}: {fmtVal(savings)}</span>}
+                        </p>
+                      </div>
+                      <Button size="sm" variant="ghost" onClick={() => handleDeleteCurrentInstallmentPayment(payment.id)} title={t('common.delete')}>
+                        <X size={14} />
+                      </Button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )
+    }
+    const renderFutureAnticipationHistory = () => {
+      const anticipations = editing.anticipations || []
+      return (
+        <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+          <h4 className="text-sm font-semibold text-foreground">{t('itemsForm.futureInstallmentsHistory')}</h4>
+          {anticipations.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t('itemsForm.noFutureInstallmentHistory')}</p>
+          ) : (
+            <div className="space-y-2">
+              {anticipations.map(anticipation => {
+                const splitName = getSplitName(anticipation.splitId)
+                const monthly = getMonthlyForAnticipation(anticipation)
+                const originalTotal = monthly * anticipation.count
+                const paidTotal = anticipation.discountedTotal ?? originalTotal
+                const savings = Math.max(0, originalTotal - paidTotal)
+                return (
+                  <div key={anticipation.id} className="rounded-md bg-muted/30 px-3 py-2 text-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 space-y-1">
+                        <p className="font-medium text-foreground">
+                          {t('itemsForm.futureInstallmentsMoved', {
+                            count: String(anticipation.count),
+                            from: fmtMonth(addMonths(anticipation.month, 1)),
+                            to: fmtMonth(addMonths(anticipation.month, anticipation.count)),
+                            target: fmtMonth(anticipation.month)
+                          })}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                          {splitName && <span>{t('itemsForm.forCard', { name: splitName })}</span>}
+                          <span>{t('itemsForm.originalValue')}: {fmtVal(originalTotal)}</span>
+                          <span>{t('itemsForm.paidInstallmentValue')}: {fmtVal(paidTotal)}</span>
+                          {savings > 0 && <span className="text-green-500">{t('itemsForm.savingsLabel')}: {fmtVal(savings)}</span>}
+                        </div>
+                      </div>
+                      <Button size="sm" variant="ghost" onClick={() => handleUndoAnticipation(anticipation.id)} title={t('common.undo')}>
+                        <Undo2 size={14} />
+                      </Button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )
+    }
 
     return (
       <div className="space-y-5">
+        <div className="flex rounded-lg border border-input p-0.5 bg-muted/30">
+          {([
+            { key: 'current' as const, label: t('itemsForm.currentInstallmentPaymentTab') },
+            { key: 'future' as const, label: t('itemsForm.futureInstallmentsPaymentTab') }
+          ]).map(option => (
+            <button key={option.key} type="button" onClick={() => setInstallmentPaymentTab(option.key)}
+              className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
+                installmentPaymentTab === option.key ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+              }`}>
+              {option.label}
+            </button>
+          ))}
+        </div>
+
         {/* Per-split blocks */}
         {hasSplits ? (
           editing.cardSplits!.map(sp => {
@@ -1055,6 +1188,8 @@ export function ItemsForm({
               totalAnticipated: sp.totalAnticipated || 0,
               monthlyValue: totalInst > 0 ? value / totalInst : 0,
               splitId: sp.id,
+              anticipatedThisMonth: sp.anticipatedThisMonth || 0,
+              discountedTotalThisMonth: sp.discountedTotalThisMonth ?? null,
               currentPayment: sp.currentInstallmentPayment || null
             })
           })
@@ -1068,45 +1203,14 @@ export function ItemsForm({
               currentInst: editing.currentInstallment || 0,
               totalAnticipated: editing.totalAnticipated || 0,
               monthlyValue: totalInst > 0 ? value / totalInst : 0,
+              anticipatedThisMonth: editing.anticipatedThisMonth || 0,
+              discountedTotalThisMonth: editing.discountedTotalThisMonth ?? null,
               currentPayment: editing.currentInstallmentPayment || null
             })
           })()
         )}
 
-        {/* Interrupções */}
-        {/* Historico de antecipacoes */}
-        {editing.anticipations && editing.anticipations.length > 0 && (
-          <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-            <span className="text-sm font-semibold">{t('itemsForm.anticipationHistory')}</span>
-            <div className="space-y-2">
-              {editing.anticipations.map(a => {
-                const splitName = a.splitId && hasSplits
-                  ? editing.cardSplits!.find(sp => sp.id === a.splitId)?.cardName || `${t('itemsForm.card')} #${a.splitId}`
-                  : null
-                const splitData = a.splitId && hasSplits ? editing.cardSplits!.find(sp => sp.id === a.splitId) : null
-                const monthly = splitData
-                  ? splitData.value / splitData.totalInstallments
-                  : (editing.totalInstallments ? editing.value / editing.totalInstallments : 0)
-                const fullTotal = a.count * monthly
-                const economia = a.discountedTotal != null ? fullTotal - a.discountedTotal : 0
-                return (
-                  <div key={a.id} className="flex items-center justify-between text-sm">
-                    <span>
-                      {t('itemsForm.installmentsAnticipated', { count: String(a.count), verb: a.count === 1 ? t('itemsForm.wasAnticipated') : t('itemsForm.wereAnticipated'), month: fmtMonth(a.month) })}
-                      {splitName && <span className="text-muted-foreground text-xs ml-1">{t('itemsForm.forCard', { name: splitName })}</span>}
-                      {a.discountedTotal != null && (
-                        <span className="text-xs text-green-500 ml-1">({fmtVal(a.discountedTotal)} — {t('itemsForm.savings', { value: fmtVal(economia) })})</span>
-                      )}
-                    </span>
-                    <Button size="sm" variant="outline" onClick={() => handleUndoAnticipation(a.id)}>
-                      <Undo2 size={12} /> {t('common.undo')}
-                    </Button>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
+        {installmentPaymentTab === 'current' ? renderCurrentPaymentHistory() : renderFutureAnticipationHistory()}
       </div>
     )
   }

@@ -85,7 +85,7 @@ export function IncomeTile({
     : isForeign ? formatCurrencyWith(value, income.currencySymbol || '') : formatCurrency(value)
   const fmtBase = (value: number) => formatCurrency(value * snap)
   const categoryLabel = income.categoryName ? `${income.categoryName}${income.subcategoryName ? `/${income.subcategoryName}` : ''}` : t('items.noCategoryDefined')
-  const typeText = income.isRecurring ? t('income.recurring') : t('income.nonRecurring')
+  const typeText = income.isRecurring ? t('income.recurring') : t('income.single')
   const receivingDayLabel = income.isRecurring ? t('income.receivingDay') : t('income.receivedDay')
   const receivingDayText = formatDayLabelResolved(income.dueDay ?? null, income.dueDayType || null, receivingDayLabel, mYear, mMonth, businessDayConfig)
 
