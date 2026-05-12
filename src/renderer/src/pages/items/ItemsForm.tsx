@@ -361,7 +361,10 @@ export function ItemsForm({
     if (baseCurrency && !selectedCurrency.isBase) {
       try {
         const rates = await window.api.currencies.fetchRates(baseCurrency.code, true)
-        nextRate = Number(rates?.[selectedCurrency.code] ?? nextRate)
+        const rawRate = Number(rates?.[selectedCurrency.code])
+        if (Number.isFinite(rawRate) && rawRate > 0) {
+          nextRate = 1 / rawRate
+        }
       } catch {
         nextRate = selectedCurrency.exchangeRate
       }

@@ -183,7 +183,10 @@ export default function IncomePage() {
     if (baseCurrency && !selectedIncomeCurrency.isBase) {
       try {
         const rates = await window.api.currencies.fetchRates(baseCurrency.code, true)
-        nextRate = Number(rates?.[selectedIncomeCurrency.code] ?? nextRate)
+        const rawRate = Number(rates?.[selectedIncomeCurrency.code])
+        if (Number.isFinite(rawRate) && rawRate > 0) {
+          nextRate = 1 / rawRate
+        }
       } catch {
         nextRate = selectedIncomeCurrency.exchangeRate
       }
