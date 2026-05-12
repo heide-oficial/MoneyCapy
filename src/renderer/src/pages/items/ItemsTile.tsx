@@ -43,6 +43,7 @@ interface CardDetailRow {
   detail?: string
   amount?: string
   progress?: number
+  anticipatedProgress?: number
 }
 
 interface TooltipRow {
@@ -190,23 +191,27 @@ export function ItemsTile({
           name: splitLabel,
           detail: `${current}/${split.totalInstallments} ${t('items.installments').toLowerCase()}${anticipated > 0 ? ` (+${anticipated})` : ''}`,
           amount: `${fmtVal(rowValue)}${t('itemsForm.perMonth')}`,
-          progress: Math.min((current / split.totalInstallments) * 100, 100)
+          progress: Math.min((current / split.totalInstallments) * 100, 100),
+          anticipatedProgress: Math.min((anticipated / split.totalInstallments) * 100, Math.max(100 - Math.min((current / split.totalInstallments) * 100, 100), 0))
         })
       }
     } else {
+      const anticipated = item.anticipatedThisMonth || 0
+      const progress = Math.min((item.currentInstallment! / item.totalInstallments!) * 100, 100)
       const monthly = Math.round((item.value / item.totalInstallments!) * 100) / 100
       const rowValue = getInstallmentMonthValue({
         monthlyValue: monthly,
-        anticipatedCount: item.anticipatedThisMonth,
+        anticipatedCount: anticipated,
         discountedTotal: item.discountedTotalThisMonth,
         currentPaymentPaidValue: item.currentInstallmentPayment?.paidValue,
         currentPaymentOriginalValue: item.currentInstallmentPayment?.originalValue
       })
       cardRows.push({
         name: item.type === 'emprestimo' ? t('items.installments') : (item.cardName ? formatCardLabel(item.cardName, item.cardType, item.paymentMethod, cardTypeLabels) : t('items.installments')),
-        detail: `${item.currentInstallment!}/${item.totalInstallments!} ${t('items.installments').toLowerCase()}${(item.anticipatedThisMonth || 0) > 0 ? ` (+${item.anticipatedThisMonth})` : ''}`,
+        detail: `${item.currentInstallment!}/${item.totalInstallments!} ${t('items.installments').toLowerCase()}${anticipated > 0 ? ` (+${anticipated})` : ''}`,
         amount: `${fmtVal(rowValue)}${t('itemsForm.perMonth')}`,
-        progress: Math.min((item.currentInstallment! / item.totalInstallments!) * 100, 100)
+        progress,
+        anticipatedProgress: Math.min((anticipated / item.totalInstallments!) * 100, Math.max(100 - progress, 0))
       })
     }
   } else if (item.cardName) {
@@ -431,8 +436,13 @@ export function ItemsTile({
                   {card.amount && <p className="text-sm font-bold tabular-nums text-foreground sm:text-right">{card.amount}</p>}
                 </div>
                 {card.progress != null && (
-                  <div className="mt-3 h-2 rounded-full bg-muted">
-                    <div className={`h-full rounded-full ${card.progress >= 100 ? 'bg-green-500' : 'bg-primary'}`} style={{ width: `${card.progress}%` }} />
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+                    <div className="flex h-full">
+                      <div className={`h-full transition-all ${card.progress >= 100 ? 'bg-green-500' : 'bg-primary'}`} style={{ width: `${card.progress}%` }} />
+                      {(card.anticipatedProgress || 0) > 0 && (
+                        <div className="h-full bg-yellow-500 transition-all" style={{ width: `${card.anticipatedProgress}%` }} />
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
