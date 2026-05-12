@@ -136,6 +136,7 @@ export default function CardsPage() {
   const [multiCardMessage, setMultiCardMessage] = useState<string | null>(null)
   const [showLimitGroupForm, setShowLimitGroupForm] = useState(false)
   const [editingLimitGroupId, setEditingLimitGroupId] = useState<number | null>(null)
+  const [limitMode, setLimitMode] = useState<'individual' | 'shared'>('individual')
   const { sortMode, setSortMode, defaultSortMode, setDefaultSortMode } = useDefaultSortMode<CardSortMode>('cards', 'manual', cardSortOptions.map(option => option.key))
   const [filterBanco, setFilterBanco] = useState<string>('')
   const [filterCardType, setFilterCardType] = useState('all')
@@ -293,6 +294,7 @@ export default function CardsPage() {
     if (!hasPassword) { setShowPasswordModal(true); return }
     if (!isUnlocked) { setShowPasswordModal(true); return }
     setEditing(null)
+    setLimitMode('individual')
     resetFormData()
     setShowForm(true)
   }
@@ -318,6 +320,7 @@ export default function CardsPage() {
         currencyId: decrypted.ownCurrencyId ?? decrypted.currencyId ?? null,
         limitGroupId: decrypted.limitGroupId ?? null
       })
+      setLimitMode(decrypted.limitGroupId ? 'shared' : 'individual')
       setEditing(cardId)
       setShowForm(true)
     } catch {
@@ -328,12 +331,20 @@ export default function CardsPage() {
   const handleSave = async () => {
     if (!formData.name.trim()) { toast.error(t('common.nameIsRequired')); return }
     if (!activePerson) return
+    if (limitMode === 'shared' && !formData.limitGroupId) {
+      toast.error(t('cards.selectSharedLimitGroup'))
+      return
+    }
+    const savePayload = {
+      ...formData,
+      limitGroupId: limitMode === 'shared' ? formData.limitGroupId : null
+    }
     try {
       if (editing) {
-        await window.api.cards.update({ id: editing, ...formData })
+        await window.api.cards.update({ id: editing, ...savePayload })
         toast.success(t('cards.cardUpdated'))
       } else {
-        await window.api.cards.create({ ...formData, personId: activePerson.id })
+        await window.api.cards.create({ ...savePayload, personId: activePerson.id })
         toast.success(t('cards.cardCreated'))
       }
       setShowForm(false)
@@ -352,6 +363,7 @@ export default function CardsPage() {
     } else {
       setEditing(null)
       resetFormData()
+      setLimitMode('individual')
       setShowForm(true)
     }
   }
@@ -690,36 +702,62 @@ export default function CardsPage() {
             }} placeholder="MM/AA" maxLength={5} />
             <Input label={t('cards.holderName')} value={formData.holder} onChange={e => setFormData({ ...formData, holder: e.target.value })} placeholder={t('cards.nameOnCard')} />
           </div>
-          <CurrencyInput
-            label={formData.limitGroupId ? t('cards.individualLimit') : t('cards.totalLimit')}
-            value={formData.totalLimit}
-            onChange={v => setFormData({ ...formData, totalLimit: v })}
-          />
-          <div className="space-y-2">
-            <div className="grid grid-cols-[1fr_auto] items-end gap-2">
-              <Select
-                label={t('cards.sharedLimitGroup')}
-                value={formData.limitGroupId !== null ? String(formData.limitGroupId) : ''}
-                onChange={e => setFormData({ ...formData, limitGroupId: e.target.value ? parseInt(e.target.value, 10) : null })}
-                options={[
-                  { value: '', label: t('cards.noSharedLimitGroup') },
-                  ...limitGroups.map(group => ({ value: String(group.id), label: group.name }))
-                ]}
-              />
-              <Button type="button" variant="outline" onClick={selectedLimitGroup ? openEditLimitGroup : openCreateLimitGroup}>
-                {selectedLimitGroup ? t('common.edit') : t('common.create')}
-              </Button>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-foreground">{t('cards.limitMode')}</label>
+            <div className="flex rounded-lg border border-input p-0.5 bg-muted/30">
+              {([
+                { value: 'individual', label: t('cards.individualLimitMode') },
+                { value: 'shared', label: t('cards.sharedLimitMode') }
+              ] as const).map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => {
+                    setLimitMode(opt.value)
+                    if (opt.value === 'individual') setFormData({ ...formData, limitGroupId: null })
+                  }}
+                  className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
+                    limitMode === opt.value ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
-            <p className="text-xs text-muted-foreground">
-              {selectedLimitGroup
-                ? t('cards.sharedLimitGroupInfo', {
-                  group: selectedLimitGroup.name,
-                  limit: selectedLimitGroup.currencySymbol ? formatCurrencyWith(selectedLimitGroup.totalLimit, selectedLimitGroup.currencySymbol) : formatCurrency(selectedLimitGroup.totalLimit),
-                  count: selectedLimitGroup.cardCount
-                })
-                : t('cards.sharedLimitGroupHint')}
-            </p>
           </div>
+          {limitMode === 'individual' ? (
+            <CurrencyInput
+              label={t('cards.individualLimit')}
+              value={formData.totalLimit}
+              onChange={v => setFormData({ ...formData, totalLimit: v })}
+            />
+          ) : (
+            <div className="space-y-2">
+              <div className="grid grid-cols-[1fr_auto] items-end gap-2">
+                <Select
+                  label={t('cards.sharedLimitGroup')}
+                  value={formData.limitGroupId !== null ? String(formData.limitGroupId) : ''}
+                  onChange={e => setFormData({ ...formData, limitGroupId: e.target.value ? parseInt(e.target.value, 10) : null })}
+                  options={[
+                    { value: '', label: t('cards.noSharedLimitGroup') },
+                    ...limitGroups.map(group => ({ value: String(group.id), label: group.name }))
+                  ]}
+                />
+                <Button type="button" variant="outline" onClick={selectedLimitGroup ? openEditLimitGroup : openCreateLimitGroup}>
+                  {selectedLimitGroup ? t('common.edit') : t('common.create')}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {selectedLimitGroup
+                  ? t('cards.sharedLimitGroupInfo', {
+                    group: selectedLimitGroup.name,
+                    limit: selectedLimitGroup.currencySymbol ? formatCurrencyWith(selectedLimitGroup.totalLimit, selectedLimitGroup.currencySymbol) : formatCurrency(selectedLimitGroup.totalLimit),
+                    count: selectedLimitGroup.cardCount
+                  })
+                  : t('cards.sharedLimitGroupHint')}
+              </p>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <Input label={t('cards.closingDay')} type="number" min={1} max={31} value={String(formData.billingCloseDay)} onChange={e => setFormData({ ...formData, billingCloseDay: parseInt(e.target.value) || 1 })} />
             <Input label={t('cards.dueDay')} type="number" min={1} max={31} value={String(formData.dueDay)} onChange={e => setFormData({ ...formData, dueDay: parseInt(e.target.value) || 10 })} />
