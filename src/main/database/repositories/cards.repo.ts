@@ -1,5 +1,6 @@
 import { WrappedDatabase } from '../connection'
 import { addMonths, monthDiff } from '../../utils/month-utils'
+import { getInstallmentMonthValue } from '../../../../shared/installment-utils'
 
 export class CardsRepository {
   constructor(private db: WrappedDatabase) {}
@@ -46,15 +47,15 @@ export class CardsRepository {
     return row ? row.discounted_total ?? null : null
   }
 
-  private getCurrentInstallmentPaidValue(itemId: number, month: string, splitId?: number | null): number | null {
+  private getCurrentInstallmentPayment(itemId: number, month: string, splitId?: number | null): { paid_value: number; original_value: number } | null {
     const row = splitId == null
       ? this.db.prepare(
-        'SELECT paid_value FROM item_current_installment_payments WHERE item_id = ? AND month = ? AND split_id IS NULL LIMIT 1'
+        'SELECT paid_value, original_value FROM item_current_installment_payments WHERE item_id = ? AND month = ? AND split_id IS NULL LIMIT 1'
       ).get(itemId, month)
       : this.db.prepare(
-        'SELECT paid_value FROM item_current_installment_payments WHERE item_id = ? AND month = ? AND split_id = ? LIMIT 1'
+        'SELECT paid_value, original_value FROM item_current_installment_payments WHERE item_id = ? AND month = ? AND split_id = ? LIMIT 1'
       ).get(itemId, month, splitId)
-    return row ? ((row as any).paid_value ?? null) : null
+    return row ? (row as any) : null
   }
 
   private getPaidMonthsCount(itemId: number, startMonth: string, endMonth: string): number {
@@ -446,10 +447,15 @@ export class CardsRepository {
         const snapshot = item.exchange_rate_snapshot || 1.0
         const anticipatedInMonth = this.getAnticipatedInMonth(item.id, month)
         const baseMonthly = item.value / instCount
-        const currentMonthly = this.getCurrentInstallmentPaidValue(item.id, month, null) ?? baseMonthly
+        const currentPayment = this.getCurrentInstallmentPayment(item.id, month, null)
         const discounted = this.getDiscountedTotalInMonth(item.id, month)
-        const futureValue = anticipatedInMonth > 0 && discounted != null ? discounted : baseMonthly * anticipatedInMonth
-        const monthlyValue = (currentMonthly + futureValue) * snapshot / cardRate
+        const monthlyValue = getInstallmentMonthValue({
+          monthlyValue: baseMonthly,
+          anticipatedCount: anticipatedInMonth,
+          discountedTotal: discounted,
+          currentPaymentPaidValue: currentPayment?.paid_value,
+          currentPaymentOriginalValue: currentPayment?.original_value
+        }) * snapshot / cardRate
         if (item.type === 'emprestimo') {
           emprestimoCount++
           emprestimoTotal += monthlyValue
@@ -494,10 +500,15 @@ export class CardsRepository {
           const instCount = sp.total_installments || 1
           const anticipatedInMonth = this.getAnticipatedInMonthForSplit(sp.split_id, month)
           const baseMonthly = sp.value / instCount
-          const currentMonthly = this.getCurrentInstallmentPaidValue(sp.item_id, month, sp.split_id) ?? baseMonthly
+          const currentPayment = this.getCurrentInstallmentPayment(sp.item_id, month, sp.split_id)
           const discounted = this.getDiscountedTotalInMonthForSplit(sp.split_id, month)
-          const futureValue = anticipatedInMonth > 0 && discounted != null ? discounted : baseMonthly * anticipatedInMonth
-          const monthlyValue = (currentMonthly + futureValue) * snapshot / cardRate
+          const monthlyValue = getInstallmentMonthValue({
+            monthlyValue: baseMonthly,
+            anticipatedCount: anticipatedInMonth,
+            discountedTotal: discounted,
+            currentPaymentPaidValue: currentPayment?.paid_value,
+            currentPaymentOriginalValue: currentPayment?.original_value
+          }) * snapshot / cardRate
           if (sp.type === 'emprestimo') {
             emprestimoCount++
             emprestimoTotal += monthlyValue

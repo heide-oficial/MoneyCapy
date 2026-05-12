@@ -33,6 +33,8 @@
     "previous": "Anterior",
     "next": "Próximo",
     "columns": "Colunas",
+    "installmentSingular": "parcela",
+    "installmentPlural": "parcelas",
     "columnsPerRow1": "1 por linha",
     "columnsPerRow2": "2 por linha",
     "columnsPerRow3": "3 por linha",

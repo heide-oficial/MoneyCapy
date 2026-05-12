@@ -14,6 +14,7 @@ import { TagsRepository } from '../database/repositories/tags.repo'
 import { getStartCountingMonth, isMonthBeforeStart } from './start-counting-month'
 import type { DashboardListItem, DashboardWidgetsData, DashboardCardEnriched, DashboardDistributionEntry } from '../../../shared/dashboard-types'
 import { resolveDay, type BusinessDayConfig, DEFAULT_BUSINESS_DAY_CONFIG } from '../../../shared/day-utils'
+import { getInstallmentMonthValue } from '../../../shared/installment-utils'
 import { getHolidays } from '../services/holiday.service'
 import { monthDiff, addMonths, getCardType } from '../utils/month-utils'
 
@@ -37,7 +38,7 @@ function mapToDashboardItem(
 
     if (splits.length > 0) {
       const splitValues = db.prepare(`
-        SELECT ics.id, ics.value, ics.total_installments, p.paid_value, a.count as anticipated_count, a.discounted_total
+        SELECT ics.id, ics.value, ics.total_installments, p.paid_value, p.original_value, a.count as anticipated_count, a.discounted_total
         FROM item_card_splits ics
         LEFT JOIN item_current_installment_payments p
           ON p.item_id = ics.item_id AND p.split_id = ics.id AND p.month = ?
@@ -47,23 +48,29 @@ function mapToDashboardItem(
       `).all(month, month, item.id) as any[]
       ;(item as any).current_installment_monthly_value = splitValues.reduce((sum, split) => {
         const monthly = Math.round((split.value / split.total_installments) * 100) / 100
-        const futureValue = split.anticipated_count > 0 && split.discounted_total != null
-          ? split.discounted_total
-          : monthly * (split.anticipated_count || 0)
-        return sum + (split.paid_value ?? monthly) + futureValue
+        return sum + getInstallmentMonthValue({
+          monthlyValue: monthly,
+          anticipatedCount: split.anticipated_count,
+          discountedTotal: split.discounted_total,
+          currentPaymentPaidValue: split.paid_value,
+          currentPaymentOriginalValue: split.original_value
+        })
       }, 0)
     } else {
       const payment = db.prepare(
-        'SELECT paid_value FROM item_current_installment_payments WHERE item_id = ? AND month = ? AND split_id IS NULL LIMIT 1'
+        'SELECT paid_value, original_value FROM item_current_installment_payments WHERE item_id = ? AND month = ? AND split_id IS NULL LIMIT 1'
       ).get(item.id, month) as any
       const anticipation = db.prepare(
         'SELECT count, discounted_total FROM item_anticipations WHERE item_id = ? AND split_id IS NULL AND month = ? LIMIT 1'
       ).get(item.id, month) as any
       const monthly = item.total_installments ? Math.round((item.value / item.total_installments) * 100) / 100 : 0
-      const futureValue = anticipation?.count > 0 && anticipation.discounted_total != null
-        ? anticipation.discounted_total
-        : monthly * (anticipation?.count || 0)
-      ;(item as any).current_installment_monthly_value = (payment?.paid_value ?? monthly) + futureValue
+      ;(item as any).current_installment_monthly_value = getInstallmentMonthValue({
+        monthlyValue: monthly,
+        anticipatedCount: anticipation?.count,
+        discountedTotal: anticipation?.discounted_total,
+        currentPaymentPaidValue: payment?.paid_value,
+        currentPaymentOriginalValue: payment?.original_value
+      })
     }
   }
 

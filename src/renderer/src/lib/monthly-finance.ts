@@ -1,5 +1,6 @@
 import type { IncomeRecord, SectionItem } from '../types/entities'
 import { getActiveInterruption } from './interruptions'
+import { getInstallmentMonthValue } from '../../../../shared/installment-utils'
 
 export function getMonthlyExpenseValue(item: SectionItem): number {
   const rate = item.exchangeRateSnapshot || 1
@@ -8,20 +9,24 @@ export function getMonthlyExpenseValue(item: SectionItem): number {
     if (item.cardSplits && item.cardSplits.length > 0) {
       return item.cardSplits.reduce((sum, split) => {
         const monthly = Math.round((split.value / split.totalInstallments) * 100) / 100
-        const currentMonthly = split.currentInstallmentPayment?.paidValue ?? monthly
-        if ((split.anticipatedThisMonth || 0) > 0 && split.discountedTotalThisMonth != null) {
-          return sum + currentMonthly + split.discountedTotalThisMonth
-        }
-        return sum + currentMonthly + monthly * (split.anticipatedThisMonth || 0)
+        return sum + getInstallmentMonthValue({
+          monthlyValue: monthly,
+          anticipatedCount: split.anticipatedThisMonth,
+          discountedTotal: split.discountedTotalThisMonth,
+          currentPaymentPaidValue: split.currentInstallmentPayment?.paidValue,
+          currentPaymentOriginalValue: split.currentInstallmentPayment?.originalValue
+        })
       }, 0) * rate
     }
 
     const monthly = Math.round((item.value / item.totalInstallments) * 100) / 100
-    const currentMonthly = item.currentInstallmentPayment?.paidValue ?? monthly
-    if ((item.anticipatedThisMonth || 0) > 0 && item.discountedTotalThisMonth != null) {
-      return (currentMonthly + item.discountedTotalThisMonth) * rate
-    }
-    return (currentMonthly + monthly * (item.anticipatedThisMonth || 0)) * rate
+    return getInstallmentMonthValue({
+      monthlyValue: monthly,
+      anticipatedCount: item.anticipatedThisMonth,
+      discountedTotal: item.discountedTotalThisMonth,
+      currentPaymentPaidValue: item.currentInstallmentPayment?.paidValue,
+      currentPaymentOriginalValue: item.currentInstallmentPayment?.originalValue
+    }) * rate
   }
 
   return (item.type === 'subscription' ? (item.effectiveValue ?? item.value) : item.value) * rate

@@ -10,6 +10,7 @@ import { SettingsRepository } from '../database/repositories/settings.repo'
 import { BankAccountsRepository } from '../database/repositories/bank-accounts.repo'
 import { getStartCountingMonth, isMonthBeforeStart } from './start-counting-month'
 import { resolveDay, type BusinessDayConfig, DEFAULT_BUSINESS_DAY_CONFIG } from '../../../shared/day-utils'
+import { getInstallmentMonthValue } from '../../../shared/installment-utils'
 import { getHolidays } from '../services/holiday.service'
 import type {
   ItemAggregate, IncomeAggregate, CategoryAggregate, TagAggregate, TimePoint,
@@ -208,28 +209,34 @@ export function registerInsightsHandlers(db: WrappedDatabase): void {
                 'SELECT COALESCE(count, 0) as count, discounted_total FROM item_anticipations WHERE split_id = ? AND month = ?'
               ).get(sp.id, month) as any
               const currentPayment = db.prepare(
-                'SELECT paid_value FROM item_current_installment_payments WHERE item_id = ? AND split_id = ? AND month = ? LIMIT 1'
+                'SELECT paid_value, original_value FROM item_current_installment_payments WHERE item_id = ? AND split_id = ? AND month = ? LIMIT 1'
               ).get(item.id, sp.id, month) as any
               const anticipatedInMonth = anticipatedRow ? anticipatedRow.count : 0
               const monthly = Math.round((sp.value / sp.total_installments) * 100) / 100
-              const futureValue = anticipatedInMonth > 0 && anticipatedRow?.discounted_total != null
-                ? anticipatedRow.discounted_total
-                : monthly * anticipatedInMonth
-              effectiveValue += (currentPayment?.paid_value ?? monthly) + futureValue
+              effectiveValue += getInstallmentMonthValue({
+                monthlyValue: monthly,
+                anticipatedCount: anticipatedInMonth,
+                discountedTotal: anticipatedRow?.discounted_total,
+                currentPaymentPaidValue: currentPayment?.paid_value,
+                currentPaymentOriginalValue: currentPayment?.original_value
+              })
             }
           } else {
             const anticipatedRow = db.prepare(
               'SELECT COALESCE(count, 0) as count, discounted_total FROM item_anticipations WHERE item_id = ? AND split_id IS NULL AND month = ?'
             ).get(item.id, month) as any
             const currentPayment = db.prepare(
-              'SELECT paid_value FROM item_current_installment_payments WHERE item_id = ? AND split_id IS NULL AND month = ? LIMIT 1'
+              'SELECT paid_value, original_value FROM item_current_installment_payments WHERE item_id = ? AND split_id IS NULL AND month = ? LIMIT 1'
             ).get(item.id, month) as any
             const anticipatedInMonth = anticipatedRow ? anticipatedRow.count : 0
             const monthly = Math.round((item.value / item.total_installments) * 100) / 100
-            const futureValue = anticipatedInMonth > 0 && anticipatedRow?.discounted_total != null
-              ? anticipatedRow.discounted_total
-              : monthly * anticipatedInMonth
-            effectiveValue = (currentPayment?.paid_value ?? monthly) + futureValue
+            effectiveValue = getInstallmentMonthValue({
+              monthlyValue: monthly,
+              anticipatedCount: anticipatedInMonth,
+              discountedTotal: anticipatedRow?.discounted_total,
+              currentPaymentPaidValue: currentPayment?.paid_value,
+              currentPaymentOriginalValue: currentPayment?.original_value
+            })
           }
         } else {
           effectiveValue = sectionItemsRepo.getEffectiveValue(item, month)

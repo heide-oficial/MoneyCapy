@@ -33,6 +33,8 @@
     "previous": "Previous",
     "next": "Next",
     "columns": "Columns",
+    "installmentSingular": "installment",
+    "installmentPlural": "installments",
     "columnsPerRow1": "1 per row",
     "columnsPerRow2": "2 per row",
     "columnsPerRow3": "3 per row",

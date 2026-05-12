@@ -1,5 +1,6 @@
 import { WrappedDatabase } from '../connection'
 import { addMonths, monthDiff, monthLte, monthGt } from '../../utils/month-utils'
+import { getInstallmentMonthValue } from '../../../../shared/installment-utils'
 
 export class SectionItemsRepository {
   constructor(private db: WrappedDatabase) {}
@@ -71,15 +72,15 @@ export class SectionItemsRepository {
     return row ? row.discounted_total ?? null : null
   }
 
-  private getCurrentInstallmentPaidValue(itemId: number, month: string, splitId?: number | null): number | null {
+  private getCurrentInstallmentPayment(itemId: number, month: string, splitId?: number | null): { paid_value: number; original_value: number } | null {
     const row = splitId == null
       ? this.db.prepare(
-        'SELECT paid_value FROM item_current_installment_payments WHERE item_id = ? AND month = ? AND split_id IS NULL LIMIT 1'
+        'SELECT paid_value, original_value FROM item_current_installment_payments WHERE item_id = ? AND month = ? AND split_id IS NULL LIMIT 1'
       ).get(itemId, month)
       : this.db.prepare(
-        'SELECT paid_value FROM item_current_installment_payments WHERE item_id = ? AND month = ? AND split_id = ? LIMIT 1'
+        'SELECT paid_value, original_value FROM item_current_installment_payments WHERE item_id = ? AND month = ? AND split_id = ? LIMIT 1'
       ).get(itemId, month, splitId)
-    return row ? ((row as any).paid_value ?? null) : null
+    return row ? (row as any) : null
   }
 
   /** Load interruptions for an item from item_interruptions table */
@@ -404,26 +405,28 @@ export class SectionItemsRepository {
           for (const sp of splits) {
             const splitAnticipated = this.getAnticipatedInMonthForSplit(sp.id, month)
             const monthly = Math.round((sp.value / sp.total_installments) * 100) / 100
-            const currentPaid = this.getCurrentInstallmentPaidValue(item.id, month, sp.id)
-            const currentMonthly = currentPaid ?? monthly
-            if (splitAnticipated > 0) {
-              const discounted = this.getDiscountedTotalInMonthForSplit(sp.id, month)
-              total += (currentMonthly + (discounted != null ? discounted : monthly * splitAnticipated)) * snapshot
-            } else {
-              total += currentMonthly * snapshot
-            }
+            const currentPayment = this.getCurrentInstallmentPayment(item.id, month, sp.id)
+            const discounted = this.getDiscountedTotalInMonthForSplit(sp.id, month)
+            total += getInstallmentMonthValue({
+              monthlyValue: monthly,
+              anticipatedCount: splitAnticipated,
+              discountedTotal: discounted,
+              currentPaymentPaidValue: currentPayment?.paid_value,
+              currentPaymentOriginalValue: currentPayment?.original_value
+            }) * snapshot
           }
         } else {
           const anticipatedInMonth = this.getAnticipatedInMonth(item.id, month)
           const monthly = Math.round((item.value / item.total_installments) * 100) / 100
-          const currentPaid = this.getCurrentInstallmentPaidValue(item.id, month, null)
-          const currentMonthly = currentPaid ?? monthly
-          if (anticipatedInMonth > 0) {
-            const discounted = this.getDiscountedTotalInMonth(item.id, month)
-            total += (currentMonthly + (discounted != null ? discounted : monthly * anticipatedInMonth)) * snapshot
-          } else {
-            total += currentMonthly * snapshot
-          }
+          const currentPayment = this.getCurrentInstallmentPayment(item.id, month, null)
+          const discounted = this.getDiscountedTotalInMonth(item.id, month)
+          total += getInstallmentMonthValue({
+            monthlyValue: monthly,
+            anticipatedCount: anticipatedInMonth,
+            discountedTotal: discounted,
+            currentPaymentPaidValue: currentPayment?.paid_value,
+            currentPaymentOriginalValue: currentPayment?.original_value
+          }) * snapshot
         }
       } else {
         total += this.getEffectiveValue(item, month) * snapshot

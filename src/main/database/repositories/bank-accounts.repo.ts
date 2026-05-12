@@ -1,5 +1,6 @@
 import { WrappedDatabase } from '../connection'
 import { addMonths } from '../../utils/month-utils'
+import { getInstallmentMonthValue } from '../../../../shared/installment-utils'
 
 export class BankAccountsRepository {
   constructor(private db: WrappedDatabase) {}
@@ -148,11 +149,11 @@ export class BankAccountsRepository {
     return row ? row.discounted_total ?? null : null
   }
 
-  private getCurrentInstallmentPaidValue(itemId: number, month: string): number | null {
+  private getCurrentInstallmentPayment(itemId: number, month: string): { paid_value: number; original_value: number } | null {
     const row = this.db.prepare(
-      'SELECT paid_value FROM item_current_installment_payments WHERE item_id = ? AND month = ? AND split_id IS NULL LIMIT 1'
+      'SELECT paid_value, original_value FROM item_current_installment_payments WHERE item_id = ? AND month = ? AND split_id IS NULL LIMIT 1'
     ).get(itemId, month) as any
-    return row ? row.paid_value ?? null : null
+    return row || null
   }
 
   /**
@@ -210,10 +211,15 @@ export class BankAccountsRepository {
         const snapshot = item.exchange_rate_snapshot || 1.0
         const anticipatedInMonth = this.getAnticipatedInMonth(item.id, month)
         const baseMonthly = item.value / instCount
-        const currentMonthly = this.getCurrentInstallmentPaidValue(item.id, month) ?? baseMonthly
+        const currentPayment = this.getCurrentInstallmentPayment(item.id, month)
         const discounted = this.getDiscountedTotalInMonth(item.id, month)
-        const futureValue = anticipatedInMonth > 0 && discounted != null ? discounted : baseMonthly * anticipatedInMonth
-        const monthlyValue = (currentMonthly + futureValue) * snapshot
+        const monthlyValue = getInstallmentMonthValue({
+          monthlyValue: baseMonthly,
+          anticipatedCount: anticipatedInMonth,
+          discountedTotal: discounted,
+          currentPaymentPaidValue: currentPayment?.paid_value,
+          currentPaymentOriginalValue: currentPayment?.original_value
+        }) * snapshot
         if (item.type === 'emprestimo') {
           emprestimoCount++
           emprestimoTotal += monthlyValue

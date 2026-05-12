@@ -4,6 +4,7 @@ import { formatCurrency, formatCurrencyWith } from '../../lib/currency'
 import { useFormatDate } from '../../lib/date'
 import { formatCardLabel, getTypeLabels } from '../../lib/card-utils'
 import { formatDayLabelResolved } from '../../../../../shared/day-utils'
+import { getInstallmentMonthValue } from '../../../../../shared/installment-utils'
 import { useBusinessDayConfig } from '../../contexts/BusinessDayContext'
 import { useDimPaid } from '../../contexts/DimPaidContext'
 import { useTileFields } from '../../contexts/TileFieldsContext'
@@ -113,22 +114,23 @@ export function ItemsTile({
   if (hasSplits) {
     monthValue = item.cardSplits!.reduce((acc, split) => {
       const monthly = Math.round((split.value / split.totalInstallments) * 100) / 100
-      const currentMonthly = split.currentInstallmentPayment?.paidValue ?? monthly
-      if ((split.anticipatedThisMonth || 0) > 0 && split.discountedTotalThisMonth != null) {
-        return acc + currentMonthly + split.discountedTotalThisMonth
-      }
-      return acc + currentMonthly + monthly * (split.anticipatedThisMonth || 0)
+      return acc + getInstallmentMonthValue({
+        monthlyValue: monthly,
+        anticipatedCount: split.anticipatedThisMonth,
+        discountedTotal: split.discountedTotalThisMonth,
+        currentPaymentPaidValue: split.currentInstallmentPayment?.paidValue,
+        currentPaymentOriginalValue: split.currentInstallmentPayment?.originalValue
+      })
     }, 0)
   } else if (isInstallment && item.totalInstallments) {
     const monthly = Math.round((item.value / item.totalInstallments) * 100) / 100
-    const currentMonthly = item.currentInstallmentPayment?.paidValue ?? monthly
-    if ((item.anticipatedThisMonth || 0) > 0 && item.discountedTotalThisMonth != null) {
-      monthValue = currentMonthly + item.discountedTotalThisMonth
-    } else if ((item.anticipatedThisMonth || 0) > 0) {
-      monthValue = currentMonthly + monthly * item.anticipatedThisMonth
-    } else {
-      monthValue = currentMonthly
-    }
+    monthValue = getInstallmentMonthValue({
+      monthlyValue: monthly,
+      anticipatedCount: item.anticipatedThisMonth,
+      discountedTotal: item.discountedTotalThisMonth,
+      currentPaymentPaidValue: item.currentInstallmentPayment?.paidValue,
+      currentPaymentOriginalValue: item.currentInstallmentPayment?.originalValue
+    })
   } else {
     monthValue = item.type === 'subscription' ? (item.effectiveValue ?? item.value) : item.value
   }
@@ -177,27 +179,33 @@ export function ItemsTile({
         const splitLabel = split.cardName ? formatCardLabel(split.cardName, split.cardType, split.paymentMethod, cardTypeLabels) : t('items.cardFallback', { id: String(split.cardId) })
         const anticipated = split.anticipatedThisMonth || 0
         const monthly = Math.round((split.value / split.totalInstallments) * 100) / 100
-        const currentMonthly = split.currentInstallmentPayment?.paidValue ?? monthly
-        const futureValue = anticipated > 0 && split.discountedTotalThisMonth != null
-          ? split.discountedTotalThisMonth
-          : monthly * anticipated
+        const rowValue = getInstallmentMonthValue({
+          monthlyValue: monthly,
+          anticipatedCount: anticipated,
+          discountedTotal: split.discountedTotalThisMonth,
+          currentPaymentPaidValue: split.currentInstallmentPayment?.paidValue,
+          currentPaymentOriginalValue: split.currentInstallmentPayment?.originalValue
+        })
         cardRows.push({
           name: splitLabel,
           detail: `${current}/${split.totalInstallments} ${t('items.installments').toLowerCase()}${anticipated > 0 ? ` (+${anticipated})` : ''}`,
-          amount: `${fmtVal(currentMonthly + futureValue)}${t('itemsForm.perMonth')}`,
+          amount: `${fmtVal(rowValue)}${t('itemsForm.perMonth')}`,
           progress: Math.min((current / split.totalInstallments) * 100, 100)
         })
       }
     } else {
       const monthly = Math.round((item.value / item.totalInstallments!) * 100) / 100
-      const currentMonthly = item.currentInstallmentPayment?.paidValue ?? monthly
-      const futureValue = (item.anticipatedThisMonth || 0) > 0 && item.discountedTotalThisMonth != null
-        ? item.discountedTotalThisMonth
-        : monthly * (item.anticipatedThisMonth || 0)
+      const rowValue = getInstallmentMonthValue({
+        monthlyValue: monthly,
+        anticipatedCount: item.anticipatedThisMonth,
+        discountedTotal: item.discountedTotalThisMonth,
+        currentPaymentPaidValue: item.currentInstallmentPayment?.paidValue,
+        currentPaymentOriginalValue: item.currentInstallmentPayment?.originalValue
+      })
       cardRows.push({
         name: item.type === 'emprestimo' ? t('items.installments') : (item.cardName ? formatCardLabel(item.cardName, item.cardType, item.paymentMethod, cardTypeLabels) : t('items.installments')),
         detail: `${item.currentInstallment!}/${item.totalInstallments!} ${t('items.installments').toLowerCase()}${(item.anticipatedThisMonth || 0) > 0 ? ` (+${item.anticipatedThisMonth})` : ''}`,
-        amount: `${fmtVal(currentMonthly + futureValue)}${t('itemsForm.perMonth')}`,
+        amount: `${fmtVal(rowValue)}${t('itemsForm.perMonth')}`,
         progress: Math.min((item.currentInstallment! / item.totalInstallments!) * 100, 100)
       })
     }
