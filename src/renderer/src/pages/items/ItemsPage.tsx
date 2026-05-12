@@ -800,9 +800,10 @@ export default function ItemsPage() {
   }
 
   const interruptionPreview = (() => {
-    const pausedFrom = addMonths(month, 1)
-    const pausedUntil = addMonths(month, interruptMonths - 1)
-    const resumeMonth = addMonths(month, interruptMonths)
+    const interruptionBaseMonth = editingInterruption?.endMonth || previousMonth(month)
+    const pausedFrom = addMonths(interruptionBaseMonth, 1)
+    const pausedUntil = addMonths(interruptionBaseMonth, interruptMonths)
+    const resumeMonth = addMonths(interruptionBaseMonth, interruptMonths + 1)
     return t('items.interruptionPreview', {
       count: String(interruptMonths),
       startMonth: fmtMonth(pausedFrom),
