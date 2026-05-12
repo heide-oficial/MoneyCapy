@@ -134,7 +134,7 @@
   background-image: linear-gradient(hsl(var(--card)), hsl(var(--card))) !important;
   box-shadow: 0 24px 60px rgb(0 0 0 / 0.55), 0 0 0 1px hsl(var(--border));
   isolation: isolate;
-  z-index: 2147483647;
+  z-index: 20000;
 }
 
 @media (prefers-reduced-motion: reduce) {

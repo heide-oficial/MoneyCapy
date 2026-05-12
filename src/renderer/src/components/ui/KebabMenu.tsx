@@ -68,7 +68,7 @@ export function KebabMenu({ items, size = 16, className = '' }: KebabMenuProps) 
       {open && createPortal(
         <div
           ref={dropdownRef}
-          className="fixed z-[9999] min-w-[160px] rounded-md border border-border bg-card shadow-lg py-1"
+          className="fixed z-[40000] min-w-[160px] rounded-md border border-border bg-card shadow-lg py-1"
           style={{ top: pos.top, left: pos.left, visibility: pos.ready ? 'visible' : 'hidden' }}
         >
           {items.map((item, i) => {

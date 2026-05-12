@@ -347,7 +347,7 @@ export default function CardsPage() {
                   </p>
                   <p className="mt-1 text-sm text-muted-foreground">{t('cards.monthlyUsage')}</p>
                 </div>
-                <div className="flex flex-col items-center gap-1 border-l border-border pl-2" onClick={event => event.stopPropagation()}>
+                <div className="relative z-30 flex flex-col items-center gap-1 border-l border-border pl-2" onClick={event => event.stopPropagation()}>
                   <span className="relative group/expenses">
                     <button
                       type="button"
@@ -396,10 +396,10 @@ export default function CardsPage() {
             <div className="mb-3 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{t('cards.usedOverLimit')}</span>
-                <span className="relative font-medium group/limit">
+                <span className="relative z-40 font-medium group/limit">
                   {fmtCard(card.usedLimit)} / {card.totalLimit === 0 ? t('cards.unlimited') : fmtCard(card.totalLimit)}
                   {card.totalLimit > 0 && (
-                    <span className="tile-card-tooltip pointer-events-none absolute bottom-full right-0 z-[100] mb-2 hidden w-max max-w-[16rem] rounded-lg border border-border px-3 py-2 text-xs text-card-foreground group-hover/limit:block">
+                    <span className="tile-card-tooltip pointer-events-none absolute bottom-full right-0 mb-2 hidden w-max max-w-[16rem] rounded-lg border border-border px-3 py-2 text-xs text-card-foreground group-hover/limit:block">
                       {t('cards.available')}: <span className="font-semibold text-foreground">{fmtCard(card.availableLimit)}</span>
                     </span>
                   )}

@@ -126,7 +126,7 @@ export function Select({
       {open && createPortal(
         <div
           ref={dropdownRef}
-          className="fixed z-[9999] rounded-md border border-border bg-card shadow-lg"
+          className="fixed z-[40000] rounded-md border border-border bg-card shadow-lg"
           style={{ top: pos.top, left: pos.left, minWidth: pos.width, visibility: pos.ready ? 'visible' : 'hidden' }}
         >
           {shouldSearch && (

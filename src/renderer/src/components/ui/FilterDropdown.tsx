@@ -35,7 +35,7 @@ export function FilterDropdown<T extends string | number>({
     <div
       ref={dropRef}
       data-filter-dropdown="true"
-      className="fixed z-[9999] min-w-[220px] max-w-[min(320px,calc(100vw-16px))] rounded-lg border border-border bg-card p-1.5 shadow-lg"
+      className="fixed z-[40000] min-w-[220px] max-w-[min(320px,calc(100vw-16px))] rounded-lg border border-border bg-card p-1.5 shadow-lg"
       style={{ top: pos.top, left: pos.left, visibility: pos.ready ? 'visible' : 'hidden' }}
     >
       {searchable && items.length > 0 && (

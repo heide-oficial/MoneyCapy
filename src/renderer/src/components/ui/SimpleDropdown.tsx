@@ -18,7 +18,7 @@ export function SimpleDropdown({ anchorRef, dropRef, options, current, onChange,
   const pos = useAnchoredPopover({ anchorRef, popoverRef: dropRef, onClose, deps: [options.length] })
 
   return createPortal(
-    <div ref={dropRef} data-filter-dropdown="true" className="fixed z-[9999] min-w-[180px] max-w-[min(320px,calc(100vw-16px))] rounded-lg border border-border bg-card p-1.5 shadow-lg"
+    <div ref={dropRef} data-filter-dropdown="true" className="fixed z-[40000] min-w-[180px] max-w-[min(320px,calc(100vw-16px))] rounded-lg border border-border bg-card p-1.5 shadow-lg"
       style={{ top: pos.top, left: pos.left, visibility: pos.ready ? 'visible' : 'hidden' }}>
       {options.map(opt => (
         <button key={opt.key} type="button"

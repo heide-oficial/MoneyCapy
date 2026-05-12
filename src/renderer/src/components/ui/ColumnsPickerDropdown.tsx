@@ -21,7 +21,7 @@ function ColumnsDropdown({ anchorRef, dropRef, current, onChange, onClose }: {
   const pos = useAnchoredPopover({ anchorRef, popoverRef: dropRef, onClose, align: 'end' })
 
   return (
-    <div ref={dropRef} className="fixed z-[9999] rounded-md border border-border bg-card shadow-lg py-1 min-w-[160px]"
+    <div ref={dropRef} className="fixed z-[40000] rounded-md border border-border bg-card shadow-lg py-1 min-w-[160px]"
       style={{ top: pos.top, left: pos.left, visibility: pos.ready ? 'visible' : 'hidden' }}>
       {COLUMN_OPTIONS.map(opt => (
         <button key={opt.value} type="button"

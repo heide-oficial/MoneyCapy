@@ -27,9 +27,9 @@ export function Modal({ open, onClose, title, children, maxWidth = 'max-w-lg' }:
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center">
+    <div className="fixed inset-0 z-[30000] flex items-center justify-center">
       <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className={`relative z-[10001] w-full ${maxWidth} mx-4 rounded-xl border border-border bg-background p-6 shadow-2xl`}>
+      <div className={`relative z-[30001] w-full ${maxWidth} mx-4 rounded-xl border border-border bg-background p-6 shadow-2xl`}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-card-foreground">{title}</h2>
           <button
