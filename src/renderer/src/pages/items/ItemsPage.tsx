@@ -10,7 +10,7 @@ import { SearchInput } from '../../components/ui/SearchInput'
 import { CurrencyMonthNavigator } from '../../components/ui/CurrencyMonthNavigator'
 import { SectionLayout } from '../../components/layout/SectionLayout'
 import { formatCurrency } from '../../lib/currency'
-import { addMonths, monthDiff, useFormatDate } from '../../lib/date'
+import { addMonths, monthDiff, previousMonth, useFormatDate } from '../../lib/date'
 import { getActiveInterruption } from '../../lib/interruptions'
 import { getMonthlyExpenseValue } from '../../lib/monthly-finance'
 import { usePageMonth } from '../../contexts/DefaultMonthContext'
@@ -88,7 +88,7 @@ function TabDropdown({ anchorRef, dropRef, current, onChange, onClose, tabs }: {
   }, [anchorRef, dropRef, onClose])
 
   return (
-    <div ref={dropRef} className="fixed z-[9999] rounded-md border border-border bg-card shadow-lg py-1 min-w-[160px]"
+    <div ref={dropRef} className="fixed z-[40000] rounded-md border border-border bg-card shadow-lg py-1 min-w-[160px]"
       style={{ top: pos.top, left: pos.left }}>
       {tabs.map(tab => (
         <button key={tab.key} type="button"
@@ -664,8 +664,21 @@ export default function ItemsPage() {
 
   const handleInterrupt = async () => {
     if (!interruptItem) return
+    const existingIndefinite = !editingInterruption
+      ? interruptItem.interruptions?.find(interruption => !interruption.resumeMonth)
+      : null
+    if (existingIndefinite && interruptMode === 'temporary') {
+      await window.api.items.updateInterruption(existingIndefinite.id, existingIndefinite.endMonth, month)
+      toast.success(t('items.interruptionUndone'))
+      setInterruptItem(null)
+      setEditingInterruption(null)
+      setInterruptMode('permanent')
+      setInterruptMonths(1)
+      load()
+      return
+    }
     const pauseMonths = interruptMode === 'temporary' ? interruptMonths : undefined
-    const interruptionBaseMonth = editingInterruption?.endMonth || month
+    const interruptionBaseMonth = editingInterruption?.endMonth || previousMonth(month)
     if (editingInterruption) {
       await window.api.items.updateInterruption(
         editingInterruption.id,
@@ -788,8 +801,8 @@ export default function ItemsPage() {
 
   const interruptionPreview = (() => {
     const pausedFrom = addMonths(month, 1)
-    const pausedUntil = addMonths(month, interruptMonths)
-    const resumeMonth = addMonths(month, interruptMonths + 1)
+    const pausedUntil = addMonths(month, interruptMonths - 1)
+    const resumeMonth = addMonths(month, interruptMonths)
     return t('items.interruptionPreview', {
       count: String(interruptMonths),
       startMonth: fmtMonth(pausedFrom),

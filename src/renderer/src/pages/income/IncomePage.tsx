@@ -12,7 +12,7 @@ import { SearchInput } from '../../components/ui/SearchInput'
 import { formatCurrency, formatCurrencyWith } from '../../lib/currency'
 import { useDisplayCurrency } from '../../contexts/DisplayCurrencyContext'
 import { getCurrentMonth, monthDiff, useFormatDate } from '../../lib/date'
-import { addMonths, getActiveInterruption } from '../../lib/interruptions'
+import { addMonths, getActiveInterruption, previousMonth } from '../../lib/interruptions'
 import { getMonthlyIncomeValue } from '../../lib/monthly-finance'
 import { usePageMonth } from '../../contexts/DefaultMonthContext'
 import { useActivePerson } from '../../contexts/ActivePersonContext'
@@ -24,7 +24,7 @@ import { FilterGroup } from '../../components/ui/FilterGroup'
 import {
   HandCoins, Plus, Pencil, Trash2, Repeat, Users, Layers,
   CheckCircle, Circle, CircleDot, DollarSign,
-  ChevronDown, CalendarClock, Filter, Palette, X, Tags, Bookmark, Download
+  ChevronDown, CalendarClock, Filter, Palette, X, Tags, Bookmark, Download, RefreshCw
 } from 'lucide-react'
 import { DayPicker } from '../../components/ui/DayPicker'
 import { TileFieldsPickerButton } from '../../components/ui/TileFieldsPickerButton'
@@ -158,6 +158,7 @@ export default function IncomePage() {
   const [showValueOverrideModal, setShowValueOverrideModal] = useState(false)
   const [valueOverrideMonth, setValueOverrideMonth] = useState('')
   const [valueOverrideValue, setValueOverrideValue] = useState(0)
+  const [showExchangeRateConfirm, setShowExchangeRateConfirm] = useState(false)
 
   // Tag creation modal
   const [showTagCreate, setShowTagCreate] = useState(false)
@@ -174,6 +175,23 @@ export default function IncomePage() {
   const [editingInterruption, setEditingInterruption] = useState<ItemInterruption | null>(null)
   const [interruptMode, setInterruptMode] = useState<'permanent' | 'temporary'>('temporary')
   const [interruptMonths, setInterruptMonths] = useState('2')
+  const selectedIncomeCurrency = currencies.find(c => c.id === Number(form.currencyId)) || baseCurrency
+
+  const updateExchangeRateSnapshot = async () => {
+    if (!selectedIncomeCurrency) return
+    let nextRate = selectedIncomeCurrency.isBase ? 1 : selectedIncomeCurrency.exchangeRate
+    if (baseCurrency && !selectedIncomeCurrency.isBase) {
+      try {
+        const rates = await window.api.currencies.fetchRates(baseCurrency.code, true)
+        nextRate = Number(rates?.[selectedIncomeCurrency.code] ?? nextRate)
+      } catch {
+        nextRate = selectedIncomeCurrency.exchangeRate
+      }
+    }
+    setForm(f => ({ ...f, exchangeRateSnapshot: Number.isFinite(nextRate) && nextRate > 0 ? nextRate : 1 }))
+    setShowExchangeRateConfirm(false)
+    toast.success(t('itemsForm.exchangeRateUpdated'))
+  }
 
   const load = async () => {
     if (!activePerson) { setIncomes([]); return }
@@ -475,8 +493,19 @@ export default function IncomePage() {
 
   const handleInterrupt = async () => {
     if (!interruptItem) return
+    const existingIndefinite = !editingInterruption
+      ? interruptItem.interruptions?.find(interruption => !interruption.resumeMonth)
+      : null
+    if (existingIndefinite && interruptMode === 'temporary') {
+      await window.api.personIncome.updateInterruption(existingIndefinite.id, existingIndefinite.endMonth, month)
+      toast.success(t('items.interruptionUndone'))
+      setInterruptItem(null)
+      setEditingInterruption(null)
+      load()
+      return
+    }
     const pauseMonths = interruptMode === 'temporary' ? interruptionMonthsCount : undefined
-    const interruptionBaseMonth = editingInterruption?.endMonth || month
+    const interruptionBaseMonth = editingInterruption?.endMonth || previousMonth(month)
     if (editingInterruption) {
       await window.api.personIncome.updateInterruption(
         editingInterruption.id,
@@ -527,7 +556,7 @@ export default function IncomePage() {
 
   const interruptionMonthsCount = Math.max(1, parseInt(interruptMonths) || 1)
   const interruptionPreview = (() => {
-    const interruptionBaseMonth = editingInterruption?.endMonth || month
+    const interruptionBaseMonth = editingInterruption?.endMonth || previousMonth(month)
     const pausedFrom = addMonths(interruptionBaseMonth, 1)
     const pausedUntil = addMonths(interruptionBaseMonth, interruptionMonthsCount)
     const resumeMonth = addMonths(interruptionBaseMonth, interruptionMonthsCount + 1)
@@ -873,6 +902,30 @@ export default function IncomePage() {
                             ≈ {formatCurrency(form.value * (form.exchangeRateSnapshot || 1.0))} {t('itemsForm.inBaseCurrency')}
                           </p>
                         )}
+                        {selectedIncomeCurrency && !selectedIncomeCurrency.isBase && (
+                          <div className="mt-3 rounded-lg border border-border/70 bg-background/20 p-3 space-y-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <label className="text-sm font-medium text-foreground">{t('itemsForm.exchangeRateSnapshot')}</label>
+                              <button
+                                type="button"
+                                onClick={() => setShowExchangeRateConfirm(true)}
+                                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-input px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                              >
+                                <RefreshCw size={13} />
+                                {t('itemsForm.updateExchangeRate')}
+                              </button>
+                            </div>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.000001"
+                              value={String(form.exchangeRateSnapshot || 1)}
+                              onChange={event => setForm({ ...form, exchangeRateSnapshot: Number(event.target.value) || 1 })}
+                              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            />
+                            <p className="text-xs text-muted-foreground">{t('itemsForm.exchangeRateSnapshotHelp')}</p>
+                          </div>
+                        )}
                       </div>
                     )}
                     <CurrencyInput label={t('itemsForm.value')} value={form.value} onChange={v => setForm({ ...form, value: v })}
@@ -1165,6 +1218,16 @@ export default function IncomePage() {
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setShowValueOverrideModal(false)}>{t('common.cancel')}</Button>
             <Button onClick={handleSaveValueOverride}>{t('common.save')}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal open={showExchangeRateConfirm} onClose={() => setShowExchangeRateConfirm(false)} title={t('itemsForm.updateExchangeRateConfirmTitle')} maxWidth="max-w-sm">
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">{t('itemsForm.updateExchangeRateConfirm')}</p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setShowExchangeRateConfirm(false)}>{t('common.cancel')}</Button>
+            <Button onClick={updateExchangeRateSnapshot}>{t('itemsForm.updateExchangeRate')}</Button>
           </div>
         </div>
       </Modal>

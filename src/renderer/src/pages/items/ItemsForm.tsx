@@ -8,7 +8,7 @@ import { Select } from '../../components/ui/Select'
 import { formatCurrency, formatCurrencyWith } from '../../lib/currency'
 import { addMonths, useFormatDate } from '../../lib/date'
 import { useCurrencySettings } from '../../contexts/CurrencySettingsContext'
-import { Plus, X, FastForward, Undo2, Check, Palette, Pencil } from 'lucide-react'
+import { Plus, X, FastForward, Undo2, Check, Palette, Pencil, RefreshCw } from 'lucide-react'
 import type { TagData, CardSplit, CurrentInstallmentPayment, ItemInterruption, SectionItem } from '../../types/entities'
 import { DayPicker } from '../../components/ui/DayPicker'
 import { ColorPicker } from '../../components/ui/ColorPicker'
@@ -138,6 +138,7 @@ export function ItemsForm({
   const [valueOverrideMonth, setValueOverrideMonth] = useState('')
   const [valueOverrideValue, setValueOverrideValue] = useState(0)
   const [currentPaymentStates, setCurrentPaymentStates] = useState<Record<string, { mode: 'total' | 'percent'; total: number; paidAt: string }>>({})
+  const [showExchangeRateConfirm, setShowExchangeRateConfirm] = useState(false)
 
   // Inline creation modals
   const INLINE_COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316', '#14b8a6', '#6366f1']
@@ -336,6 +337,21 @@ export function ItemsForm({
   const currencySymbol = selectedCurrency?.symbol || undefined
   const isForeign = !!(selectedCurrency && !selectedCurrency.isBase)
   const fmtVal = (v: number) => isForeign && currencySymbol ? formatCurrencyWith(v, currencySymbol) : formatCurrency(v)
+  const updateExchangeRateSnapshot = async () => {
+    if (!selectedCurrency) return
+    let nextRate = selectedCurrency.isBase ? 1 : selectedCurrency.exchangeRate
+    if (baseCurrency && !selectedCurrency.isBase) {
+      try {
+        const rates = await window.api.currencies.fetchRates(baseCurrency.code, true)
+        nextRate = Number(rates?.[selectedCurrency.code] ?? nextRate)
+      } catch {
+        nextRate = selectedCurrency.exchangeRate
+      }
+    }
+    setForm(f => ({ ...f, exchangeRateSnapshot: Number.isFinite(nextRate) && nextRate > 0 ? nextRate : 1 }))
+    setShowExchangeRateConfirm(false)
+    toast.success(t('itemsForm.exchangeRateUpdated'))
+  }
 
   /* ─── Tab: Detalhes ─── */
   const renderTabDetalhes = () => {
@@ -476,6 +492,30 @@ export function ItemsForm({
                   <p className="text-xs text-muted-foreground mt-1">
                     ≈ {formatCurrency(form.value * (form.exchangeRateSnapshot || 1.0))} {t('itemsForm.inBaseCurrency')}
                   </p>
+                )}
+                {selectedCurrency && !selectedCurrency.isBase && (
+                  <div className="mt-3 rounded-lg border border-border/70 bg-background/20 p-3 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="text-sm font-medium text-foreground">{t('itemsForm.exchangeRateSnapshot')}</label>
+                      <button
+                        type="button"
+                        onClick={() => setShowExchangeRateConfirm(true)}
+                        className="inline-flex h-8 items-center gap-1.5 rounded-md border border-input px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                      >
+                        <RefreshCw size={13} />
+                        {t('itemsForm.updateExchangeRate')}
+                      </button>
+                    </div>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.000001"
+                      value={String(form.exchangeRateSnapshot || 1)}
+                      onChange={event => setForm({ ...form, exchangeRateSnapshot: Number(event.target.value) || 1 })}
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                    <p className="text-xs text-muted-foreground">{t('itemsForm.exchangeRateSnapshotHelp')}</p>
+                  </div>
                 )}
               </div>
             )}
@@ -1319,6 +1359,16 @@ export function ItemsForm({
             <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
             <Button onClick={handleSave}>{editing ? t('common.save') : t('common.create')} <Check size={14} /></Button>
           </div>
+        </div>
+      </div>
+    </Modal>
+
+    <Modal open={showExchangeRateConfirm} onClose={() => setShowExchangeRateConfirm(false)} title={t('itemsForm.updateExchangeRateConfirmTitle')} maxWidth="max-w-sm">
+      <div className="space-y-4">
+        <p className="text-sm text-muted-foreground">{t('itemsForm.updateExchangeRateConfirm')}</p>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={() => setShowExchangeRateConfirm(false)}>{t('common.cancel')}</Button>
+          <Button onClick={updateExchangeRateSnapshot}>{t('itemsForm.updateExchangeRate')}</Button>
         </div>
       </div>
     </Modal>
