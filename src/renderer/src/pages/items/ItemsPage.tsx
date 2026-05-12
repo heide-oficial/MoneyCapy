@@ -249,11 +249,20 @@ export default function ItemsPage() {
     setStores(strs)
   }
 
-  const refreshEditingItem = async (itemId: number) => {
-    if (!activePerson) return
+  const refreshEditingItem = async (itemId: number): Promise<SectionItem | null> => {
+    if (!activePerson) return null
     const refreshed = await window.api.items.list(activePerson.id, month)
     const updated = (refreshed as SectionItem[]).find(item => item.id === itemId)
     if (updated) setEditing(updated)
+    return updated || null
+  }
+
+  const syncFormPaymentStatus = (item: SectionItem) => {
+    setForm(current => ({
+      ...current,
+      isPaid: !!item.isPaid,
+      paidAt: item.paidAt || ''
+    }))
   }
 
   useEffect(() => { loadData() }, [activePerson, month, typeFilter, itemsVersion])
@@ -780,7 +789,8 @@ export default function ItemsPage() {
       toast.success(t('itemsForm.currentInstallmentPaymentSaved'))
       bumpItems()
       await loadData()
-      await refreshEditingItem(editing.id)
+      const updated = await refreshEditingItem(editing.id)
+      if (updated) syncFormPaymentStatus(updated)
     } catch (e: any) {
       toast.error(e.message || t('common.errorSaving'))
     }
@@ -793,7 +803,8 @@ export default function ItemsPage() {
       toast.success(t('itemsForm.currentInstallmentPaymentRemoved'))
       bumpItems()
       await loadData()
-      await refreshEditingItem(editing.id)
+      const updated = await refreshEditingItem(editing.id)
+      if (updated) syncFormPaymentStatus(updated)
     } catch (e: any) {
       toast.error(e.message || t('common.errorSaving'))
     }
