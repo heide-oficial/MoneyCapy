@@ -124,6 +124,7 @@ export function ItemsForm({
   const { fmtMonth, fmtDate } = useFormatDate()
   const { currencies, baseCurrency } = useCurrencySettings()
   const { t } = useTranslation()
+  const fmtPercent = (value: number) => new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value)
   const typeOptions = getTypeOptions(t)
   const expenseCategories = categories
   const availableSubcategories = form.categoryId
@@ -1083,22 +1084,25 @@ export function ItemsForm({
               {payments.map(payment => {
                 const splitName = getSplitName(payment.splitId)
                 const savings = Math.max(0, payment.originalValue - payment.paidValue)
+                const discountPercent = payment.originalValue > 0 ? (savings / payment.originalValue) * 100 : 0
                 return (
                   <div key={payment.id} className="rounded-md bg-muted/30 px-3 py-2 text-sm">
                     <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
+                      <div className="min-w-0 space-y-1">
                         <p className="font-medium text-foreground">
                           {t('itemsForm.currentInstallmentPaymentHistoryItem', {
                             month: fmtMonth(payment.month),
                             paid: fmtVal(payment.paidValue),
-                            original: fmtVal(payment.originalValue),
                             date: payment.paidAt ? fmtDate(payment.paidAt) : '-'
                           })}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          {splitName ? t('itemsForm.forCard', { name: splitName }) : t('itemsForm.currentMonthPaymentAnticipation')}
-                          {savings > 0 && <span className="ml-2 text-green-500">{t('itemsForm.savingsLabel')}: {fmtVal(savings)}</span>}
-                        </p>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                          {splitName && <span>{t('itemsForm.forCard', { name: splitName })}</span>}
+                          <span>{t('itemsForm.totalOriginalValue')}: {fmtVal(payment.originalValue)}</span>
+                          <span>
+                            {t('itemsForm.savingsLabel')}: {fmtVal(savings)} ({t('itemsForm.discountPercentDetail', { percent: fmtPercent(discountPercent) })})
+                          </span>
+                        </div>
                       </div>
                       <Button size="sm" variant="ghost" onClick={() => handleDeleteCurrentInstallmentPayment(payment.id)} title={t('common.delete')}>
                         <X size={14} />
@@ -1126,6 +1130,8 @@ export function ItemsForm({
                 const monthly = getMonthlyForAnticipation(anticipation)
                 const originalTotal = monthly * anticipation.count
                 const paidTotal = anticipation.discountedTotal ?? originalTotal
+                const displayedTotal = monthly + originalTotal
+                const displayedPaidTotal = monthly + paidTotal
                 const savings = Math.max(0, originalTotal - paidTotal)
                 return (
                   <div key={anticipation.id} className="rounded-md bg-muted/30 px-3 py-2 text-sm">
@@ -1134,6 +1140,8 @@ export function ItemsForm({
                         <p className="font-medium text-foreground">
                           {t('itemsForm.futureInstallmentsMoved', {
                             count: String(anticipation.count),
+                            installments: anticipation.count === 1 ? t('common.installmentSingular') : t('common.installmentPlural'),
+                            verb: anticipation.count === 1 ? t('itemsForm.wasAnticipated') : t('itemsForm.wereAnticipated'),
                             from: fmtMonth(addMonths(anticipation.month, 1)),
                             to: fmtMonth(addMonths(anticipation.month, anticipation.count)),
                             target: fmtMonth(anticipation.month)
@@ -1141,8 +1149,9 @@ export function ItemsForm({
                         </p>
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                           {splitName && <span>{t('itemsForm.forCard', { name: splitName })}</span>}
-                          <span>{t('itemsForm.originalValue')}: {fmtVal(originalTotal)}</span>
-                          <span>{t('itemsForm.paidInstallmentValue')}: {fmtVal(paidTotal)}</span>
+                          <span>{t('itemsForm.valuePerInstallment')}: {fmtVal(monthly)}</span>
+                          <span>{t('itemsForm.totalValue')}: {fmtVal(displayedTotal)}</span>
+                          <span>{t('itemsForm.paidInstallmentValue')}: {fmtVal(displayedPaidTotal)}</span>
                           {savings > 0 && <span className="text-green-500">{t('itemsForm.savingsLabel')}: {fmtVal(savings)}</span>}
                         </div>
                       </div>
