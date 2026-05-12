@@ -30,6 +30,15 @@ interface MonthlyValueOverride {
   value: number
 }
 
+interface PendingFutureAnticipationReview {
+  splitId?: number
+  discountedTotal?: number
+  originalValue: number
+  previousOriginalValue: number
+  previousPaidValue: number
+  paidAt: string
+}
+
 export function getTypeOptions(t: (key: string) => string) {
   return [
     { value: 'common', label: t('itemTypes.common') },
@@ -140,6 +149,9 @@ export function ItemsForm({
   const [valueOverrideValue, setValueOverrideValue] = useState(0)
   const [currentPaymentStates, setCurrentPaymentStates] = useState<Record<string, { mode: 'total' | 'percent'; total: number; paidAt: string }>>({})
   const [installmentPaymentTab, setInstallmentPaymentTab] = useState<'current' | 'future'>('current')
+  const [pendingFutureAnticipation, setPendingFutureAnticipation] = useState<PendingFutureAnticipationReview | null>(null)
+  const [pendingFuturePaidValue, setPendingFuturePaidValue] = useState(0)
+  const [pendingFuturePaidAt, setPendingFuturePaidAt] = useState('')
   const [showExchangeRateConfirm, setShowExchangeRateConfirm] = useState(false)
 
   // Inline creation modals
@@ -168,6 +180,9 @@ export function ItemsForm({
       setDiscountStates({})
       setCurrentPaymentStates({})
       setInstallmentPaymentTab('current')
+      setPendingFutureAnticipation(null)
+      setPendingFuturePaidValue(0)
+      setPendingFuturePaidAt('')
     }
   }, [open])
 
@@ -1025,6 +1040,22 @@ export function ItemsForm({
                 <button type="button"
                   onClick={() => {
                     const dt = hasDiscount ? discountTotal : undefined
+                    if (opts.currentPayment) {
+                      const paidAt = opts.currentPayment.paidAt || new Date().toISOString().substring(0, 10)
+                      const previousOriginal = opts.currentPayment.originalValue
+                      const previousRatio = previousOriginal > 0 ? opts.currentPayment.paidValue / previousOriginal : 1
+                      setPendingFutureAnticipation({
+                        splitId: opts.splitId,
+                        discountedTotal: dt,
+                        originalValue: originalCurrentValue,
+                        previousOriginalValue: previousOriginal,
+                        previousPaidValue: opts.currentPayment.paidValue,
+                        paidAt
+                      })
+                      setPendingFuturePaidValue(Math.round(originalCurrentValue * previousRatio * 100) / 100)
+                      setPendingFuturePaidAt(paidAt)
+                      return
+                    }
                     handleAnticipate(opts.splitId, dt)
                   }}
                   disabled={countNum <= 0 || countNum > maxAnticipate}
@@ -1415,6 +1446,25 @@ export function ItemsForm({
     )
   }
 
+  const handleConfirmFutureAnticipationReview = async () => {
+    if (!pendingFutureAnticipation) return
+    if (pendingFuturePaidValue > pendingFutureAnticipation.originalValue) {
+      toast.error(t('itemsForm.paidValueGreaterThanOriginal'))
+      return
+    }
+    await handleAnticipate(pendingFutureAnticipation.splitId, pendingFutureAnticipation.discountedTotal)
+    await handleCurrentInstallmentPayment(
+      pendingFutureAnticipation.splitId,
+      pendingFutureAnticipation.originalValue,
+      pendingFuturePaidValue,
+      pendingFuturePaidAt || pendingFutureAnticipation.paidAt
+    )
+    setPendingFutureAnticipation(null)
+    setPendingFuturePaidValue(0)
+    setPendingFuturePaidAt('')
+    setInstallmentPaymentTab('current')
+  }
+
   return (
     <>
     <Modal open={open} onClose={onClose} title={editing ? t('itemsForm.editItem') : t('itemsForm.newItem')} maxWidth="max-w-xl">
@@ -1496,6 +1546,65 @@ export function ItemsForm({
         </div>
       </div>
     </Modal>
+
+    {pendingFutureAnticipation && (
+      <Modal
+        open={true}
+        onClose={() => setPendingFutureAnticipation(null)}
+        title={t('itemsForm.reviewCurrentPaymentTitle')}
+        maxWidth="max-w-sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            {t('itemsForm.reviewCurrentPaymentDescription', {
+              previous: fmtVal(pendingFutureAnticipation.previousOriginalValue),
+              next: fmtVal(pendingFutureAnticipation.originalValue)
+            })}
+          </p>
+          <div className="rounded-lg border border-border bg-muted/20 p-3 text-xs text-muted-foreground">
+            {t('itemsForm.previousCurrentPaymentSummary', {
+              paid: fmtVal(pendingFutureAnticipation.previousPaidValue),
+              original: fmtVal(pendingFutureAnticipation.previousOriginalValue)
+            })}
+          </div>
+          <CurrencyInput
+            label={t('itemsForm.paidInstallmentValue')}
+            value={pendingFuturePaidValue}
+            onChange={setPendingFuturePaidValue}
+            symbol={currencySymbol}
+            autoFocus
+          />
+          <DatePicker
+            className="w-full justify-start"
+            mode="date"
+            label={t('itemsForm.paymentDate')}
+            value={pendingFuturePaidAt}
+            onChange={setPendingFuturePaidAt}
+          />
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <span>{t('itemsForm.totalOriginalValue')}: {fmtVal(pendingFutureAnticipation.originalValue)}</span>
+            <span>
+              {t('itemsForm.savingsLabel')}: {fmtVal(Math.max(0, pendingFutureAnticipation.originalValue - pendingFuturePaidValue))}
+              {' '}
+              ({t('itemsForm.discountPercentDetail', {
+                percent: fmtPercent(pendingFutureAnticipation.originalValue > 0
+                  ? Math.max(0, (pendingFutureAnticipation.originalValue - pendingFuturePaidValue) / pendingFutureAnticipation.originalValue) * 100
+                  : 0)
+              })})
+            </span>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setPendingFutureAnticipation(null)}>{t('common.cancel')}</Button>
+            <Button
+              onClick={handleConfirmFutureAnticipationReview}
+              disabled={pendingFuturePaidValue > pendingFutureAnticipation.originalValue}
+            >
+              {t('itemsForm.updateCurrentPaymentAndAnticipate')}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    )}
 
     {/* Store creation modal */}
     <Modal open={showStoreCreate} onClose={() => setShowStoreCreate(false)} title={t('itemsForm.newStore')} maxWidth="max-w-sm">
