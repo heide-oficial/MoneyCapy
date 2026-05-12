@@ -63,6 +63,9 @@ export function registerSettingsHandlers(db: WrappedDatabase): void {
       id: card.id,
       number: EncryptionService.decrypt({ ciphertext: card.number_encrypted, iv: card.number_iv, tag: card.number_tag }),
       expiration: EncryptionService.decrypt({ ciphertext: card.expiration_encrypted, iv: card.expiration_iv, tag: card.expiration_tag }),
+      cvc: card.cvc_encrypted
+        ? EncryptionService.decrypt({ ciphertext: card.cvc_encrypted, iv: card.cvc_iv, tag: card.cvc_tag })
+        : '',
       holder: EncryptionService.decrypt({ ciphertext: card.holder_encrypted, iv: card.holder_iv, tag: card.holder_tag }),
     }))
 
@@ -72,6 +75,7 @@ export function registerSettingsHandlers(db: WrappedDatabase): void {
       UPDATE cards SET
         number_encrypted = ?, number_iv = ?, number_tag = ?,
         expiration_encrypted = ?, expiration_iv = ?, expiration_tag = ?,
+        cvc_encrypted = ?, cvc_iv = ?, cvc_tag = ?,
         holder_encrypted = ?, holder_iv = ?, holder_tag = ?,
         updated_at = datetime('now')
       WHERE id = ?
@@ -81,10 +85,12 @@ export function registerSettingsHandlers(db: WrappedDatabase): void {
       for (const card of decryptedCards) {
         const num = EncryptionService.encrypt(card.number)
         const exp = EncryptionService.encrypt(card.expiration)
+        const cvc = EncryptionService.encrypt(card.cvc || '')
         const hld = EncryptionService.encrypt(card.holder)
         updateStmt.run(
           num.ciphertext, num.iv, num.tag,
           exp.ciphertext, exp.iv, exp.tag,
+          cvc.ciphertext, cvc.iv, cvc.tag,
           hld.ciphertext, hld.iv, hld.tag,
           card.id
         )

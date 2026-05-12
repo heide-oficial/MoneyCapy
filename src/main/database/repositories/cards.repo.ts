@@ -288,6 +288,7 @@ export class CardsRepository {
     bank_account_id?: number | null
     number_encrypted: string; number_iv: string; number_tag: string
     expiration_encrypted: string; expiration_iv: string; expiration_tag: string
+    cvc_encrypted?: string; cvc_iv?: string; cvc_tag?: string
     holder_encrypted: string; holder_iv: string; holder_tag: string
     total_limit: number; billing_close_day: number; due_day: number
     card_type?: string
@@ -296,12 +297,14 @@ export class CardsRepository {
   }) {
     const cols = `name, person_id, bank_account_id, number_encrypted, number_iv, number_tag,
         expiration_encrypted, expiration_iv, expiration_tag,
+        cvc_encrypted, cvc_iv, cvc_tag,
         holder_encrypted, holder_iv, holder_tag,
         total_limit, billing_close_day, due_day, card_type, currency_id, limit_group_id`
     const params: any[] = [
       data.name, data.person_id || null, data.bank_account_id ?? null,
       data.number_encrypted, data.number_iv, data.number_tag,
       data.expiration_encrypted, data.expiration_iv, data.expiration_tag,
+      data.cvc_encrypted || '', data.cvc_iv || '', data.cvc_tag || '',
       data.holder_encrypted, data.holder_iv, data.holder_tag,
       data.total_limit, data.billing_close_day, data.due_day,
       data.card_type || 'both', data.currency_id ?? null, data.limit_group_id ?? null

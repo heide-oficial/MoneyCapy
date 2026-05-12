@@ -41,15 +41,20 @@ function zeroUsedMetrics(metrics: any) {
 function mapCard(card: any, limitMetrics: any, db?: WrappedDatabase) {
   let numberMasked = '**** **** **** ****'
   let expirationMasked = '**/**'
+  let cvcMasked = '***'
   let holderMasked = '*****'
 
   if (EncryptionService.isUnlocked()) {
     try {
       const num = EncryptionService.decrypt({ ciphertext: card.number_encrypted, iv: card.number_iv, tag: card.number_tag })
       const exp = EncryptionService.decrypt({ ciphertext: card.expiration_encrypted, iv: card.expiration_iv, tag: card.expiration_tag })
+      const cvc = card.cvc_encrypted
+        ? EncryptionService.decrypt({ ciphertext: card.cvc_encrypted, iv: card.cvc_iv, tag: card.cvc_tag })
+        : ''
       const hld = EncryptionService.decrypt({ ciphertext: card.holder_encrypted, iv: card.holder_iv, tag: card.holder_tag })
       if (num) numberMasked = num
       if (exp) expirationMasked = exp
+      if (cvc) cvcMasked = cvc
       if (hld) holderMasked = hld
     } catch { /* keep masked */ }
   }
@@ -61,6 +66,7 @@ function mapCard(card: any, limitMetrics: any, db?: WrappedDatabase) {
     bankAccountId: card.bank_account_id ?? null,
     numberMasked,
     expirationMasked,
+    cvcMasked,
     holderMasked,
     totalLimit: limitMetrics.totalLimit,
     ownTotalLimit: limitMetrics.ownTotalLimit,
@@ -108,6 +114,9 @@ export function registerCardsHandlers(db: WrappedDatabase): void {
       ...mapCard(card, limitMetrics, db),
       number: EncryptionService.decrypt({ ciphertext: card.number_encrypted, iv: card.number_iv, tag: card.number_tag }),
       expiration: EncryptionService.decrypt({ ciphertext: card.expiration_encrypted, iv: card.expiration_iv, tag: card.expiration_tag }),
+      cvc: card.cvc_encrypted
+        ? EncryptionService.decrypt({ ciphertext: card.cvc_encrypted, iv: card.cvc_iv, tag: card.cvc_tag })
+        : '',
       holder: EncryptionService.decrypt({ ciphertext: card.holder_encrypted, iv: card.holder_iv, tag: card.holder_tag })
     }
   })
@@ -118,6 +127,7 @@ export function registerCardsHandlers(db: WrappedDatabase): void {
     }
     const numEnc = EncryptionService.encrypt(data.number || '')
     const expEnc = EncryptionService.encrypt(data.expiration || '')
+    const cvcEnc = EncryptionService.encrypt(data.cvc || '')
     const hldEnc = EncryptionService.encrypt(data.holder || '')
     return repo.create({
       name: data.name,
@@ -125,6 +135,7 @@ export function registerCardsHandlers(db: WrappedDatabase): void {
       bank_account_id: data.bankAccountId ?? null,
       number_encrypted: numEnc.ciphertext, number_iv: numEnc.iv, number_tag: numEnc.tag,
       expiration_encrypted: expEnc.ciphertext, expiration_iv: expEnc.iv, expiration_tag: expEnc.tag,
+      cvc_encrypted: cvcEnc.ciphertext, cvc_iv: cvcEnc.iv, cvc_tag: cvcEnc.tag,
       holder_encrypted: hldEnc.ciphertext, holder_iv: hldEnc.iv, holder_tag: hldEnc.tag,
       total_limit: data.totalLimit,
       billing_close_day: data.billingCloseDay,
@@ -157,6 +168,12 @@ export function registerCardsHandlers(db: WrappedDatabase): void {
       updateData.expiration_encrypted = enc.ciphertext
       updateData.expiration_iv = enc.iv
       updateData.expiration_tag = enc.tag
+    }
+    if (data.cvc !== undefined && EncryptionService.isUnlocked()) {
+      const enc = EncryptionService.encrypt(data.cvc)
+      updateData.cvc_encrypted = enc.ciphertext
+      updateData.cvc_iv = enc.iv
+      updateData.cvc_tag = enc.tag
     }
     if (data.holder !== undefined && EncryptionService.isUnlocked()) {
       const enc = EncryptionService.encrypt(data.holder)

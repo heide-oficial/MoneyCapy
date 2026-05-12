@@ -39,6 +39,7 @@ interface CardEnriched {
   bankAccountId: number | null
   numberMasked: string
   expirationMasked: string
+  cvcMasked: string
   holderMasked: string
   totalLimit: number
   ownTotalLimit: number
@@ -157,7 +158,7 @@ export default function CardsPage() {
   const { gridClass, pickerButton } = useColumnsPicker('cards-columns')
 
   const [formData, setFormData] = useState({
-    name: '', number: '', expiration: '', holder: '',
+    name: '', number: '', expiration: '', cvc: '', holder: '',
     totalLimit: 0, billingCloseDay: 1, dueDay: 10,
     bankAccountId: null as number | null,
     cardType: 'both' as 'credit' | 'debit' | 'both',
@@ -275,6 +276,7 @@ export default function CardsPage() {
       name: '',
       number: '',
       expiration: '',
+      cvc: '',
       holder: '',
       totalLimit: 0,
       billingCloseDay: 1,
@@ -311,6 +313,7 @@ export default function CardsPage() {
         name: decrypted.name,
         number: decrypted.number || '',
         expiration: decrypted.expiration || '',
+        cvc: decrypted.cvc || '',
         holder: decrypted.holder || '',
         totalLimit: decrypted.ownTotalLimit ?? decrypted.totalLimit,
         billingCloseDay: decrypted.billingCloseDay,
@@ -422,15 +425,19 @@ export default function CardsPage() {
     const fmtCard = (v: number) => card.currencySymbol ? formatCurrencyWith(v, card.currencySymbol) : formatCurrency(v)
     const expanded = expandedCardId === card.id
     const cardTypeLabel = card.cardType === 'credit' ? t('cards.credit') : card.cardType === 'debit' ? t('cards.debit') : t('cards.creditAndDebit')
+    const limitTypeValue = card.limitGroupName
+      ? t('cards.sharedLimitTypeValue', { group: card.limitGroupName })
+      : t('cards.individualLimitTypeValue')
     const sensitiveRows = [
-      card.limitGroupName ? { icon: Layers, label: t('cards.sharedLimitGroup'), value: card.limitGroupName } : null,
+      { icon: Landmark, label: t('cards.bankAccount'), value: card.bankAccountName || t('cards.noneOption') },
+      { icon: Layers, label: t('cards.limitMode'), value: limitTypeValue },
+      { icon: User, label: t('cards.holderName'), value: !isUnlocked ? '*****' : (card.holderMasked && card.holderMasked !== '*****' ? card.holderMasked : t('cards.nameOnCard')) },
       { icon: Hash, label: t('cards.cardNumber'), value: !isUnlocked ? '**** **** **** ****' : (card.numberMasked && card.numberMasked !== '**** **** **** ****' ? card.numberMasked : '0000 0000 0000 0000') },
       { icon: CalendarDays, label: t('cards.expiration'), value: !isUnlocked ? '**/**' : (card.expirationMasked && card.expirationMasked !== '**/**' ? card.expirationMasked : '00/00') },
-      { icon: User, label: t('cards.holderName'), value: !isUnlocked ? '*****' : (card.holderMasked && card.holderMasked !== '*****' ? card.holderMasked : t('cards.nameOnCard')) },
-      { icon: Landmark, label: t('cards.bankAccount'), value: card.bankAccountName || t('cards.noneOption') },
+      { icon: Hash, label: t('cards.cvc'), value: !isUnlocked ? '***' : (card.cvcMasked && card.cvcMasked !== '***' ? card.cvcMasked : '---') },
       { icon: CalendarDays, label: t('cards.billingCloseDay'), value: t('cards.closesDay', { day: card.billingCloseDay }) },
       { icon: CalendarDays, label: t('cards.dueDay'), value: t('cards.duesDay', { day: card.dueDay }) }
-    ].filter(Boolean) as { icon: typeof Hash; label: string; value: string }[]
+    ] as { icon: typeof Hash; label: string; value: string }[]
     return (
       <>
         {expanded && (
@@ -455,11 +462,6 @@ export default function CardsPage() {
               <div className="min-w-0">
                 <h3 className="truncate text-lg font-bold leading-tight text-foreground sm:text-xl">{card.name}</h3>
                 <p className="mt-1 truncate text-sm text-muted-foreground">{cardTypeLabel}</p>
-                {card.limitGroupName && (
-                  <p className="mt-1 truncate text-xs text-primary">
-                    {t('cards.sharedLimitGroupBadge', { group: card.limitGroupName })}
-                  </p>
-                )}
               </div>
 
               <div className="flex shrink-0 items-start gap-3 text-right">
@@ -700,8 +702,12 @@ export default function CardsPage() {
               const digits = e.target.value.replace(/\D/g, '').slice(0, 4)
               setFormData({ ...formData, expiration: digits.length > 2 ? digits.slice(0, 2) + '/' + digits.slice(2) : digits })
             }} placeholder="MM/AA" maxLength={5} />
-            <Input label={t('cards.holderName')} value={formData.holder} onChange={e => setFormData({ ...formData, holder: e.target.value })} placeholder={t('cards.nameOnCard')} />
+            <Input label={t('cards.cvc')} value={formData.cvc} onChange={e => {
+              const digits = e.target.value.replace(/\D/g, '').slice(0, 4)
+              setFormData({ ...formData, cvc: digits })
+            }} placeholder="123" maxLength={4} />
           </div>
+          <Input label={t('cards.holderName')} value={formData.holder} onChange={e => setFormData({ ...formData, holder: e.target.value })} placeholder={t('cards.nameOnCard')} />
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground">{t('cards.limitMode')}</label>
             <div className="flex rounded-lg border border-input p-0.5 bg-muted/30">
