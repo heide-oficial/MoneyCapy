@@ -5,13 +5,24 @@ interface Migration {
   up: (db: WrappedDatabase) => void
 }
 
+export interface MigrationProgress {
+  current: number
+  total: number
+  name: string
+  status: 'running' | 'applied'
+}
+
+interface RunMigrationsOptions {
+  onProgress?: (progress: MigrationProgress) => void
+}
+
 const migrations: Migration[] = []
 
 export function registerMigration(migration: Migration): void {
   migrations.push(migration)
 }
 
-export function runMigrations(db: WrappedDatabase): void {
+function ensureMigrationsTable(db: WrappedDatabase): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS _migrations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -19,15 +30,31 @@ export function runMigrations(db: WrappedDatabase): void {
       applied_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `)
+}
 
+export function getPendingMigrations(db: WrappedDatabase): string[] {
+  ensureMigrationsTable(db)
   const applied = db
     .prepare('SELECT name FROM _migrations')
     .all()
     .map((row: any) => row.name)
 
-  const pending = migrations.filter((m) => !applied.includes(m.name))
+  return migrations.filter((m) => !applied.includes(m.name)).map((migration) => migration.name)
+}
 
-  for (const migration of pending) {
+export function runMigrations(db: WrappedDatabase, options: RunMigrationsOptions = {}): void {
+  ensureMigrationsTable(db)
+
+  const pendingNames = getPendingMigrations(db)
+  const pending = migrations.filter((m) => pendingNames.includes(m.name))
+
+  pending.forEach((migration, index) => {
+    options.onProgress?.({
+      current: index,
+      total: pending.length,
+      name: migration.name,
+      status: 'running'
+    })
     console.log(`Running migration: ${migration.name}`)
     const run = db.transaction(() => {
       migration.up(db)
@@ -35,5 +62,11 @@ export function runMigrations(db: WrappedDatabase): void {
     })
     run()
     console.log(`Migration applied: ${migration.name}`)
-  }
+    options.onProgress?.({
+      current: index + 1,
+      total: pending.length,
+      name: migration.name,
+      status: 'applied'
+    })
+  })
 }

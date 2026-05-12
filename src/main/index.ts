@@ -3,7 +3,7 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { initDatabase, closeDatabase } from './database/connection'
 import type { WrappedDatabase } from './database/connection'
-import { runMigrations } from './database/migrations/runner'
+import { getPendingMigrations, runMigrations } from './database/migrations/runner'
 import './database/migrations/001_initial_schema'
 import './database/migrations/002_restructure'
 import './database/migrations/003_accounts'
@@ -56,11 +56,21 @@ import './database/migrations/049_card_cvc'
 import { registerAllIpcHandlers } from './ipc/register'
 import { SettingsRepository } from './database/repositories/settings.repo'
 import { startAutoUpdateRates, stopAutoUpdateRates } from './services/auto-update-rates'
+import {
+  completeMigrationProgress,
+  createMigrationProgressWindow,
+  failMigrationProgress,
+  updateMigrationProgress
+} from './migration-progress-window'
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let isQuitting = false
 let db: WrappedDatabase
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
 
 // App icon path — in dev: project root resources/, in packaged: process.resourcesPath
 const APP_ICON_PATH = is.dev
@@ -180,7 +190,28 @@ app.whenReady().then(async () => {
 
   // Initialize database (async for sql.js)
   db = await initDatabase()
-  runMigrations(db)
+  const pendingMigrations = getPendingMigrations(db)
+  const migrationWindow =
+    pendingMigrations.length > 0
+      ? await createMigrationProgressWindow(APP_ICON_PATH, pendingMigrations.length)
+      : null
+
+  try {
+    runMigrations(db, {
+      onProgress: (progress) => updateMigrationProgress(migrationWindow, progress)
+    })
+    if (migrationWindow) {
+      completeMigrationProgress(migrationWindow)
+      await wait(600)
+      migrationWindow.close()
+    }
+    db.forceSave()
+  } catch (error) {
+    failMigrationProgress(migrationWindow, error)
+    await wait(4000)
+    app.quit()
+    throw error
+  }
 
   // Register IPC handlers
   registerAllIpcHandlers(db)
